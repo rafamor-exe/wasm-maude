@@ -1,0 +1,31 @@
+fmod WASMMOD is
+  *** RAFAEL MORALES PALACIOS
+  
+  *** IMPORT DATATYPE MODULES TO BE USED
+  protecting NAT .
+  protecting INT .
+  
+  *** Declare sorts to be used and hierarchy between them.
+  sorts InstList Inst EmptyList InstTag ParamList Param Stack EmptyStack .
+  subsorts Inst EmptyList < InstList .
+  subsorts Param < ParamList .
+
+  
+  *** InstList is a List of Instructions
+  op EmptyList : -> EmptyList [ctor] .
+
+  op __ : InstList InstList -> InstList [assoc ctor] .
+  
+  op __ : InstTag ParamList -> Inst [ctor] .
+
+  op __ : Param ParamList -> ParamList [ctor] .
+
+  *** Stack ops
+  op EmptyStack : -> EmptyStack [ctor] .
+  op __ : Inst InstList -> Stack [ctor] .
+
+
+  
+
+endfm
+
