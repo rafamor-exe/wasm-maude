@@ -1,4 +1,4 @@
-fmod WASMMOD is
+mod WASMMOD is
   *** RAFAEL MORALES PALACIOS
   
   *** IMPORT DATATYPE MODULES TO BE USED
@@ -6,8 +6,12 @@ fmod WASMMOD is
   protecting INT .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack ValRef .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef .
   
+  *** Simulator components
+  subsorts Stack InstList < WASMSim .
+  subsorts EmptyStack < Stack .
+
   *** Module sections sorts
   subsorts NeTypeVec EmptyList < TypeVec .
   subsorts TypeDef < NeTypeVec .
@@ -18,7 +22,7 @@ fmod WASMMOD is
 
   *** Instruction lists sorts
   subsorts NeInstList EmptyList < InstList .
-  subsorts Inst < NeInstList .
+  subsorts Inst < NeInstList NeStack .
   *** TODO: Maybe not needed: 
   subsorts Param < ParamList .
   *** TODO: Include variable references as ValRef 
@@ -30,12 +34,12 @@ fmod WASMMOD is
 
   *** Module sections
   op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
-  op __ : TypeDef TypeVec -> TypeVec [assoc ctor id: EmptyList] .
-  op __ : FuncDef FuncVec -> FuncVec [assoc ctor id: EmptyList] .
-  op __ : ExportDef ExportVec -> ExportVec [assoc ctor id: EmptyList] .
+  op __ : TypeDef TypeVec -> NeTypeVec [assoc ctor id: EmptyList] .
+  op __ : FuncDef FuncVec -> NeFuncVec [assoc ctor id: EmptyList] .
+  op __ : ExportDef ExportVec -> NeExportVec [assoc ctor id: EmptyList] .
 
   op (type _ _) : Id FuncType -> TypeDef [ctor] .
-  op (func _ _ _ _) : Id FuncParamList FuncResult InstList -> FuncDef [ctor] .
+  op (func _ _ _ _) : Id FuncParamList FuncResult NeInstList -> FuncDef [ctor] .
   op (export _ _) : Id FuncExport -> ExportDef [ctor] .
 
   
@@ -51,11 +55,28 @@ fmod WASMMOD is
   op local.set _ : ValRef -> Inst [ctor] .
 
   *** Stack ops
-  *** op EmptyStack : -> EmptyStack [ctor] .
-  *** op __ : Inst InstList -> Stack [ctor] .
+  op EmptyStack : -> EmptyStack [ctor] .
+  op [__] : Inst InstList -> NeStack [ctor id: EmptyStack] .
+
+  var I1 S1 : Inst .
+  var IL : InstList .
+  var ST : Stack .
+
+  *** TODO: The stack should store values/refs not insts
+  *** rl [push-stack] : (I1 IL) ST => IL push(ST, I1) .
+
+  op head : InstList -> Inst .
+  eq head(I1 IL) = I1 .
+
+  op tail : InstList -> InstList .
+  eq tail(I1 IL) = IL .
+  eq tail(EmptyList) = EmptyList .
+
+  op push : Stack Inst -> Stack .
+  eq push(ST, I1) = [I1 ST] .
 
 
   
 
-endfm
+endm
 
