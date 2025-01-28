@@ -6,13 +6,31 @@ fmod WASMMOD is
   protecting INT .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts InstList Inst EmptyList InstTag ParamList Param Stack EmptyStack .
+  sorts WASMModule TypeVec TypeDef Id FuncType FuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec ExportDef InstList Inst EmptyList InstTag ParamList Param Stack EmptyStack .
+  
+  *** Module sections sorts
+  subsorts TypeDef EmptyList < TypeVec .
+  subsorts FuncDef EmptyList < FuncVec .
+  subsorts ExportDef EmptyList < ExportVec .
+
+  *** Instruction lists sorts
   subsorts Inst EmptyList < InstList .
   subsorts Param < ParamList .
 
+  op EmptyList : -> EmptyList [ctor] .
+
+  *** Module sections
+  op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule .
+  op __ : TypeVec TypeVec -> TypeVec [assoc ctor] .
+  op __ : FuncVec FuncVec -> FuncVec [assoc ctor] .
+  op __ : ExportVec ExportVec -> ExportVec [assoc ctor] .
+
+  op (type _ _) : Id FuncType -> TypeDef [ctor] .
+  op (func _ _ _ _) : Id FuncParamList FuncResult InstList -> TypeDef [ctor] .
+  op (export _ _) : Id FuncExport -> ExportDef [ctor] .
+
   
   *** InstList is a List of Instructions
-  op EmptyList : -> EmptyList [ctor] .
 
   op __ : InstList InstList -> InstList [assoc ctor] .
   
@@ -21,8 +39,8 @@ fmod WASMMOD is
   op __ : Param ParamList -> ParamList [ctor] .
 
   *** Stack ops
-  op EmptyStack : -> EmptyStack [ctor] .
-  op __ : Inst InstList -> Stack [ctor] .
+  *** op EmptyStack : -> EmptyStack [ctor] .
+  *** op __ : Inst InstList -> Stack [ctor] .
 
 
   
