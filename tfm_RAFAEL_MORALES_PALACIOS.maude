@@ -6,37 +6,49 @@ fmod WASMMOD is
   protecting INT .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMModule TypeVec TypeDef Id FuncType FuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec ExportDef InstList Inst EmptyList InstTag ParamList Param Stack EmptyStack .
+  sorts WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack ValRef .
   
   *** Module sections sorts
-  subsorts TypeDef EmptyList < TypeVec .
-  subsorts FuncDef EmptyList < FuncVec .
-  subsorts ExportDef EmptyList < ExportVec .
+  subsorts NeTypeVec EmptyList < TypeVec .
+  subsorts TypeDef < NeTypeVec .
+  subsorts NeFuncVec EmptyList < FuncVec .
+  subsorts FuncDef < NeFuncVec .
+  subsorts NeExportVec EmptyList < ExportVec .
+  subsorts ExportDef < NeExportVec .
 
   *** Instruction lists sorts
-  subsorts Inst EmptyList < InstList .
+  subsorts NeInstList EmptyList < InstList .
+  subsorts Inst < NeInstList .
+  *** TODO: Maybe not needed: 
   subsorts Param < ParamList .
+  *** TODO: Include variable references as ValRef 
+  subsorts Nat < ValRef .
 
   op EmptyList : -> EmptyList [ctor] .
 
+  *** TODO: check associativity on funcVec...
+
   *** Module sections
-  op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule .
-  op __ : TypeVec TypeVec -> TypeVec [assoc ctor] .
-  op __ : FuncVec FuncVec -> FuncVec [assoc ctor] .
-  op __ : ExportVec ExportVec -> ExportVec [assoc ctor] .
+  op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
+  op __ : TypeDef TypeVec -> TypeVec [assoc ctor id: EmptyList] .
+  op __ : FuncDef FuncVec -> FuncVec [assoc ctor id: EmptyList] .
+  op __ : ExportDef ExportVec -> ExportVec [assoc ctor id: EmptyList] .
 
   op (type _ _) : Id FuncType -> TypeDef [ctor] .
-  op (func _ _ _ _) : Id FuncParamList FuncResult InstList -> TypeDef [ctor] .
+  op (func _ _ _ _) : Id FuncParamList FuncResult InstList -> FuncDef [ctor] .
   op (export _ _) : Id FuncExport -> ExportDef [ctor] .
 
   
   *** InstList is a List of Instructions
 
-  op __ : InstList InstList -> InstList [assoc ctor] .
+  op __ : Inst InstList -> NeInstList [assoc ctor id: EmptyList] .
   
-  op __ : InstTag ParamList -> Inst [ctor] .
+  ***op __ : InstTag ParamList -> Inst [ctor] .
 
-  op __ : Param ParamList -> ParamList [ctor] .
+  *** op __ : Param ParamList -> ParamList [assoc ctor] .
+
+  op local.get _ : ValRef -> Inst [ctor] .
+  op local.set _ : ValRef -> Inst [ctor] .
 
   *** Stack ops
   *** op EmptyStack : -> EmptyStack [ctor] .
