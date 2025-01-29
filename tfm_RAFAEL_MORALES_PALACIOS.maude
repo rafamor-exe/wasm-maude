@@ -6,7 +6,7 @@ mod WASMMOD is
   protecting INT .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef ValRefList NeValRefList .
   
   *** Simulator components
   subsorts Stack InstList < WASMSim .
@@ -26,11 +26,14 @@ mod WASMMOD is
   *** TODO: Maybe not needed: 
   subsorts Param < ParamList .
   *** TODO: Include variable references as ValRef 
-  subsorts Nat < ValRef .
+  subsorts Nat < ValRef < NeValRefList < ValRefList .
+  subsorts EmptyList < ValRefList .
 
   op EmptyList : -> EmptyList [ctor] .
 
   *** TODO: check associativity on funcVec...
+
+  ***op __ : InstList Stack -> WASMSim [assoc comm ctor] .
 
   *** Module sections
   op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
@@ -56,14 +59,15 @@ mod WASMMOD is
 
   *** Stack ops
   op EmptyStack : -> EmptyStack [ctor] .
-  op [__] : Inst InstList -> NeStack [ctor id: EmptyStack] .
+  op [__] : ValRef ValRefList -> NeStack [ctor id: EmptyStack] .
 
-  var I1 S1 : Inst .
+  vars I1 S1 : Inst .
+  var ValR : ValRef .
   var IL : InstList .
   var ST : Stack .
 
   *** TODO: The stack should store values/refs not insts
-  *** rl [push-stack] : (I1 IL) ST => IL push(ST, I1) .
+  rl [local-get] : ((local.get ValR) IL) ST => IL push(ST, ValR) .
 
   op head : InstList -> Inst .
   eq head(I1 IL) = I1 .
@@ -72,8 +76,9 @@ mod WASMMOD is
   eq tail(I1 IL) = IL .
   eq tail(EmptyList) = EmptyList .
 
-  op push : Stack Inst -> Stack .
-  eq push(ST, I1) = [I1 ST] .
+  op push : Stack ValRef -> NeStack .
+  eq push(ST, ValR) = [ValR ST] .
+  eq push(EmptyStack, ValR) = [ValR EmptyList] .
 
 
   

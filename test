@@ -1,0 +1,3 @@
+red local.set 3    local.get 2    local.get 3 .
+
+search (local.get 3) EmptyStack =>* EmptyList [3 EmptyList] .
