@@ -6,11 +6,13 @@ mod WASMMOD is
   protecting INT .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef ValRefList NeValRefList .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value .
   
   *** Simulator components
   subsorts Stack InstList < WASMSim .
-  subsorts EmptyStack < Stack .
+  subsorts EmptyStack NeStack < Stack .
+  subsorts EmptyLocalStore NeLocalStore < LocalStore .
+  subsorts Assign < NeLocalStore .
 
   *** Module sections sorts
   subsorts NeTypeVec EmptyList < TypeVec .
@@ -22,11 +24,12 @@ mod WASMMOD is
 
   *** Instruction lists sorts
   subsorts NeInstList EmptyList < InstList .
-  subsorts Inst < NeInstList NeStack .
+  subsorts Inst < NeInstList .
   *** TODO: Maybe not needed: 
   subsorts Param < ParamList .
   *** TODO: Include variable references as ValRef 
-  subsorts Nat < ValRef < NeValRefList < ValRefList .
+  subsorts Nat < ValRef < NeStack NeValRefList < ValRefList .
+  subsorts Int < Value .
   subsorts EmptyList < ValRefList .
 
   op EmptyList : -> EmptyList [ctor] .
@@ -34,6 +37,17 @@ mod WASMMOD is
   *** TODO: check associativity on funcVec...
 
   ***op __ : InstList Stack -> WASMSim [assoc comm ctor] .
+  *** < InstList | Stack | LocalStore >
+  op <_|_|_> : InstList Stack LocalStore -> WASMSim .
+
+  op [_<-_] : ValRef Value -> Assign [ctor] .
+  op EmptyLocalStore : -> LocalStore [ctor] .
+  op __ : Assign LocalStore -> NeLocalStore [assoc comm ctor id: EmptyLocalStore] .  *** Store[n <- v] means local n = v
+    *** lookup values from store
+  op lookup : NeLocalStore ValRef -> Value .
+  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = Val if ValR == ValR2 .
+  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = lookup(LocalSTR, ValR) if ValR =/= ValR2 .
+  *** TODO: error otherwise or leave undefined??
 
   *** Module sections
   op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
@@ -59,15 +73,20 @@ mod WASMMOD is
 
   *** Stack ops
   op EmptyStack : -> EmptyStack [ctor] .
-  op [__] : ValRef ValRefList -> NeStack [ctor id: EmptyStack] .
+  op _$_ : ValRef Stack -> NeStack [ctor id: EmptyStack] .
 
   vars I1 S1 : Inst .
-  var ValR : ValRef .
+  var ValR ValR2 : ValRef .
+  var Val : Value .
   var IL : InstList .
   var ST : Stack .
+  var LocalSTR : LocalStore .
 
-  *** TODO: The stack should store values/refs not insts
-  rl [local-get] : ((local.get ValR) IL) ST => IL push(ST, ValR) .
+  *** local.get rule: push to stack the value from ValR in the instruction
+  rl [local-get] : < (local.get ValR) IL | ST | LocalSTR > => < IL | push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
+
+  *** lookup rule: get value from reference from local store
+  rl [lookup] : lookup([ValR <- Val] LocalSTR, ValR) => Val .
 
   op head : InstList -> Inst .
   eq head(I1 IL) = I1 .
@@ -77,8 +96,10 @@ mod WASMMOD is
   eq tail(EmptyList) = EmptyList .
 
   op push : Stack ValRef -> NeStack .
-  eq push(ST, ValR) = [ValR ST] .
-  eq push(EmptyStack, ValR) = [ValR EmptyList] .
+  eq push(ST, ValR) = ValR $ ST .
+  eq push(EmptyStack, ValR) = ValR $ EmptyStack .
+
+
 
 
   

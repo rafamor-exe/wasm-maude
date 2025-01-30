@@ -1,3 +1,4 @@
 red local.set 3    local.get 2    local.get 3 .
 
-search (local.get 3) EmptyStack =>* EmptyList [3 EmptyList] .
+
+search < (local.get 3) EmptyList | EmptyStack | [3 <- 10] > =>* < EmptyList | 10 $ EmptyStack | [3 <- 10] > .
