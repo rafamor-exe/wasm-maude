@@ -1,5 +1,5 @@
 mod WASMMOD is
-  *** RAFAEL MORALES PALACIOS
+  *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
   *** IMPORT DATATYPE MODULES TO BE USED
   protecting NAT .
@@ -28,8 +28,8 @@ mod WASMMOD is
   *** TODO: Maybe not needed: 
   subsorts Param < ParamList .
   *** TODO: Include variable references as ValRef 
-  subsorts Nat < ValRef < NeStack NeValRefList < ValRefList .
-  subsorts Int < Value .
+  subsorts Nat < ValRef < NeValRefList < ValRefList .
+  subsorts Int < Value < NeStack .
   subsorts EmptyList < ValRefList .
 
   op EmptyList : -> EmptyList [ctor] .
@@ -40,14 +40,10 @@ mod WASMMOD is
   *** < InstList | Stack | LocalStore >
   op <_|_|_> : InstList Stack LocalStore -> WASMSim .
 
+  *** LocalStore definition
   op [_<-_] : ValRef Value -> Assign [ctor] .
   op EmptyLocalStore : -> LocalStore [ctor] .
   op __ : Assign LocalStore -> NeLocalStore [assoc comm ctor id: EmptyLocalStore] .  *** Store[n <- v] means local n = v
-    *** lookup values from store
-  op lookup : NeLocalStore ValRef -> Value .
-  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = Val if ValR == ValR2 .
-  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = lookup(LocalSTR, ValR) if ValR =/= ValR2 .
-  *** TODO: error otherwise or leave undefined??
 
   *** Module sections
   op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
@@ -60,7 +56,7 @@ mod WASMMOD is
   op (export _ _) : Id FuncExport -> ExportDef [ctor] .
 
   
-  *** InstList is a List of Instructions
+  *** InstList definition
 
   op __ : Inst InstList -> NeInstList [assoc ctor id: EmptyList] .
   
@@ -68,36 +64,76 @@ mod WASMMOD is
 
   *** op __ : Param ParamList -> ParamList [assoc ctor] .
 
+  *** Stack definition
+  op EmptyStack : -> EmptyStack [ctor] .
+  op _$_ : Value Stack -> NeStack [ctor id: EmptyStack] .
+
+
   op local.get _ : ValRef -> Inst [ctor] .
   op local.set _ : ValRef -> Inst [ctor] .
+  op local.tee _ : ValRef -> Inst [ctor] .
+  
+  *** lookup: auxiliar op to lookup values from store
+  op lookup : NeLocalStore ValRef -> Value .
+  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = Val if ValR == ValR2 .
+  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = lookup(LocalSTR, ValR) if ValR =/= ValR2 .
+  *** TODO: error otherwise or leave undefined??
 
-  *** Stack ops
-  op EmptyStack : -> EmptyStack [ctor] .
-  op _$_ : ValRef Stack -> NeStack [ctor id: EmptyStack] .
+
+  *** Variable definition
 
   vars I1 S1 : Inst .
   var ValR ValR2 : ValRef .
   var Val : Value .
   var IL : InstList .
   var ST : Stack .
+  var NeST : NeStack .
   var LocalSTR : LocalStore .
 
-  *** local.get rule: push to stack the value from ValR in the instruction
-  rl [local-get] : < (local.get ValR) IL | ST | LocalSTR > => < IL | push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
+  *** LocalStore is a Set
+  eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
+
+
+
+  *** Rules
+  
+  *** TODO: Include validation in rules as eqs in preconditions
+  *** TODO: Maybe create rules to transform an input of the form of a usual program to this representation with initial empty stack and store??
+
+  *** local.get rule: push to stack the value from ValR from the local store
+  rl [local-get] : < (local.get ValR) IL | ST | LocalSTR >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
+
+  *** local.set rule: pop value from stack and store it in ValR in the local store
+  rl [local-set] : < (local.set ValR) IL | ST | LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > .
+  crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > if Val =/= st-head(ST) .
+  crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- Val]LocalSTR > if Val == st-head(ST)  .
+
+  *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
+  *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
+  rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup([ValR <- Val] LocalSTR, ValR) => Val .
 
-  op head : InstList -> Inst .
+
+  *** InstList operations 
+  op head : NeInstList -> Inst .
   eq head(I1 IL) = I1 .
 
   op tail : InstList -> InstList .
   eq tail(I1 IL) = IL .
   eq tail(EmptyList) = EmptyList .
 
-  op push : Stack ValRef -> NeStack .
-  eq push(ST, ValR) = ValR $ ST .
-  eq push(EmptyStack, ValR) = ValR $ EmptyStack .
+  *** Stack operations
+  op st-push : Stack Value -> NeStack .
+  eq st-push(ST, Val) = Val $ ST .
+  eq st-push(EmptyStack, Val) = Val $ EmptyStack .
+
+  op st-head : NeStack -> Value .
+  eq st-head(Val $ ST) = Val .
+
+  op st-pop : NeStack -> Stack .
+  eq st-pop(Val $ ST) = ST .
 
 
 

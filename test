@@ -1,4 +1,16 @@
 red local.set 3    local.get 2    local.get 3 .
 
-
+rew < (local.get 3) EmptyList | EmptyStack | [3 <- 10] > .
 search < (local.get 3) EmptyList | EmptyStack | [3 <- 10] > =>* < EmptyList | 10 $ EmptyStack | [3 <- 10] > .
+
+rew < (local.get 3) (local.set 2) | EmptyStack | [3 <- 10] > .
+search < (local.get 3) (local.set 2) | EmptyStack | [3 <- 10] > =>* < EmptyList | EmptyStack | [2 <- 10] [3 <- 10] > .
+
+rew < (local.get 3) (local.get 2) (local.tee 2) | EmptyStack | [2 <- 11][3 <- 10] > .
+search < (local.get 3) (local.get 2) (local.tee 2) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | 11 $ 10 | [2 <- 11] [3 <- 10] > .
+
+rew < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > .
+search < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | EmptyStack | [2 <- 11] [3 <- 11] > .
+
+rew < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > .
+search < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | 10 | [2 <- 11] [3 <- 11] > .
