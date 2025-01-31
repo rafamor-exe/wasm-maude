@@ -6,7 +6,7 @@ mod WASMMOD is
   protecting INT .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value Type IntValue .
   
   *** Simulator components
   subsorts Stack InstList < WASMSim .
@@ -29,7 +29,7 @@ mod WASMMOD is
   subsorts Param < ParamList .
   *** TODO: Include variable references as ValRef 
   subsorts Nat < ValRef < NeValRefList < ValRefList .
-  subsorts Int < Value < NeStack .
+  subsorts Int < IntValue < Value < NeStack .
   subsorts EmptyList < ValRefList .
 
   op EmptyList : -> EmptyList [ctor] .
@@ -69,9 +69,18 @@ mod WASMMOD is
   op _$_ : Value Stack -> NeStack [ctor id: EmptyStack] .
 
 
+  *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
   op local.set _ : ValRef -> Inst [ctor] .
   op local.tee _ : ValRef -> Inst [ctor] .
+
+
+  *** TODO: maybe fix to use it as a template??
+  *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
+  ***op _.const _ : Type Value -> Inst [ctor] .
+  op i32.const _ : IntValue -> Inst [ctor] .
+  *** TODO: Include more valid types
+  ops i32 : -> Type [ctor] .
   
   *** lookup: auxiliar op to lookup values from store
   op lookup : NeLocalStore ValRef -> Value .
@@ -89,6 +98,8 @@ mod WASMMOD is
   var ST : Stack .
   var NeST : NeStack .
   var LocalSTR : LocalStore .
+  var T : Type .
+  var IntVal : IntValue .
 
   *** LocalStore is a Set
   eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -111,6 +122,11 @@ mod WASMMOD is
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
   *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
   rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR > .
+
+  *** t.const rule: push Val of type T to stack
+  *** TODO: maybe fix to use it as a template??
+  ***rl [t.const] : < (T .const Val) IL | ST | LocalSTR >   =>   < IL | st-push(ST, Val) | LocalSTR > .
+  rl [i32.const] : < (i32.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup([ValR <- Val] LocalSTR, ValR) => Val .

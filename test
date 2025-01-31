@@ -14,3 +14,5 @@ search < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <-
 
 rew < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > .
 search < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | 10 | [2 <- 11] [3 <- 11] > .
+
+rew < (i32.const 20) | EmptyStack | EmptyLocalStore > .
