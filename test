@@ -16,3 +16,16 @@ rew < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 
 search < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | 10 | [2 <- 11] [3 <- 11] > .
 
 rew < (i32.const 20) | EmptyStack | EmptyLocalStore > .
+search < (i32.const 20) | EmptyStack | EmptyLocalStore > =>* < EmptyList | 20 | EmptyLocalStore > .
+
+rew < (i32.const 20) (i32.const 10) (i32.add) | EmptyStack | EmptyLocalStore > .
+
+rew < (i32.const 20) (i32.const 10) (i32.div_u) | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 20) (i32.const 10) ("i32.div_u") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const -20) (i32.const 10) ("i32.div_u") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 21) (i32.const 10) ("i32.rem_u") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const -21) (i32.const 10) ("i32.rem_u") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 21) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const -21) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const -21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
