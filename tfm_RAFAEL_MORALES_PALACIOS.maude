@@ -7,7 +7,7 @@ mod WASMMOD is
   protecting STRING .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value Type IntValue Und Trap Label Arity .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value Type IntValue Und Trap Label Arity .
   
   *** Simulator components
   subsorts Stack InstList < WASMSim .
@@ -31,8 +31,8 @@ mod WASMMOD is
   *** TODO: Include variable references as ValRef 
   subsorts Nat < ValRef < NeValRefList < ValRefList .
   *** TODO: Include support for Labels and Activations as Stack values. Problem now: collision of operator definition on Nat and String
-  subsorts Int Und < IntValue < Value < NeStack .
-  ***subsorts String < Label < NeStack .
+  subsorts Int Und < IntValue < Value < StackElem < NeStack .
+  ***subsorts String < Label < StackElem .
   subsorts Nat < Arity .
   subsorts EmptyList < ValRefList .
 
@@ -76,7 +76,7 @@ mod WASMMOD is
 
   *** Stack definition
   op EmptyStack : -> EmptyStack [ctor] .
-  op _$_ : Value Stack -> NeStack [ctor id: EmptyStack] .
+  op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack] .
 
 
   *** Instruction ops declarations
@@ -123,6 +123,7 @@ mod WASMMOD is
   var T : Type .
   var IntVal IntVal2 : IntValue .
   var Int1 Int2 : Int .
+  var STElem : StackElem .
 
   *** LocalStore is a Set
   eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -182,15 +183,15 @@ mod WASMMOD is
   eq tail(EmptyList) = EmptyList .
 
   *** Stack operations
-  op st-push : Stack Value -> NeStack .
-  eq st-push(ST, Val) = Val $ ST .
-  eq st-push(EmptyStack, Val) = Val $ EmptyStack .
+  op st-push : Stack StackElem -> NeStack .
+  eq st-push(ST, STElem) = STElem $ ST .
+  eq st-push(EmptyStack, STElem) = STElem $ EmptyStack .
 
-  op st-head : NeStack -> Value .
-  eq st-head(Val $ ST) = Val .
+  op st-head : NeStack -> StackElem .
+  eq st-head(STElem $ ST) = STElem .
 
   op st-pop : NeStack -> Stack .
-  eq st-pop(Val $ ST) = ST .
+  eq st-pop(STElem $ ST) = ST .
 
   *** Alt def of sub
   ***op sub _ _ : IntValue IntValue -> IntValue [ctor] .
