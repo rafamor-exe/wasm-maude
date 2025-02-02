@@ -5,6 +5,7 @@ mod WASMMOD is
   protecting NAT .
   protecting INT .
   protecting STRING .
+  protecting QID .
   
   *** Declare sorts to be used and hierarchy between them.
   sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value Type IntValue Und Trap Label Arity .
@@ -29,10 +30,12 @@ mod WASMMOD is
   *** TODO: Maybe not needed: 
   subsorts Param < ParamList .
   *** TODO: Include variable references as ValRef 
-  subsorts Nat < ValRef < NeValRefList < ValRefList .
-  *** TODO: Include support for Labels and Activations as Stack values. Problem now: collision of operator definition on Nat and String
+  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
+  subsorts Nat Qid < ValRef < NeValRefList < ValRefList .
+  *** TODO: Include support for Labels and Activations as Stack values. Problem: collision of operator definition on Nat and String
+  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
   subsorts Int Und < IntValue < Value < StackElem < NeStack .
-  ***subsorts String < Label < StackElem .
+  subsorts Qid < Label < StackElem .
   subsorts Nat < Arity .
   subsorts EmptyList < ValRefList .
 
