@@ -37,3 +37,6 @@ rew < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) | EmptyStack | E
 rew < (local.get 2) (local.get 3) (i32.mul) | EmptyStack | [2 <- 10] [3 <- 20] > .
 
 rew < (i32.const 20) (local.set 2) (local.get 2) (local.set 3) (i32.const 10) (local.set 2) (local.get 2) (local.set 3) | EmptyStack | EmptyLocalStore > .
+
+rew < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > .
+search < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > =>* < EmptyList | 20 $ 20 $ 20 $ 20 $ 20 $ 20 | EmptyLocalStore > .
