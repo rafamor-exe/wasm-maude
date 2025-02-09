@@ -50,6 +50,13 @@ fmod WASM-INST-MOD is
   op "i32.rem_u" : -> Inst [ctor] .
   op "i32.rem_s" : -> Inst [ctor] .
 
+  *** Control Instructions
+  op nop : -> Inst [ctor] .
+  op unreachable : -> Inst [ctor] .
+
+  op block _ : String -> Inst [ctor] .
+  op end : -> Inst [ctor] .
+
 endfm
 
 view Inst from TRIV to WASM-INST-MOD is
@@ -70,7 +77,7 @@ mod WASMMOD is
   *** IMPORT DATATYPE MODULES TO BE USED
   ***protecting NAT .
   ***protecting INT .
-  protecting STRING .
+  ***protecting STRING .
   ***protecting QID .
   protecting WASM-INST-MOD .
   protecting LIST{Inst} .
@@ -78,7 +85,7 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Label Arity .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Arity Label .
   
   *** Simulator components
   subsorts Stack List{Inst} < WASMSim .
@@ -105,14 +112,13 @@ mod WASMMOD is
   *** TODO: Include support for Labels and Activations as Stack values. Problem: collision of operator definition on Nat and String
   *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
   subsorts Value < StackElem < NeStack . ***subsorts Int Und < IntValue < Value < StackElem < NeStack .
-  subsorts Qid < Label < StackElem .
+  subsorts Label < StackElem . ***subsorts Qid < Label < StackElem .
   subsorts Nat < Arity .
   ***subsorts EmptyList < ValRefList .
 
-  op trap : String -> Trap [ctor] .
-
-  op label : String Arity List{Inst} -> Label [ctor] .
- 
+  op trap : String -> Trap [ctor] . 
+  
+  op label : String List{Inst} -> Label [ctor] .
 
   op und : -> Und [ctor] .
   ***op EmptyList : -> EmptyList [ctor] .
@@ -155,6 +161,8 @@ mod WASMMOD is
   op EmptyStack : -> EmptyStack [ctor] .
   op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack] .
 
+  ***op st-val : Value -> StackElem .
+
 
   *** lookup: auxiliar op to lookup values from store
   op lookup : Map{ValRef, Value} ValRef -> Value .
@@ -168,7 +176,7 @@ mod WASMMOD is
   vars I1 S1 : Inst .
   var ValR ValR2 : ValRef .
   var Val : Value .
-  var IL : List{Inst} .
+  var IL IL2 : List{Inst} .
   var ST : Stack .
   var NeST : NeStack .
   var LocalSTR : Map{ValRef, Value} .
@@ -176,6 +184,8 @@ mod WASMMOD is
   var IntVal IntVal2 : IntValue .
   var Int1 Int2 : Int .
   var STElem : StackElem .
+  var Str : String .
+  var Label : Label .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -221,6 +231,11 @@ mod WASMMOD is
   *** By definition: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (IntVal quo abs(IntVal)))
   crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal quo abs(IntVal)) * abs((IntVal rem IntVal2))) | LocalSTR > if IntVal2 =/= 0 .
 
+  *** Control instructions
+  *** block:
+  *** TODO: Think how to retrieve the IL state from the label(?)
+  rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end IL | st-push(ST, label(Str, IL)) | LocalSTR > .
+  rl [end] : < end IL | NeST | LocalSTR >   =>   < IL | reset-st(NeST) | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -244,6 +259,11 @@ mod WASMMOD is
 
   op st-pop : NeStack -> Stack .
   eq st-pop(STElem $ ST) = ST .
+
+  *** reset stack to eliminate label
+  op reset-st : NeStack -> Stack .
+  eq reset-st(Val $ ST) = Val $ reset-st(ST) .
+  eq reset-st(Label $ ST) = ST .
 
   *** Alt def of sub
   ***op sub _ _ : IntValue IntValue -> IntValue [ctor] .

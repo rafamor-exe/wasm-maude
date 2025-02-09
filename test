@@ -40,3 +40,8 @@ rew < (i32.const 20) (local.set 2) (local.get 2) (local.set 3) (i32.const 10) (l
 
 rew < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > .
 search < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > =>* < nil | 20 $ 20 $ 20 $ 20 $ 20 $ 20 | EmptyLocalStore > .
+
+rew < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) (local.get 2) (local.get 3) (i32.mul) | EmptyStack | EmptyLocalStore > .
+
+red label("step1", 1, (i32.const 20) (i32.const 10)) .
+rew < (local.set 2) | label("step1", 1, (i32.const 20) (i32.const 10)) | EmptyLocalStore > .
