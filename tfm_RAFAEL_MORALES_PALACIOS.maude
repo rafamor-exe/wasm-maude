@@ -1,92 +1,35 @@
-mod WASMMOD is
-  *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
-  
-  *** IMPORT DATATYPE MODULES TO BE USED
+fmod WASM-VALREF-MOD is
+
   protecting NAT .
-  protecting INT .
-  protecting STRING .
   protecting QID .
-  
-  *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstList NeInstList Inst EmptyList InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRef ValRefList NeValRefList LocalStore EmptyLocalStore NeLocalStore Assign Value Type IntValue Und Trap Label Arity .
-  
-  *** Simulator components
-  subsorts Stack InstList < WASMSim .
-  subsorts EmptyStack NeStack < Stack .
-  subsorts EmptyLocalStore NeLocalStore < LocalStore .
-  subsorts Assign < NeLocalStore .
 
-  *** Module sections sorts
-  subsorts NeTypeVec EmptyList < TypeVec .
-  subsorts TypeDef < NeTypeVec .
-  subsorts NeFuncVec EmptyList < FuncVec .
-  subsorts FuncDef < NeFuncVec .
-  subsorts NeExportVec EmptyList < ExportVec .
-  subsorts ExportDef < NeExportVec .
+  sorts ValRef .
 
-  *** Instruction lists sorts
-  subsorts NeInstList EmptyList < InstList .
-  subsorts Trap < Inst < NeInstList .
-  *** TODO: Maybe not needed: 
-  subsorts Param < ParamList .
-  *** TODO: Include variable references as ValRef 
-  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
-  subsorts Nat Qid < ValRef < NeValRefList < ValRefList .
-  *** TODO: Include support for Labels and Activations as Stack values. Problem: collision of operator definition on Nat and String
-  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
-  subsorts Int Und < IntValue < Value < StackElem < NeStack .
-  subsorts Qid < Label < StackElem .
-  subsorts Nat < Arity .
-  subsorts EmptyList < ValRefList .
+  subsorts Nat Qid < ValRef .
 
-  op trap : String -> Trap [ctor] .
+endfm
 
-  op label : String Arity InstList -> Label [ctor] .
- 
+fmod WASM-VALUE-MOD is
 
-  op und : -> Und [ctor] .
-  op EmptyList : -> EmptyList [ctor] .
+  protecting INT .
 
-  *** TODO: check associativity on funcVec...
+  sorts Value IntValue .
 
-  ***op __ : InstList Stack -> WASMSim [assoc comm ctor] .
-  *** < InstList | Stack | LocalStore >
-  op <_|_|_> : InstList Stack LocalStore -> WASMSim .
+  subsorts Int < IntValue < Value .
 
-  *** LocalStore definition
-  op [_<-_] : ValRef Value -> Assign [ctor] .
-  op EmptyLocalStore : -> LocalStore [ctor] .
-  op __ : Assign LocalStore -> NeLocalStore [assoc comm ctor id: EmptyLocalStore] .  *** Store[n <- v] means local n = v
+endfm
 
-  *** Module sections
-  op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
-  op __ : TypeDef TypeVec -> NeTypeVec [assoc ctor id: EmptyList] .
-  op __ : FuncDef FuncVec -> NeFuncVec [assoc ctor id: EmptyList] .
-  op __ : ExportDef ExportVec -> NeExportVec [assoc ctor id: EmptyList] .
+fmod WASM-INST-MOD is
 
-  op (type _ _) : Id FuncType -> TypeDef [ctor] .
-  op (func _ _ _ _) : Id FuncParamList FuncResult NeInstList -> FuncDef [ctor] .
-  op (export _ _) : Id FuncExport -> ExportDef [ctor] .
+  protecting WASM-VALREF-MOD .
+  protecting WASM-VALUE-MOD .
 
-  
-  *** InstList definition
-
-  op __ : Inst InstList -> NeInstList [assoc ctor id: EmptyList] .
-  
-  ***op __ : InstTag ParamList -> Inst [ctor] .
-
-  *** op __ : Param ParamList -> ParamList [assoc ctor] .
-
-  *** Stack definition
-  op EmptyStack : -> EmptyStack [ctor] .
-  op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack] .
-
+  sorts Inst Type .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
   op local.set _ : ValRef -> Inst [ctor] .
   op local.tee _ : ValRef -> Inst [ctor] .
-
 
   *** TODO: maybe fix to use it as a template??
   *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
@@ -106,9 +49,115 @@ mod WASMMOD is
   op "i32.div_s" : -> Inst [ctor] .
   op "i32.rem_u" : -> Inst [ctor] .
   op "i32.rem_s" : -> Inst [ctor] .
+
+endfm
+
+view Inst from TRIV to WASM-INST-MOD is
+  sort Elt to Inst .
+endv
+
+view ValRef from TRIV to WASM-VALREF-MOD is
+  sort Elt to ValRef .
+endv
+
+view Value from TRIV to WASM-VALUE-MOD is
+  sort Elt to Value .
+endv
+
+mod WASMMOD is
+  *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
+  *** IMPORT DATATYPE MODULES TO BE USED
+  ***protecting NAT .
+  ***protecting INT .
+  protecting STRING .
+  ***protecting QID .
+  protecting WASM-INST-MOD .
+  protecting LIST{Inst} .
+  protecting MAP{ValRef, Value} .
+  
+  
+  *** Declare sorts to be used and hierarchy between them.
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Label Arity .
+  
+  *** Simulator components
+  subsorts Stack List{Inst} < WASMSim .
+  subsorts EmptyStack NeStack < Stack .
+  subsorts EmptyLocalStore NeLocalStore < Map{ValRef, Value} .
+  subsorts Assign < NeLocalStore .
+
+  *** Module sections sorts
+  ***subsorts NeTypeVec EmptyList < TypeVec .
+  ***subsorts TypeDef < NeTypeVec .
+  ***subsorts NeFuncVec EmptyList < FuncVec .
+  ***subsorts FuncDef < NeFuncVec .
+  ***subsorts NeExportVec EmptyList < ExportVec .
+  ***subsorts ExportDef < NeExportVec .
+
+  *** Instruction lists sorts
+  ***subsorts NeList{Inst} EmptyList < List{Inst} .
+  subsorts Trap < Inst . *** < NeList{Inst} .
+  *** TODO: Maybe not needed: 
+  subsorts Param < ParamList .
+  *** TODO: Include variable references as ValRef 
+  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
+  ***subsorts Nat Qid < ValRef < NeValRefList < ValRefList .
+  *** TODO: Include support for Labels and Activations as Stack values. Problem: collision of operator definition on Nat and String
+  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
+  subsorts Value < StackElem < NeStack . ***subsorts Int Und < IntValue < Value < StackElem < NeStack .
+  subsorts Qid < Label < StackElem .
+  subsorts Nat < Arity .
+  ***subsorts EmptyList < ValRefList .
+
+  op trap : String -> Trap [ctor] .
+
+  op label : String Arity List{Inst} -> Label [ctor] .
+ 
+
+  op und : -> Und [ctor] .
+  ***op EmptyList : -> EmptyList [ctor] .
+
+  *** TODO: check associativity on funcVec...
+
+  ***op __ : List{Inst} Stack -> WASMSim [assoc comm ctor] .
+  *** < List{Inst} | Stack | Map{ValRef, Value} >
+  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMSim .
+
+  *** Map{ValRef, Value} definition
+  ***op [_<-_] : ValRef Value -> Assign [ctor] .
+  op EmptyLocalStore : -> Map{ValRef, Value} [ctor] .
+  eq EmptyLocalStore = empty .
+  ***op __ : Assign Map{ValRef, Value} -> NeLocalStore [assoc comm ctor id: EmptyLocalStore] .  *** Store[n <- v] means local n = v
+
+  *** Module sections
+  ***op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
+  ***op __ : TypeDef TypeVec -> NeTypeVec [assoc ctor id: EmptyList] .
+  ***op __ : FuncDef FuncVec -> NeFuncVec [assoc ctor id: EmptyList] .
+  ***op __ : ExportDef ExportVec -> NeExportVec [assoc ctor id: EmptyList] .
+***
+  ***op (type _ _) : Id FuncType -> TypeDef [ctor] .
+  ***op (func _ _ _ _) : Id FuncParamList FuncResult NeList{Inst} -> FuncDef [ctor] .
+  ***op (export _ _) : Id FuncExport -> ExportDef [ctor] .
+
+  
+  *** List{Inst} definition
+
+  ***op __ : Inst List{Inst} -> NeList{Inst} [assoc ctor id: EmptyList] .
+  ***op __ : List{Inst} List{Inst} -> List{Inst} [ctor assoc id: EmptyList prec 25] .  
+  ***op __ : NeList{Inst} List{Inst} -> NeList{Inst} [ctor ditto] .  
+  ***op __ : List{Inst} NeList{Inst} -> NeList{Inst} [ctor ditto] . 
+  
+  ***op __ : InstTag ParamList -> Inst [ctor] .
+
+  *** op __ : Param ParamList -> ParamList [assoc ctor] .
+
+  *** Stack definition
+  op EmptyStack : -> EmptyStack [ctor] .
+  op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack] .
+
+
   *** lookup: auxiliar op to lookup values from store
-  op lookup : NeLocalStore ValRef -> Value .
+  op lookup : Map{ValRef, Value} ValRef -> Value .
   ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = Val if ValR == ValR2 .
   ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = lookup(LocalSTR, ValR) if ValR =/= ValR2 .
   *** TODO: error otherwise or leave undefined??
@@ -119,17 +168,17 @@ mod WASMMOD is
   vars I1 S1 : Inst .
   var ValR ValR2 : ValRef .
   var Val : Value .
-  var IL : InstList .
+  var IL : List{Inst} .
   var ST : Stack .
   var NeST : NeStack .
-  var LocalSTR : LocalStore .
+  var LocalSTR : Map{ValRef, Value} .
   var T : Type .
   var IntVal IntVal2 : IntValue .
   var Int1 Int2 : Int .
   var STElem : StackElem .
 
-  *** LocalStore is a Set
-  eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
+  *** Map{ValRef, Value} is a Set
+  ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
 
 
 
@@ -142,9 +191,9 @@ mod WASMMOD is
   rl [local-get] : < (local.get ValR) IL | ST | LocalSTR >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
 
   *** local.set rule: pop value from stack and store it in ValR in the local store
-  rl [local-set] : < (local.set ValR) IL | ST | LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > .
-  crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > if Val =/= st-head(ST) .
-  crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- Val]LocalSTR > if Val == st-head(ST)  .
+  rl [local-set] : < (local.set ValR) IL | ST | LocalSTR >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) > .
+  ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > if Val =/= st-head(ST) .
+  ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- Val]LocalSTR > if Val == st-head(ST)  .
 
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
   *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
@@ -174,16 +223,16 @@ mod WASMMOD is
 
 
   *** lookup rule: get value from reference from local store
-  rl [lookup] : lookup([ValR <- Val] LocalSTR, ValR) => Val .
+  rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
 
 
-  *** InstList operations 
-  op head : NeInstList -> Inst .
+  *** List{Inst} operations 
+  op head : NeList{Inst} -> Inst .
   eq head(I1 IL) = I1 .
 
-  op tail : InstList -> InstList .
+  op tail : NeList{Inst} -> List{Inst} .
   eq tail(I1 IL) = IL .
-  eq tail(EmptyList) = EmptyList .
+  ***eq tail(EmptyList) = EmptyList .
 
   *** Stack operations
   op st-push : Stack StackElem -> NeStack .

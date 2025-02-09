@@ -1,22 +1,22 @@
 red local.set 3    local.get 2    local.get 3 .
 
-rew < (local.get 3) EmptyList | EmptyStack | [3 <- 10] > .
-search < (local.get 3) EmptyList | EmptyStack | [3 <- 10] > =>* < EmptyList | 10 $ EmptyStack | [3 <- 10] > .
+rew < (local.get 3) | EmptyStack | 3 |-> 10 > .
+search < (local.get 3) | EmptyStack | 3 |-> 10 > =>* < nil | 10 | 3 |-> 10 > .
 
-rew < (local.get 3) (local.set 2) | EmptyStack | [3 <- 10] > .
-search < (local.get 3) (local.set 2) | EmptyStack | [3 <- 10] > =>* < EmptyList | EmptyStack | [2 <- 10] [3 <- 10] > .
+rew < (local.get 3) (local.set 2) | EmptyStack | 3 |-> 10 > .
+search < (local.get 3) (local.set 2) | EmptyStack | 3 |-> 10 > =>* < nil | EmptyStack | 2 |-> 10  3 |-> 10 > .
 
-rew < (local.get 3) (local.get 2) (local.tee 2) | EmptyStack | [2 <- 11][3 <- 10] > .
-search < (local.get 3) (local.get 2) (local.tee 2) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | 11 $ 10 | [2 <- 11] [3 <- 10] > .
+rew < (local.get 3) (local.get 2) (local.tee 2) | EmptyStack | 2 |-> 11, 3 |-> 10 > .
+search < (local.get 3) (local.get 2) (local.tee 2) | EmptyStack | 2 |-> 11, 3 |-> 10 > =>* < nil | 11 $ 10 | 2 |-> 11, 3 |-> 10 > .
 
-rew < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > .
-search < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | EmptyStack | [2 <- 11] [3 <- 11] > .
+rew < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | 2 |-> 11, 3 |-> 10 > .
+search < (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | 2 |-> 11, 3 |-> 10 > =>* < nil | EmptyStack | 2 |-> 11, 3 |-> 11  > .
 
-rew < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > .
-search < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | [2 <- 11][3 <- 10] > =>* < EmptyList | 10 | [2 <- 11] [3 <- 11] > .
+rew < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | 2 |-> 11, 3 |-> 10 > .
+search < (local.get 3) (local.get 2) (local.tee 2) (local.set 3) | EmptyStack | 2 |-> 11, 3 |-> 10 > =>* < nil | 10 | 2 |-> 11, 3 |-> 11  > .
 
 rew < (i32.const 20) | EmptyStack | EmptyLocalStore > .
-search < (i32.const 20) | EmptyStack | EmptyLocalStore > =>* < EmptyList | 20 | EmptyLocalStore > .
+search < (i32.const 20) | EmptyStack | EmptyLocalStore > =>* < nil | 20 | EmptyLocalStore > .
 
 rew < (i32.const 20) (i32.const 10) (i32.add) | EmptyStack | EmptyLocalStore > .
 
@@ -31,12 +31,12 @@ rew < (i32.const -21) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStor
 rew < (i32.const 21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
 rew < (i32.const -21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
 
---- TODO: Apparently it fails to solve more than 4 instructions...
 rew < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) (local.get 2) (local.get 3) (i32.mul) | EmptyStack | EmptyLocalStore > .
+search < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) (local.get 2) (local.get 3) (i32.mul) | EmptyStack | EmptyLocalStore > =>* < nil | 200 | 2 |-> 10, 3 |-> 20  > .
 rew < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) | EmptyStack | EmptyLocalStore > .
-rew < (local.get 2) (local.get 3) (i32.mul) | EmptyStack | [2 <- 10] [3 <- 20] > .
+rew < (local.get 2) (local.get 3) (i32.mul) | EmptyStack | 2 |-> 10, 3 |-> 20  > .
 
 rew < (i32.const 20) (local.set 2) (local.get 2) (local.set 3) (i32.const 10) (local.set 2) (local.get 2) (local.set 3) | EmptyStack | EmptyLocalStore > .
 
 rew < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > .
-search < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > =>* < EmptyList | 20 $ 20 $ 20 $ 20 $ 20 $ 20 | EmptyLocalStore > .
+search < (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20) (i32.const 20)| EmptyStack | EmptyLocalStore > =>* < nil | 20 $ 20 $ 20 $ 20 $ 20 $ 20 | EmptyLocalStore > .
