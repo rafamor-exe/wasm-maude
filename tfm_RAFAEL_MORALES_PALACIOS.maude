@@ -121,6 +121,8 @@ mod WASMMOD is
   op label : String List{Inst} -> Label [ctor] .
 
   op und : -> Und [ctor] .
+
+  op if _ else _ : List{Inst} List{Inst} -> Inst [ctor] .
   ***op EmptyList : -> EmptyList [ctor] .
 
   *** TODO: check associativity on funcVec...
@@ -176,7 +178,7 @@ mod WASMMOD is
   vars I1 S1 : Inst .
   var ValR ValR2 : ValRef .
   var Val : Value .
-  var IL IL2 : List{Inst} .
+  var IL IL1 IL2 : List{Inst} .
   var ST : Stack .
   var NeST : NeStack .
   var LocalSTR : Map{ValRef, Value} .
@@ -236,6 +238,7 @@ mod WASMMOD is
   *** TODO: Think how to retrieve the IL state from the label(?)
   rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end IL | st-push(ST, label(Str, IL)) | LocalSTR > .
   rl [end] : < end IL | NeST | LocalSTR >   =>   < IL | reset-st(NeST) | LocalSTR > .
+  rl [if-else] : < (if I1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL, IL2) | ST | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -264,6 +267,11 @@ mod WASMMOD is
   op reset-st : NeStack -> Stack .
   eq reset-st(Val $ ST) = Val $ reset-st(ST) .
   eq reset-st(Label $ ST) = ST .
+
+  op if-else : IntValue List{Inst} List{Inst} -> List{Inst} .
+  ceq if-else(IntVal, IL1, IL2) = ((block "$ifIL1") IL1 end) if IntVal == 0 .
+  eq if-else(IntVal, IL1, IL2) = ((block "$ifIL2") IL2 end) [owise] .
+  
 
   *** Alt def of sub
   ***op sub _ _ : IntValue IntValue -> IntValue [ctor] .

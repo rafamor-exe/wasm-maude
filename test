@@ -45,3 +45,5 @@ rew < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) (local.get 2) (l
 
 red label("step1", 1, (i32.const 20) (i32.const 10)) .
 rew < (local.set 2) | label("step1", 1, (i32.const 20) (i32.const 10)) | EmptyLocalStore > .
+
+red if-else(0, nop, nop) .
