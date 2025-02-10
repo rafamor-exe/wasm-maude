@@ -238,7 +238,7 @@ mod WASMMOD is
   *** TODO: Think how to retrieve the IL state from the label(?)
   rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end IL | st-push(ST, label(Str, IL)) | LocalSTR > .
   rl [end] : < end IL | NeST | LocalSTR >   =>   < IL | reset-st(NeST) | LocalSTR > .
-  rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2) IL | ST | LocalSTR > .
+  rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -268,9 +268,9 @@ mod WASMMOD is
   eq reset-st(Val $ ST) = Val $ reset-st(ST) .
   eq reset-st(Label $ ST) = ST .
 
-  op if-else : IntValue List{Inst} List{Inst} -> List{Inst} .
-  ceq if-else(IntVal, IL1, IL2) = ((block "$ifIL1") IL1 end) if IntVal == 0 .
-  ceq if-else(IntVal, IL1, IL2) = ((block "$ifIL2") IL2 end) if IntVal =/= 0 .
+  op if-else : IntValue List{Inst} List{Inst} List{Inst} -> List{Inst} .
+  ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
+  ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
   
 
   *** Alt def of sub
