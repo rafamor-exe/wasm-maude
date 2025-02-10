@@ -55,6 +55,7 @@ fmod WASM-INST-MOD is
   op unreachable : -> Inst [ctor] .
 
   op block _ : String -> Inst [ctor] .
+  op loop _ : String -> Inst [ctor] .
   op end : -> Inst [ctor] .
 
 endfm
@@ -85,7 +86,7 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Arity Label .
+  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel .
   
   *** Simulator components
   subsorts Stack List{Inst} < WASMSim .
@@ -112,7 +113,7 @@ mod WASMMOD is
   *** TODO: Include support for Labels and Activations as Stack values. Problem: collision of operator definition on Nat and String
   *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
   subsorts Value < StackElem < NeStack . ***subsorts Int Und < IntValue < Value < StackElem < NeStack .
-  subsorts Label < StackElem . ***subsorts Qid < Label < StackElem .
+  subsorts Und < Label < StackElem . ***subsorts Qid < Label < StackElem .
   subsorts Nat < Arity .
   ***subsorts EmptyList < ValRefList .
 
@@ -147,14 +148,6 @@ mod WASMMOD is
   ***op (func _ _ _ _) : Id FuncParamList FuncResult NeList{Inst} -> FuncDef [ctor] .
   ***op (export _ _) : Id FuncExport -> ExportDef [ctor] .
 
-  
-  *** List{Inst} definition
-
-  ***op __ : Inst List{Inst} -> NeList{Inst} [assoc ctor id: EmptyList] .
-  ***op __ : List{Inst} List{Inst} -> List{Inst} [ctor assoc id: EmptyList prec 25] .  
-  ***op __ : NeList{Inst} List{Inst} -> NeList{Inst} [ctor ditto] .  
-  ***op __ : List{Inst} NeList{Inst} -> NeList{Inst} [ctor ditto] . 
-  
   ***op __ : InstTag ParamList -> Inst [ctor] .
 
   *** op __ : Param ParamList -> ParamList [assoc ctor] .
@@ -236,9 +229,10 @@ mod WASMMOD is
   *** Control instructions
   *** block:
   *** TODO: Think how to retrieve the IL state from the label(?)
-  rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end IL | st-push(ST, label(Str, IL)) | LocalSTR > .
-  rl [end] : < end IL | NeST | LocalSTR >   =>   < IL | reset-st(NeST) | LocalSTR > .
+  rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, IL)) | LocalSTR > .
+  rl [end] : < end | NeST | LocalSTR >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | LocalSTR > .
   rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | LocalSTR > .
+  rl [loop] : < ((loop Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -264,9 +258,17 @@ mod WASMMOD is
   eq st-pop(STElem $ ST) = ST .
 
   *** reset stack to eliminate label
-  op reset-st : NeStack -> Stack .
-  eq reset-st(Val $ ST) = Val $ reset-st(ST) .
-  eq reset-st(Label $ ST) = ST .
+  op _||_ : Stack Label -> StackAndLabel .
+  op reset-st : Stack -> StackAndLabel .
+  eq reset-st(Val $ ST) = Val $ get-st(reset-st(ST)) || und .
+  eq reset-st(Label $ ST) = ST || Label .
+  eq reset-st(EmptyStack) = EmptyStack || und .
+
+  op get-inst-list-label : StackAndLabel -> List{Inst} .
+  eq get-inst-list-label(ST || label(Str, IL)) = IL .
+
+  op get-st : StackAndLabel -> Stack .
+  eq get-st(ST || label(Str, IL)) = ST .
 
   op if-else : IntValue List{Inst} List{Inst} List{Inst} -> List{Inst} .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
