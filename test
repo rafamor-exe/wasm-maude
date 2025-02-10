@@ -48,3 +48,4 @@ rew < (local.set 2) | label("step1", 1, (i32.const 20) (i32.const 10)) | EmptyLo
 
 red if-else(0, nop, nop) .
 rew < (i32.const 20) (i32.const 0) (if (i32.const 20) (local.set 2) else (local.set 3) end) (i32.const 10) | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 20) (i32.const 1) (if (i32.const 20) (local.set 2) else (local.set 3) end) (i32.const 10) | EmptyStack | EmptyLocalStore > .
