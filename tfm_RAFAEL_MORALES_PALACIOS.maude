@@ -181,6 +181,7 @@ mod WASMMOD is
   var STElem : StackElem .
   var Str : String .
   var Label : Label .
+  var N : Nat .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -232,7 +233,9 @@ mod WASMMOD is
   rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, IL)) | LocalSTR > .
   rl [end] : < end | NeST | LocalSTR >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | LocalSTR > .
   rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | LocalSTR > .
+  *** loop is an infinite loop
   rl [loop] : < ((loop Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | LocalSTR > .
+  ***rl [br] : < (br N) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -269,6 +272,9 @@ mod WASMMOD is
 
   op get-st : StackAndLabel -> Stack .
   eq get-st(ST || label(Str, IL)) = ST .
+
+  ***op get-ith-stackandlabel : Stack Nat -> StackAndLabel .
+  ***eq get-ith-stackandlabel(ST, N) = .
 
   op if-else : IntValue List{Inst} List{Inst} List{Inst} -> List{Inst} .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
