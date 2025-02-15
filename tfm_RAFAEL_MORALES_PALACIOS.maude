@@ -57,22 +57,6 @@ view TypeDef from TRIV to WASM-TYPEDEF-MOD is
   sort Elt to TypeDef .
 endv
 
-fmod WASM-FUNCDEF-MOD is
-
-  protecting WASM-TYPEDEF-MOD .
-
-  sorts FuncDef TypeRef .
-
-  op (type _) : Id -> TypeRef [ctor] .
-
-  op (func _ _ _ _) : Id TypeRef List{ParamType} List{ResultType} -> FuncDef [ctor] .
-
-endfm
-
-view FuncDef from TRIV to WASM-FUNCDEF-MOD is
-  sort Elt to FuncDef .
-endv
-
 fmod WASM-VALREF-MOD is
 
   protecting NAT .
@@ -192,6 +176,24 @@ endv
 
 view Value from TRIV to WASM-VALUE-MOD is
   sort Elt to Value .
+endv
+
+fmod WASM-FUNCDEF-MOD is
+
+  protecting WASM-TYPEDEF-MOD .
+  protecting LIST{Inst} .
+
+  sorts FuncDef TypeRef .
+
+  op (type _) : Id -> TypeRef [ctor] .
+
+  *** TODO: look for a way of making ParamType and ResultType lists optional
+  op (func _ _ _ _ _) : Id TypeRef List{ParamType} List{ResultType} List{Inst} -> FuncDef [ctor] .
+
+endfm
+
+view FuncDef from TRIV to WASM-FUNCDEF-MOD is
+  sort Elt to FuncDef .
 endv
 
 mod WASMMOD is
