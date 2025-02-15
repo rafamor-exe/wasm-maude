@@ -1,3 +1,78 @@
+fmod WASM-TYPETOKEN-MOD is
+
+  sorts TypeToken .
+
+  ops i32 i64 : -> TypeToken [ctor] .
+
+endfm
+
+view TypeToken from TRIV to WASM-TYPETOKEN-MOD is
+  sort Elt to TypeToken .
+endv
+
+fmod WASM-FUNCTYPE-MOD is
+
+  protecting WASM-TYPETOKEN-MOD .
+  protecting LIST{TypeToken} .
+
+  sorts ParamType ResultType .
+
+  *** NOTE: List{TypeToken} needs to be wrapped on parenthesis for Maude to parse it correctly
+  op (param _) : List{TypeToken} -> ParamType [ctor] .
+  op (result _) : List{TypeToken} -> ResultType [ctor] .
+
+
+endfm
+
+view ParamType from TRIV to WASM-FUNCTYPE-MOD is
+  sort Elt to ParamType .
+endv
+view ResultType from TRIV to WASM-FUNCTYPE-MOD is
+  sort Elt to ResultType .
+endv
+
+fmod WASM-TYPEDEF-MOD is
+
+  protecting NAT .
+  protecting WASM-FUNCTYPE-MOD .
+  protecting LIST{ParamType} .
+  protecting LIST{ResultType} .
+
+  sorts TypeDef Id FuncType ParamResultFuncType .
+  subsorts Id < Nat .
+
+  *** TODO: (for syntax reasons) be able to declare only param or result or none (now nil is required)
+  ***op _ _ : List{ParamType} List{ResultType} -> ParamResultFuncType [ctor] .
+  ***op _ : List{ParamType} -> ParamResultFuncType [ctor] .
+  ***op _ : List{ResultType} -> ParamResultFuncType [ctor] .
+
+  ***op (func _) : ParamResultFuncType -> FuncType [ctor] .
+  op (func _ _) : List{ParamType} List{ResultType} -> FuncType [ctor] .
+
+  op (type _ _) : Id FuncType -> TypeDef [ctor] .
+
+endfm
+
+view TypeDef from TRIV to WASM-TYPEDEF-MOD is
+  sort Elt to TypeDef .
+endv
+
+fmod WASM-FUNCDEF-MOD is
+
+  protecting WASM-TYPEDEF-MOD .
+
+  sorts FuncDef TypeRef .
+
+  op (type _) : Id -> TypeRef [ctor] .
+
+  op (func _ _ _ _) : Id TypeRef List{ParamType} List{ResultType} -> FuncDef [ctor] .
+
+endfm
+
+view FuncDef from TRIV to WASM-FUNCDEF-MOD is
+  sort Elt to FuncDef .
+endv
+
 fmod WASM-VALREF-MOD is
 
   protecting NAT .
@@ -57,6 +132,7 @@ fmod WASM-INST-MOD is
   op block _ : String -> Inst [ctor] .
   op loop _ : String -> Inst [ctor] .
   op br _ : Nat -> Inst [ctor] .
+  op "br_if" _ : Nat -> Inst [ctor] .
   op end : -> Inst [ctor] .
 
 endfm
@@ -84,10 +160,16 @@ mod WASMMOD is
   protecting WASM-INST-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
+
+  protecting WASM-TYPEDEF-MOD .
+  protecting LIST{TypeDef} .
+  protecting WASM-FUNCDEF-MOD .
+  protecting LIST{FuncDef} .
+
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec TypeDef Id FuncType FuncVec NeFuncVec FuncDef FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel .
+  sorts WASMSim WASMModule TypeVec NeTypeVec FuncVec NeFuncVec FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel .
   
   *** Simulator components
   subsorts Stack List{Inst} < WASMSim .
@@ -131,7 +213,7 @@ mod WASMMOD is
 
   ***op __ : List{Inst} Stack -> WASMSim [assoc comm ctor] .
   *** < List{Inst} | Stack | Map{ValRef, Value} >
-  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMSim .
+  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMSim [ctor] .
 
   *** Map{ValRef, Value} definition
   ***op [_<-_] : ValRef Value -> Assign [ctor] .
@@ -140,24 +222,17 @@ mod WASMMOD is
   ***op __ : Assign Map{ValRef, Value} -> NeLocalStore [assoc comm ctor id: EmptyLocalStore] .  *** Store[n <- v] means local n = v
 
   *** Module sections
-  ***op (module _ _ _) : TypeVec FuncVec ExportVec -> WASMModule [ctor] .
-  ***op __ : TypeDef TypeVec -> NeTypeVec [assoc ctor id: EmptyList] .
-  ***op __ : FuncDef FuncVec -> NeFuncVec [assoc ctor id: EmptyList] .
+  *** TODO: complete module parts (global, exports, etc.)
+  op (module _ _) : List{TypeDef} List{FuncDef} -> WASMModule [ctor] .
+
   ***op __ : ExportDef ExportVec -> NeExportVec [assoc ctor id: EmptyList] .
-***
-  ***op (type _ _) : Id FuncType -> TypeDef [ctor] .
-  ***op (func _ _ _ _) : Id FuncParamList FuncResult NeList{Inst} -> FuncDef [ctor] .
+
   ***op (export _ _) : Id FuncExport -> ExportDef [ctor] .
 
-  ***op __ : InstTag ParamList -> Inst [ctor] .
-
-  *** op __ : Param ParamList -> ParamList [assoc ctor] .
 
   *** Stack definition
   op EmptyStack : -> EmptyStack [ctor] .
   op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack] .
-
-  ***op st-val : Value -> StackElem .
 
 
   *** lookup: auxiliar op to lookup values from store
@@ -231,7 +306,7 @@ mod WASMMOD is
 
   *** Control instructions
   *** block:
-  *** TODO: Think how to retrieve the IL state from the label(?)
+  *** TODO: Check what to do with values on stack previous to label. Should label be after some values? How to calculate it?
   rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, IL)) | LocalSTR > .
   rl [end] : < end | NeST | LocalSTR >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | LocalSTR > .
   rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | LocalSTR > .
@@ -243,6 +318,13 @@ mod WASMMOD is
   rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | LocalSTR > 
                   =>
                   < IL1 | ST1 | LocalSTR > .
+  crl [br_if] : < ("br_if" N) IL | IntVal $ ST | LocalSTR >
+               =>   
+               < (br N) IL | ST | LocalSTR > if IntVal =/= 0 .
+  crl [br_if-else] : < ("br_if" N) IL | IntVal $ ST | LocalSTR >
+              =>   
+              < IL | ST | LocalSTR > if IntVal == 0 .
+
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -274,7 +356,7 @@ mod WASMMOD is
   *** reset stack to eliminate label
   op _||_ : Stack Label -> StackAndLabel .
   op reset-st : Stack -> StackAndLabel .
-  eq reset-st(Val $ ST) = Val $ get-st(reset-st(ST)) || und .
+  eq reset-st(Val $ ST) = Val $ get-st(reset-st(ST)) || get-label(reset-st(ST)) .
   eq reset-st(Label $ ST) = ST || Label .
   eq reset-st(EmptyStack) = EmptyStack || und .
 
@@ -282,7 +364,12 @@ mod WASMMOD is
   eq get-inst-list-label(ST || label(Str, IL)) = IL .
 
   op get-st : StackAndLabel -> Stack .
-  eq get-st(ST || label(Str, IL)) = ST .
+  eq get-st(ST || Label) = ST .
+  eq get-st(ST || und) = ST .
+
+  op get-label : StackAndLabel -> Label .
+  eq get-label(ST || Label) = Label .
+  eq get-label(ST || und) = und .
 
   op get-ith-stackandlabel : Stack Nat Stack -> StackAndLabel .
   eq get-ith-stackandlabel(Val $ ST, N, TempST) = get-ith-stackandlabel(ST, N, Val $ TempST) .
@@ -294,10 +381,6 @@ mod WASMMOD is
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
   
-
-  *** Alt def of sub
-  ***op sub _ _ : IntValue IntValue -> IntValue [ctor] .
-  ***eq sub IntVal IntVal2 = IntVal - IntVal2 .
 
 endm
 
