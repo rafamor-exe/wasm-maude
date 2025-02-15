@@ -127,6 +127,15 @@ fmod WASM-INST-MOD is
 
   *** relop
   op i32.eq : -> Inst [ctor] .
+  op i32.ne : -> Inst [ctor] .
+  op "i32.lt_s" : -> Inst [ctor] .
+  op "i32.lt_u" : -> Inst [ctor] .
+  op "i32.gt_s" : -> Inst [ctor] .
+  op "i32.gt_u" : -> Inst [ctor] .
+  op "i32.le_s" : -> Inst [ctor] .
+  op "i32.le_u" : -> Inst [ctor] .
+  op "i32.ge_s" : -> Inst [ctor] .
+  op "i32.ge_u" : -> Inst [ctor] .
 
   *** testop
   op i32.eqz : -> Inst [ctor] .
@@ -307,10 +316,37 @@ mod WASMMOD is
   crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal quo abs(IntVal)) * abs((IntVal rem IntVal2))) | LocalSTR > if IntVal2 =/= 0 .
 
   *** irelop
-  rl [eq] : < (i32.eq) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+  rl [ieq] : < (i32.eq) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
             < IL | ieq(IntVal, IntVal2) $ ST | LocalSTR > .
-  
+  rl [ine] : < (i32.ne) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | ine(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [ilt_s] : < ("i32.lt_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "ilt_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [ilt_u] : < ("i32.lt_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "ilt_u"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [igt_s] : < ("i32.gt_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "igt_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [igt_u] : < ("i32.gt_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "igt_u"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [ile_s] : < ("i32.le_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "ile_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [ile_u] : < ("i32.le_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "ile_u"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [ige_s] : < ("i32.ge_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "ige_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+  rl [ige_u] : < ("i32.ge_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | "ige_u"(IntVal, IntVal2) $ ST | LocalSTR > .
+
   *** testop
   rl [eqz] : < (i32.eqz) IL | IntVal $ ST | LocalSTR >   
             =>   
@@ -393,10 +429,46 @@ mod WASMMOD is
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
   
-  *** Auxiliar eq for logic instructions
+  *** Auxiliary eq for logic instructions
   op ieq : IntValue IntValue -> IntValue .
   ceq ieq(IntVal1, IntVal2) = 1 if IntVal1 == IntVal2 .
   eq ieq(IntVal1, IntVal2) = 0 [owise] .
+  
+  op ine : IntValue IntValue -> IntValue .
+  ceq ine(IntVal1, IntVal2) = 1 if IntVal1 =/= IntVal2 .
+  eq ine(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "ilt_u" : IntValue IntValue -> IntValue .
+  ceq "ilt_u"(IntVal1, IntVal2) = 1 if abs(IntVal1) < abs(IntVal2) .
+  eq "ilt_u"(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "ilt_s" : IntValue IntValue -> IntValue .
+  ceq "ilt_s"(IntVal1, IntVal2) = 1 if IntVal1 < IntVal2 .
+  eq "ilt_s"(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "igt_u" : IntValue IntValue -> IntValue .
+  ceq "igt_u"(IntVal1, IntVal2) = 1 if abs(IntVal1) > abs(IntVal2) .
+  eq "igt_u"(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "igt_s" : IntValue IntValue -> IntValue .
+  ceq "igt_s"(IntVal1, IntVal2) = 1 if IntVal1 > IntVal2 .
+  eq "igt_s"(IntVal1, IntVal2) = 0 [owise] .
+
+  op "ile_u" : IntValue IntValue -> IntValue .
+  ceq "ile_u"(IntVal1, IntVal2) = 1 if abs(IntVal1) <= abs(IntVal2) .
+  eq "ile_u"(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "ile_s" : IntValue IntValue -> IntValue .
+  ceq "ile_s"(IntVal1, IntVal2) = 1 if IntVal1 <= IntVal2 .
+  eq "ile_s"(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "ige_u" : IntValue IntValue -> IntValue .
+  ceq "ige_u"(IntVal1, IntVal2) = 1 if abs(IntVal1) >= abs(IntVal2) .
+  eq "ige_u"(IntVal1, IntVal2) = 0 [owise] .
+  
+  op "ige_s" : IntValue IntValue -> IntValue .
+  ceq "ige_s"(IntVal1, IntVal2) = 1 if IntVal1 >= IntVal2 .
+  eq "ige_s"(IntVal1, IntVal2) = 0 [owise] .
 
 endm
 
