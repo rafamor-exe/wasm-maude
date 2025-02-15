@@ -96,10 +96,11 @@ endfm
 
 fmod WASM-INST-MOD is
 
+  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
 
-  sorts Inst Type .
+  sorts Inst .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -108,10 +109,10 @@ fmod WASM-INST-MOD is
 
   *** TODO: maybe fix to use it as a template??
   *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
-  ***op _.const _ : Type Value -> Inst [ctor] .
+  ***op _.const _ : TypeToken Value -> Inst [ctor] .
   op i32.const _ : IntValue -> Inst [ctor] .
   *** TODO: Include more valid types
-  ops i32 : -> Type [ctor] .
+  ***ops i32 : -> Type [ctor] .
 
 
   *** binop (Binary Operations)
@@ -263,7 +264,7 @@ mod WASMMOD is
   var ST TempST ST1 : Stack .
   var NeST : NeStack .
   var LocalSTR : Map{ValRef, Value} .
-  var T : Type .
+  var T : TypeToken .
   var IntVal IntVal1 IntVal2 : IntValue .
   var Int1 Int2 : Int .
   var STElem : StackElem .
