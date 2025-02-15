@@ -78,11 +78,16 @@ fmod WASM-VALREF-MOD is
   protecting NAT .
   protecting QID .
 
-  sorts ValRef .
+  sorts ValRef Addr .
 
   subsorts Nat Qid < ValRef .
+  subsorts Nat < Addr .
 
 endfm
+
+view Addr from TRIV to WASM-VALREF-MOD is
+  sort Elt to Addr .
+endv
 
 fmod WASM-VALUE-MOD is
 
@@ -93,6 +98,26 @@ fmod WASM-VALUE-MOD is
   subsorts Int < IntValue < Value .
 
 endfm
+
+fmod WASM-GLOBALINSTANCE-MOD is
+  
+  protecting WASM-TYPETOKEN-MOD .
+  protecting WASM-VALUE-MOD .
+
+  sorts GlobalInstance GlobalType MutGlobalType .
+  subsorts MutGlobalType < GlobalType .
+
+  *** Included mut because of emscripten-compiled example. Not included in the standard...
+  op const_ : TypeToken -> GlobalType [ctor] .
+  ops var_ mut_ : TypeToken -> MutGlobalType [ctor] .
+
+  op {type _, value _} : GlobalType Value -> GlobalInstance [ctor] .
+
+endfm
+
+view GlobalInstance from TRIV to WASM-GLOBALINSTANCE-MOD is
+  sort Elt to GlobalInstance .
+endv
 
 fmod WASM-INST-MOD is
 
@@ -106,6 +131,10 @@ fmod WASM-INST-MOD is
   op local.get _ : ValRef -> Inst [ctor] .
   op local.set _ : ValRef -> Inst [ctor] .
   op local.tee _ : ValRef -> Inst [ctor] .
+
+  *** global insts
+  op global.get _ : String -> Inst [ctor] .
+  op global.set _ : String -> Inst [ctor] .
 
   *** TODO: maybe fix to use it as a template??
   *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
@@ -176,6 +205,8 @@ mod WASMMOD is
   protecting WASM-INST-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
+  protecting MAP{String, Addr} .
+  protecting MAP{Addr, GlobalInstance} .
 
   protecting WASM-TYPEDEF-MOD .
   protecting LIST{TypeDef} .
@@ -219,8 +250,8 @@ mod WASMMOD is
   op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMLocalSim [ctor] .
 
   *** Global environment
-  *** WASMLocalSim # GlobalStore(Map{ValRef, Value})
-  op _ # _ : WASMLocalSim Map{ValRef, Value} -> WASMGlobalSim [ctor] .
+  *** WASMLocalSim # GlobalAddrs(Map{ValRef, Nat} <-> GlobalStore(Map{ValRef, Value})
+  op _ # _ <-> _ : WASMLocalSim Map{String, Addr} Map{Addr, GlobalInstance} -> WASMGlobalSim [ctor] .
 
   *** WASM Simulator
   *** # WASMModule # WASMGlobalSim # FuncStore #
@@ -259,7 +290,7 @@ mod WASMMOD is
 
   vars I1 S1 : Inst .
   var ValR ValR2 : ValRef .
-  var Val : Value .
+  var Val Val1 Val2 : Value .
   var IL IL1 IL2 : List{Inst} .
   var ST TempST ST1 : Stack .
   var NeST : NeStack .
@@ -271,6 +302,12 @@ mod WASMMOD is
   var Str : String .
   var Label : Label .
   var N : Nat .
+  var GlobalAddrs : Map{String, Addr} .
+  var GlobalsStore : Map{Addr, GlobalInstance} .
+  var GlobalType : GlobalType .
+  var MutGlobalType : MutGlobalType .
+  var GlobalInstance : GlobalInstance .
+  var Addr : Addr .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -283,16 +320,28 @@ mod WASMMOD is
   *** TODO: Maybe create rules to transform an input of the form of a usual program to this representation with initial empty stack and store??
 
   *** local.get rule: push to stack the value from ValR from the local store
-  rl [local-get] : < (local.get ValR) IL | ST | LocalSTR >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
+  rl [local.get] : < (local.get ValR) IL | ST | LocalSTR >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
 
   *** local.set rule: pop value from stack and store it in ValR in the local store
-  rl [local-set] : < (local.set ValR) IL | ST | LocalSTR >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) > .
+  rl [local.set] : < (local.set ValR) IL | ST | LocalSTR >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) > .
   ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > if Val =/= st-head(ST) .
   ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- Val]LocalSTR > if Val == st-head(ST)  .
 
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
   *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
   rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR > .
+
+  *** global variable rules
+
+  rl [global.get] : < (global.get Str) IL | ST | LocalSTR > # GlobalAddrs <-> GlobalsStore
+                  =>   
+                  < IL | st-push(ST, global-val(GlobalsStore[GlobalAddrs[Str]])) | LocalSTR > # GlobalAddrs <-> GlobalsStore .
+
+  rl [global.set] : < (global.set Str) IL | Val $ ST | LocalSTR > # GlobalAddrs <-> GlobalsStore
+                  =>   
+                  < IL | ST | LocalSTR > # GlobalAddrs <-> insert-gb-val(GlobalAddrs[Str], Val, GlobalsStore) .
+
+
 
   *** t.const rule: push Val of type T to stack
   *** TODO: maybe fix to use it as a template??
@@ -401,6 +450,17 @@ mod WASMMOD is
   op st-rev : Stack -> Stack .
   eq st-rev(STElem $ ST) = st-rev(ST) $ STElem .
   eq st-rev(EmptyStack) = EmptyStack .
+
+  *** Globals auxiliary ops
+  op global-val : GlobalInstance -> Value .
+  eq global-val({type GlobalType, value Val}) = Val .
+
+  op global-type : GlobalInstance -> GlobalType .
+  eq global-type({type GlobalType, value Val}) = GlobalType .
+
+  *** Only change value if it is marked as mutable (mut/var) global variable (due to validation requirements).
+  op insert-gb-val : Addr Value Map{Addr, GlobalInstance} -> Map{Addr, GlobalInstance} .
+  eq insert-gb-val(Addr, Val2, (Addr |-> {type MutGlobalType, value Val1}, GlobalsStore)) = (Addr |-> {type MutGlobalType, value Val2}, GlobalsStore) .
 
   *** reset stack to eliminate label
   op _||_ : Stack Label -> StackAndLabel .

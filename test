@@ -66,3 +66,11 @@ rew < (i32.const 20) (block "l1" (i32.const 15) (i32.const 0) ("br_if" 0) (local
 red (type 4 (func (param (i32 i32)) (result i32))) .
 
 rew (module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 0 (type 4) (param (i32 i32)) (result i32))) .
+
+rew < (global.set "gb1") | 20 | empty > # ("gb1" |-> 0) <-> (0 |-> {type mut i32 , value 10}) .
+***rewrite in WASMMOD : < global.set "gb1" | 20 | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value 10} .
+***rewrites: 5 in 0ms cpu (0ms real) (~ rewrites/second)
+***result WASMGlobalSim: < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value 20}
+
+*** The following test should not insert the value (global variable is const, not mutable):
+rew < (global.set "gb1") | 20 | empty > # ("gb1" |-> 0) <-> (0 |-> {type const i32 , value 10}) .
