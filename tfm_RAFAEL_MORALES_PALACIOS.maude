@@ -312,7 +312,7 @@ mod WASMMOD is
             < IL | ieq(IntVal, IntVal2) $ ST | LocalSTR > .
   
   *** testop
-  rl [eqz] : < (i32.eqz) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+  rl [eqz] : < (i32.eqz) IL | IntVal $ ST | LocalSTR >   
             =>   
             < IL | ieq(IntVal, 0) $ ST | LocalSTR > .
 
