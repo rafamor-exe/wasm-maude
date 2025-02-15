@@ -125,6 +125,12 @@ fmod WASM-INST-MOD is
   op "i32.rem_u" : -> Inst [ctor] .
   op "i32.rem_s" : -> Inst [ctor] .
 
+  *** relop
+  op i32.eq : -> Inst [ctor] .
+
+  *** testop
+  op i32.eqz : -> Inst [ctor] .
+
   *** Control Instructions
   op nop : -> Inst [ctor] .
   op unreachable : -> Inst [ctor] .
@@ -249,7 +255,7 @@ mod WASMMOD is
   var NeST : NeStack .
   var LocalSTR : Map{ValRef, Value} .
   var T : Type .
-  var IntVal IntVal2 : IntValue .
+  var IntVal IntVal1 IntVal2 : IntValue .
   var Int1 Int2 : Int .
   var STElem : StackElem .
   var Str : String .
@@ -299,6 +305,16 @@ mod WASMMOD is
   crl [i32.rem_s-und] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if IntVal2 == 0 .
   *** By definition: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (IntVal quo abs(IntVal)))
   crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal quo abs(IntVal)) * abs((IntVal rem IntVal2))) | LocalSTR > if IntVal2 =/= 0 .
+
+  *** irelop
+  rl [eq] : < (i32.eq) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | ieq(IntVal, IntVal2) $ ST | LocalSTR > .
+  
+  *** testop
+  rl [eqz] : < (i32.eqz) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            =>   
+            < IL | ieq(IntVal, 0) $ ST | LocalSTR > .
 
   *** Control instructions
   *** block:
@@ -377,6 +393,10 @@ mod WASMMOD is
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
   
+  *** Auxiliar eq for logic instructions
+  op ieq : IntValue IntValue -> IntValue .
+  ceq ieq(IntVal1, IntVal2) = 1 if IntVal1 == IntVal2 .
+  eq ieq(IntVal1, IntVal2) = 0 [owise] .
 
 endm
 
