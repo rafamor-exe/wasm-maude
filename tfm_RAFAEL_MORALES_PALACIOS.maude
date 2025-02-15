@@ -1,3 +1,20 @@
+***fmod WASM-BINARYVAL-MOD is
+***
+***  protecting INT .
+***  protecting CONVERSION .
+***
+***  sorts Bini Bini32 Bini64 .
+***  subsorts Bini32 Bini64 < Bini < String .
+***
+***  var I : Int .
+***
+***  op to-bini32 : Int -> Bini32 [ctor] .
+***  eq to-bini32(0) = string(0, 2) .
+***  eq to-bini32(1) = string(1, 2) .
+***  eq to-bini32(I) = string(I rem 2, 2) + to-bini32(I / 2) .
+***
+***endfm
+
 fmod WASM-TYPETOKEN-MOD is
 
   sorts TypeToken .
