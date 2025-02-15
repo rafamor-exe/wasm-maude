@@ -54,3 +54,6 @@ rew < (i32.const 20) (i32.const 1) (if (i32.const 20) (local.set 2) else (i32.co
 
 *** Be careful, loop does not terminate. By definition it does not terminate I think.
 rew < (loop "loop1" ) (i32.const 20) (if (i32.const 20) (local.set 2) else (i32.const 30) (local.set 3) end) end | EmptyStack | EmptyLocalStore > .
+
+*** Test for br : It should continue from the continuation after the end of the block (assign 3 |-> 15 and 4 |-> 20 )
+rew < (i32.const 20) (block "l1" (i32.const 15) (br 0) (local.set 1) (local.set 2)  end) (local.set 3) (local.set 4) | EmptyStack | EmptyLocalStore > .

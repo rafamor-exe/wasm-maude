@@ -56,6 +56,7 @@ fmod WASM-INST-MOD is
 
   op block _ : String -> Inst [ctor] .
   op loop _ : String -> Inst [ctor] .
+  op br _ : Nat -> Inst [ctor] .
   op end : -> Inst [ctor] .
 
 endfm
@@ -164,6 +165,7 @@ mod WASMMOD is
   ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = Val if ValR == ValR2 .
   ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = lookup(LocalSTR, ValR) if ValR =/= ValR2 .
   *** TODO: error otherwise or leave undefined??
+  op jump-to-L : StackAndLabel -> Inst [ctor] .
 
 
   *** Variable definition
@@ -172,7 +174,7 @@ mod WASMMOD is
   var ValR ValR2 : ValRef .
   var Val : Value .
   var IL IL1 IL2 : List{Inst} .
-  var ST : Stack .
+  var ST TempST ST1 : Stack .
   var NeST : NeStack .
   var LocalSTR : Map{ValRef, Value} .
   var T : Type .
@@ -235,7 +237,12 @@ mod WASMMOD is
   rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | LocalSTR > .
   *** loop is an infinite loop
   rl [loop] : < ((loop Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | LocalSTR > .
-  ***rl [br] : < (br N) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | LocalSTR > .
+  rl [br] : < (br N) IL | ST | LocalSTR >   
+            =>   
+            < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | LocalSTR > .
+  rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | LocalSTR > 
+                  =>
+                  < IL1 | ST1 | LocalSTR > .
 
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
@@ -260,6 +267,10 @@ mod WASMMOD is
   op st-pop : NeStack -> Stack .
   eq st-pop(STElem $ ST) = ST .
 
+  op st-rev : Stack -> Stack .
+  eq st-rev(STElem $ ST) = st-rev(ST) $ STElem .
+  eq st-rev(EmptyStack) = EmptyStack .
+
   *** reset stack to eliminate label
   op _||_ : Stack Label -> StackAndLabel .
   op reset-st : Stack -> StackAndLabel .
@@ -273,8 +284,11 @@ mod WASMMOD is
   op get-st : StackAndLabel -> Stack .
   eq get-st(ST || label(Str, IL)) = ST .
 
-  ***op get-ith-stackandlabel : Stack Nat -> StackAndLabel .
-  ***eq get-ith-stackandlabel(ST, N) = .
+  op get-ith-stackandlabel : Stack Nat Stack -> StackAndLabel .
+  eq get-ith-stackandlabel(Val $ ST, N, TempST) = get-ith-stackandlabel(ST, N, Val $ TempST) .
+  *** TODO: check multiple parses warning
+  ceq get-ith-stackandlabel(Label $ ST, N, TempST) = get-ith-stackandlabel(ST, N - 1, TempST) if N > 0 .
+  ceq get-ith-stackandlabel(Label $ ST, N, TempST) = TempST $ ST || Label if N == 0 .
 
   op if-else : IntValue List{Inst} List{Inst} List{Inst} -> List{Inst} .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
