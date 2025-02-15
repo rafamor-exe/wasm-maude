@@ -169,27 +169,16 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMModule TypeVec NeTypeVec FuncVec NeFuncVec FuncParamList FuncResult FuncExport ExportVec NeExportVec ExportDef InstTag ParamList Param Stack EmptyStack NeStack StackElem ValRefList NeValRefList EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel .
+  sorts WASMSim WASMGlobalSim WASMLocalSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
   
   *** Simulator components
-  subsorts Stack List{Inst} < WASMSim .
+  subsorts Stack List{Inst} < WASMLocalSim .
   subsorts EmptyStack NeStack < Stack .
   subsorts EmptyLocalStore NeLocalStore < Map{ValRef, Value} .
   subsorts Assign < NeLocalStore .
 
-  *** Module sections sorts
-  ***subsorts NeTypeVec EmptyList < TypeVec .
-  ***subsorts TypeDef < NeTypeVec .
-  ***subsorts NeFuncVec EmptyList < FuncVec .
-  ***subsorts FuncDef < NeFuncVec .
-  ***subsorts NeExportVec EmptyList < ExportVec .
-  ***subsorts ExportDef < NeExportVec .
-
   *** Instruction lists sorts
-  ***subsorts NeList{Inst} EmptyList < List{Inst} .
-  subsorts Trap < Inst . *** < NeList{Inst} .
-  *** TODO: Maybe not needed: 
-  subsorts Param < ParamList .
+  subsorts Trap < Inst .
   *** TODO: Include variable references as ValRef 
   *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
   ***subsorts Nat Qid < ValRef < NeValRefList < ValRefList .
@@ -198,7 +187,6 @@ mod WASMMOD is
   subsorts Value < StackElem < NeStack . ***subsorts Int Und < IntValue < Value < StackElem < NeStack .
   subsorts Und < Label < StackElem . ***subsorts Qid < Label < StackElem .
   subsorts Nat < Arity .
-  ***subsorts EmptyList < ValRefList .
 
   op trap : String -> Trap [ctor] . 
   
@@ -209,11 +197,19 @@ mod WASMMOD is
   op if _ else _ : List{Inst} List{Inst} -> Inst [ctor] .
   ***op EmptyList : -> EmptyList [ctor] .
 
-  *** TODO: check associativity on funcVec...
 
-  ***op __ : List{Inst} Stack -> WASMSim [assoc comm ctor] .
-  *** < List{Inst} | Stack | Map{ValRef, Value} >
-  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMSim [ctor] .
+  *** Local environment
+  *** < InstList(List{Inst}) | Stack | LocalStore(Map{ValRef, Value}) >
+  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMLocalSim [ctor] .
+
+  *** Global environment
+  *** WASMLocalSim # GlobalStore(Map{ValRef, Value})
+  op _ # _ : WASMLocalSim Map{ValRef, Value} -> WASMGlobalSim [ctor] .
+
+  *** WASM Simulator
+  *** # WASMModule # WASMGlobalSim # FuncStore #
+  op # _ # _ # _ # : WASMModule WASMGlobalSim FuncStore -> WASMSim [ctor] .
+  
 
   *** Map{ValRef, Value} definition
   ***op [_<-_] : ValRef Value -> Assign [ctor] .
