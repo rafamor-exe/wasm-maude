@@ -84,6 +84,22 @@ fmod WASM-BITVAL-MOD is
   eq padding(N) = padding(N - 1) 0 .
 
 
+  *** Convert i32 bitstring to Maude Int
+  op i32-to-int : BitVal -> Int [ctor] .
+  eq i32-to-int({valtype i32 , bitstring BitList}) = bitstring-to-int(BitList, 32) .
+
+  *** Convert i64 bitstring to Maude Int
+  op i64-to-int : BitVal -> Int [ctor] .
+  eq i64-to-int({valtype i64 , bitstring BitList}) = bitstring-to-int(BitList, 64) .
+
+  *** Convert bitstring to int
+  op bitstring-to-int : List{Bit} Int -> Int .
+  ceq bitstring-to-int(B BitList, 1) = 0 if B == 0 .
+  ceq bitstring-to-int(B BitList, 1) = 1 if B == 1 .
+  ceq bitstring-to-int(B BitList, I) = bitstring-to-int(BitList, I - 1) if B == 0 and I > 1 .
+  ceq bitstring-to-int(B BitList, I) = ((2 ^ (I - 1)) * 1) + bitstring-to-int(BitList, I - 1) if B == 1 and I > 1 .
+
+
   *** string() conversion allows to modify the base of the representation
   ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
   ***eq int-to-bitstring(I, BitStringSize) = 

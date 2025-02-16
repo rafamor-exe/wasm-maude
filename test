@@ -82,3 +82,14 @@ red int-to-i32(4294967296) .
 *** Max i64
 red int-to-i64(18446744073709551615) .
 red int-to-i64(18446744073709551616) .
+
+*** Test conversion and reconversion int <-> bitval
+red bitstring-to-int(get-bitstring-bitval(int-to-i32(2)), 32) .
+***reduce in WASMMOD : bitstring-to-int(get-bitstring-bitval(int-to-i32(2)), 32) .
+***rewrites: 418 in 0ms cpu (0ms real) (~ rewrites/second)
+***result NzNat: 2
+
+red i32-to-int(int-to-i32(4294967295)) .
+***reduce in WASMMOD : i32-to-int(int-to-i32(4294967295)) .
+***rewrites: 689 in 0ms cpu (0ms real) (~ rewrites/second)
+***result NzNat: 4294967295
