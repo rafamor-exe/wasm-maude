@@ -69,6 +69,10 @@ rew < (i32.const 20) (block "l1" (i32.const 15) (i32.const 0) ("br_if" 0) (local
 *** Test TypeDef
 red (type 4 (func (param (i32 i32)) (result i32))) .
 
+*** Test FuncDef
+red   (func (0) (type 0) (param i32) (result i32) (local i32)  (i32.const 1036) end) .
+rew < call 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local i32)  (i32.const 1036) end) .
+
 rew (module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 0 (type 4) (param (i32 i32)) (result i32))) .
 
 rew < (global.set "gb1") | 20 | empty > # ("gb1" |-> 0) <-> (0 |-> {type mut i32 , value 10}) .

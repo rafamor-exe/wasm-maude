@@ -151,7 +151,7 @@ fmod WASM-TYPEDEF-MOD is
   protecting LIST{ResultType} .
 
   sorts TypeDef Id FuncType ParamResultFuncType .
-  subsorts Id < Nat .
+  subsorts Nat < Id .
 
   *** TODO: (for syntax reasons) be able to declare only param or result or none (now nil is required)
   ***op _ _ : List{ParamType} List{ResultType} -> ParamResultFuncType [ctor] .
@@ -279,6 +279,8 @@ fmod WASM-INST-MOD is
   op "br_if" _ : Nat -> Inst [ctor] .
   op end : -> Inst [ctor] .
 
+  op call _ : Nat -> Inst [ctor] .
+
 endfm
 
 view Inst from TRIV to WASM-INST-MOD is
@@ -298,12 +300,13 @@ fmod WASM-FUNCDEF-MOD is
   protecting WASM-TYPEDEF-MOD .
   protecting LIST{Inst} .
 
-  sorts FuncDef TypeRef .
+  sorts FuncDef TypeRef LocalsRef .
 
   op (type _) : Id -> TypeRef [ctor] .
+  op (local _) : List{TypeToken} -> LocalsRef [ctor] .
 
-  *** TODO: look for a way of making ParamType and ResultType lists optional
-  op (func _ _ _ _ _) : Id TypeRef List{ParamType} List{ResultType} List{Inst} -> FuncDef [ctor] .
+  *** TODO: look for a way of making ParamType, ResultType lists and LocalsRef optional
+  op (func _ _ _ _ _ _ end) : Id TypeRef List{ParamType} List{ResultType} LocalsRef List{Inst} -> FuncDef [ctor] .
 
 endfm
 
@@ -325,6 +328,7 @@ mod WASMMOD is
   protecting MAP{ValRef, Value} .
   protecting MAP{String, Addr} .
   protecting MAP{Addr, GlobalInstance} .
+  protecting MAP{Addr, FuncDef} .
 
   protecting WASM-TYPEDEF-MOD .
   protecting LIST{TypeDef} .
@@ -334,7 +338,7 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMGlobalSim WASMLocalSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
+  sorts WASMSim WASMFuncGlobalSim WASMGlobalSim WASMLocalSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
   
   *** Simulator components
   subsorts Stack List{Inst} < WASMLocalSim .
@@ -371,9 +375,12 @@ mod WASMMOD is
   *** WASMLocalSim # GlobalAddrs(Map{ValRef, Nat} <-> GlobalStore(Map{ValRef, Value})
   op _ # _ <-> _ : WASMLocalSim Map{String, Addr} Map{Addr, GlobalInstance} -> WASMGlobalSim [ctor] .
 
+  *** Functions + Global enviroment
+  op _ # _ : WASMGlobalSim Map{Addr, FuncDef} -> WASMFuncGlobalSim .
+
   *** WASM Simulator
   *** # WASMModule # WASMGlobalSim # FuncStore #
-  op # _ # _ # _ # : WASMModule WASMGlobalSim FuncStore -> WASMSim [ctor] .
+  op # _ # _ # : WASMModule WASMFuncGlobalSim -> WASMSim [ctor] .
   
 
   *** Map{ValRef, Value} definition
@@ -406,16 +413,17 @@ mod WASMMOD is
 
   *** Variable definition
 
+  var WASMModule : WASMModule .
   vars I1 S1 : Inst .
-  var ValR ValR2 : ValRef .
-  var Val Val1 Val2 : Value .
-  var IL IL1 IL2 : List{Inst} .
-  var ST TempST ST1 : Stack .
+  vars ValR ValR2 : ValRef .
+  vars Val Val1 Val2 : Value .
+  vars IL IL1 IL2 : List{Inst} .
+  vars ST TempST ST1 : Stack .
   var NeST : NeStack .
   var LocalSTR : Map{ValRef, Value} .
   var T : TypeToken .
-  var IntVal IntVal1 IntVal2 : IntValue .
-  var Int1 Int2 : Int .
+  vars IntVal IntVal1 IntVal2 : IntValue .
+  vars Int1 Int2 : Int .
   var STElem : StackElem .
   var Str : String .
   var Label : Label .
@@ -426,6 +434,11 @@ mod WASMMOD is
   var MutGlobalType : MutGlobalType .
   var GlobalInstance : GlobalInstance .
   var Addr : Addr .
+  var FuncStore : Map{Addr, FuncDef} .
+  var TypeRef : TypeRef .
+  var ParamList : List{ParamType} .
+  var ResultTypeList : List{ResultType} .
+  var LocalsRef : LocalsRef .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -544,6 +557,9 @@ mod WASMMOD is
   crl [br_if-else] : < ("br_if" N) IL | IntVal $ ST | LocalSTR >
               =>   
               < IL | ST | LocalSTR > if IntVal == 0 .
+  rl [call] : < (call N) IL | ST | LocalSTR > # GlobalAddrs <-> GlobalsStore # FuncStore
+              =>   
+              < get-IL-func(FuncStore[N]) IL | ST | LocalSTR > # GlobalAddrs <-> GlobalsStore # FuncStore .
 
 
   *** lookup rule: get value from reference from local store
@@ -612,6 +628,9 @@ mod WASMMOD is
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
   
+  op get-IL-func : FuncDef -> List{Inst} .
+  eq get-IL-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
+
   *** Auxiliary op for arithmetic instructions
   *** signed op : integer operators can be interpreted as if they had sign by some instructions.
   *** signed takes the number and the number of bits in its representation (32/64) 
