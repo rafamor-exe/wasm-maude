@@ -1,19 +1,73 @@
-***fmod WASM-BINARYVAL-MOD is
-***
-***  protecting INT .
-***  protecting CONVERSION .
-***
-***  sorts Bini Bini32 Bini64 .
-***  subsorts Bini32 Bini64 < Bini < String .
-***
-***  var I : Int .
-***
-***  op to-bini32 : Int -> Bini32 [ctor] .
-***  eq to-bini32(0) = string(0, 2) .
-***  eq to-bini32(1) = string(1, 2) .
-***  eq to-bini32(I) = string(I rem 2, 2) + to-bini32(I / 2) .
-***
-***endfm
+fmod WASM-BIT-MOD is
+
+  protecting INT .
+
+  sorts Bit .
+  ***subsorts Bit < Int .
+
+  ops 0 1 : -> Bit [ctor] .
+
+endfm
+
+view Bit from TRIV to WASM-BIT-MOD is
+  sort Elt to Bit .
+endv
+
+fmod WASM-BINARYVAL-MOD is
+
+  protecting WASM-BIT-MOD .
+  protecting INT .
+  protecting LIST{Bit} .
+  ***protecting FLOAT .
+  ***protecting CONVERSION .
+
+  sorts Bini Bini32 Bini64 BitStringSize .
+  ***sorts Binf Binf32 Binf64 ..
+  ***subsorts Binf32 Binf64 < Binf < String .
+  ***subsort BitStringSize < Int .
+
+  var I I2 : Int .
+  var N : Nat .
+  var B : Bit .
+  ***var F : Float .
+  ***var BitStringSize : BitStringSize .
+
+  
+  ***mb 32 : BitStringSize .
+  ***mb 64 : BitStringSize .
+
+  *** Convert Maude Int to i32 bitstring
+  op int-to-i32 : Int -> List{Bit} [ctor] .
+  eq int-to-i32(I) = int-to-bitstring(I, 32) .
+
+  *** Convert Maude Int to i64 bitstring  
+  op int-to-i64 : Int -> List{Bit} [ctor] .
+  eq int-to-i64(I) = int-to-bitstring(I, 64) .
+
+  *** Auxiliary op to convert int to bitstring of certain size
+  *** TODO: Manage overflow
+  op int-to-bitstring : Int Int -> List{Bit} [ctor] .
+  ceq int-to-bitstring(0, I2) = 0 if I2 == 1 .
+  eq int-to-bitstring(0, I2) = padding(I2) 0 [owise] .
+  ceq int-to-bitstring(1, I2) = 1 if I2 == 1 .
+  eq int-to-bitstring(1, I2) = padding(I2) 1 [owise] .
+  ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 0 if I rem 2 == 0 and I2 > 1 .
+  ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 1 if I rem 2 =/= 0 and I2 > 1 .
+
+  *** Front padding for bitstrings
+  op padding : Nat -> List{Bit} .
+  eq padding(1) = 0 .
+  eq padding(N) = padding(N - 1) 0 .
+
+
+  *** string() conversion allows to modify the base of the representation
+  ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
+  ***eq int-to-bitstring(I, BitStringSize) = 
+  
+  ***op float-to-bitstring : Float BitStringSize -> Binf [ctor] .
+  ***eq float-to-bitstring(F, BitStringSize) = string(F) .
+
+endfm
 
 fmod WASM-TYPETOKEN-MOD is
 
@@ -221,6 +275,7 @@ mod WASMMOD is
   ***protecting INT .
   ***protecting STRING .
   ***protecting QID .
+  protecting WASM-BINARYVAL-MOD .
   protecting WASM-INST-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
