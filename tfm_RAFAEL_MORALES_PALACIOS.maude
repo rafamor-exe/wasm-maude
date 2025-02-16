@@ -41,9 +41,9 @@ fmod WASM-BITVAL-MOD is
 
   var I I2 : Int .
   var N : Nat .
-  var B : Bit .
+  var B B1 B2 : Bit .
   var TypeToken : TypeToken .
-  var BitList : List{Bit} .
+  var BitList BS BS1 BS2 : List{Bit} .
   ***var F : Float .
   ***var BitStringSize : BitStringSize .
 
@@ -99,6 +99,18 @@ fmod WASM-BITVAL-MOD is
   ceq bitstring-to-int(B BitList, I) = bitstring-to-int(BitList, I - 1) if B == 0 and I > 1 .
   ceq bitstring-to-int(B BitList, I) = ((2 ^ (I - 1)) * 1) + bitstring-to-int(BitList, I - 1) if B == 1 and I > 1 .
 
+  *** Logic operations
+  op not _ : List{Bit} -> List{Bit} [ctor] .
+  eq not (0) = 1 .
+  eq not (1) = 0 .
+  eq not (BS 0) = not(BS) 1 .
+  eq not (BS 1) = not(BS) 0 .
+
+  op iand : List{Bit} List{Bit} -> List{Bit} [ctor] .
+  eq iand(B, 0) = 0 .
+  eq iand(0, B) = 0 .
+  eq iand(1, 1) = 1 .
+  eq iand(BS1 B1, BS2 B2) = iand(BS1, BS2) iand(B1, B2) .
 
   *** string() conversion allows to modify the base of the representation
   ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
@@ -177,9 +189,9 @@ fmod WASM-VALUE-MOD is
 
   protecting INT .
 
-  sorts Value IntValue .
+  sorts Value IntValue UInt SInt .
 
-  subsorts Int < IntValue < Value .
+  subsorts Int < UInt SInt IntValue < Value .
 
 endfm
 
@@ -238,6 +250,9 @@ fmod WASM-INST-MOD is
   op "i32.div_s" : -> Inst [ctor] .
   op "i32.rem_u" : -> Inst [ctor] .
   op "i32.rem_s" : -> Inst [ctor] .
+
+  *** bitstring representation ops
+  op i32.and : -> Inst [ctor] .
 
   *** relop
   op i32.eq : -> Inst [ctor] .
@@ -453,20 +468,24 @@ mod WASMMOD is
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
   rl [i32.add] : < (i32.add) IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal + IntVal2) rem 2 ^ (32) ) | LocalSTR > .
-  *** TODO: check "multiple distinct parses for statement" in sub
-  ***rl [i32.sub] : < (i32.sub) IL | IntVal $ IntVal2 $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal - IntVal2) rem 2^(32)) | LocalSTR > .
+  rl [i32.sub] : < (i32.sub) IL | IntVal $ IntVal2 $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal - IntVal2 + (2 ^ (32))) rem (2 ^ (32))) | LocalSTR > .
   rl [i32.mul] : < (i32.mul) IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal * IntVal2) rem 2 ^ (32)) | LocalSTR > .
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   crl [i32.div_u-und] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if IntVal2 == 0 .
   crl [i32.div_u] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, abs(IntVal quo IntVal2)) | LocalSTR > if IntVal2 =/= 0 .
-  *** TODO: check "multiple distinct parses for statement" in div_s
-  ***crl [i32.div_s-und] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, und) | LocalSTR > if IntVal2 == 0 or (IntVal quo IntVal2) == 2 ^ (32 - 1) .
-  ***crl [i32.div_s] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, IntVal quo IntVal2) | LocalSTR > if IntVal2 =/= 0 and (IntVal quo IntVal2) =/= 2 ^ (32 - 1) .
+  *** TODO: check "multiple distinct parses for statement" in div_s (Parses as String and Inst)
+  crl [i32.div_s-und] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if signed(IntVal2, 32) == 0 or (signed(IntVal, 32) quo signed(IntVal2, 32)) == 2 ^ (32 - 1) .
+  crl [i32.div_s] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, signed(IntVal, 32) quo signed(IntVal2, 32)) | LocalSTR > if signed(IntVal2, 32) =/= 0 and (signed(IntVal, 32) quo signed(IntVal2, 32)) =/= 2 ^ (32 - 1) .
   crl [i32.rem_u-und] : < ("i32.rem_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined")  if IntVal2 == 0 .
   crl [i32.rem_u] : < ("i32.rem_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, abs(IntVal rem IntVal2)) | LocalSTR > if IntVal2 =/= 0 .
-  crl [i32.rem_s-und] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if IntVal2 == 0 .
+  crl [i32.rem_s-und] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if signed(IntVal2, 32) == 0 .
   *** By definition: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (IntVal quo abs(IntVal)))
-  crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal quo abs(IntVal)) * abs((IntVal rem IntVal2))) | LocalSTR > if IntVal2 =/= 0 .
+  crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, unsigned(signed(IntVal, 32) - (signed(IntVal2, 32) * (signed(IntVal, 32) quo signed(IntVal2, 32))), 32)) | LocalSTR > if signed(IntVal2, 32) =/= 0 .
+
+  *** instructions with bitstring representation
+  rl [i32.and] : < (i32.and) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+                =>   
+                < IL | st-push(ST, i32-to-int({valtype i32, bitstring (iand((get-bitstring-bitval(int-to-i32(IntVal))), (get-bitstring-bitval(int-to-i32(IntVal2)))))})) | LocalSTR > .
 
   *** irelop
   rl [ieq] : < (i32.eq) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
@@ -477,25 +496,25 @@ mod WASMMOD is
             < IL | ine(IntVal, IntVal2) $ ST | LocalSTR > .
   rl [ilt_s] : < ("i32.lt_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
-            < IL | "ilt_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+            < IL | "ilt_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
   rl [ilt_u] : < ("i32.lt_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
             < IL | "ilt_u"(IntVal, IntVal2) $ ST | LocalSTR > .
   rl [igt_s] : < ("i32.gt_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
-            < IL | "igt_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+            < IL | "igt_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
   rl [igt_u] : < ("i32.gt_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
             < IL | "igt_u"(IntVal, IntVal2) $ ST | LocalSTR > .
   rl [ile_s] : < ("i32.le_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
-            < IL | "ile_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+            < IL | "ile_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
   rl [ile_u] : < ("i32.le_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
             < IL | "ile_u"(IntVal, IntVal2) $ ST | LocalSTR > .
   rl [ige_s] : < ("i32.ge_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
-            < IL | "ige_s"(IntVal, IntVal2) $ ST | LocalSTR > .
+            < IL | "ige_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
   rl [ige_u] : < ("i32.ge_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
             =>   
             < IL | "ige_u"(IntVal, IntVal2) $ ST | LocalSTR > .
@@ -593,7 +612,20 @@ mod WASMMOD is
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
   ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
   
-  *** Auxiliary eq for logic instructions
+  *** Auxiliary op for arithmetic instructions
+  *** signed op : integer operators can be interpreted as if they had sign by some instructions.
+  *** signed takes the number and the number of bits in its representation (32/64) 
+  *** TODO: FIX multiple parses for statement
+  op signed : UInt Nat -> SInt .
+  ceq signed(Int1, N) = Int1 if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
+  ceq signed(Int1, N) = Int1 - (2 ^ (N)) if (2 ^ (N - 1)) <= Int1 and Int1 < (2 ^ (N)) .
+
+  *** inverted function from signed
+  op unsigned : SInt Nat -> UInt .
+  ceq unsigned(Int1, N) = Int1 if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
+  ceq unsigned(Int1, N) = Int1 + (2 ^ (N)) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
+
+  *** Auxiliary op for logic instructions
   op ieq : IntValue IntValue -> IntValue .
   ceq ieq(IntVal1, IntVal2) = 1 if IntVal1 == IntVal2 .
   eq ieq(IntVal1, IntVal2) = 0 [owise] .

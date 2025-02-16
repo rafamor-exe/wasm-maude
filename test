@@ -20,16 +20,20 @@ search < (i32.const 20) | EmptyStack | EmptyLocalStore > =>* < nil | 20 | EmptyL
 
 rew < (i32.const 20) (i32.const 10) (i32.add) | EmptyStack | EmptyLocalStore > .
 
+*** AFTER CHANGING SIGNED REPRESENTATION, NEGATIVE VALUES HAD TO BE MODIFIED TO COMPLY WITH THE SPEC 
 rew < (i32.const 20) (i32.const 10) (i32.div_u) | EmptyStack | EmptyLocalStore > .
 rew < (i32.const 20) (i32.const 10) ("i32.div_u") | EmptyStack | EmptyLocalStore > .
-rew < (i32.const -20) (i32.const 10) ("i32.div_u") | EmptyStack | EmptyLocalStore > .
+***rew < (i32.const -20) (i32.const 10) ("i32.div_u") | EmptyStack | EmptyLocalStore > .
 rew < (i32.const 20) (i32.const 0) ("i32.div_u") | EmptyStack | EmptyLocalStore > .
 rew < (i32.const 21) (i32.const 10) ("i32.rem_u") | EmptyStack | EmptyLocalStore > .
-rew < (i32.const -21) (i32.const 10) ("i32.rem_u") | EmptyStack | EmptyLocalStore > .
+***rew < (i32.const -21) (i32.const 10) ("i32.rem_u") | EmptyStack | EmptyLocalStore > .
 rew < (i32.const 21) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
-rew < (i32.const -21) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
-rew < (i32.const 21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
-rew < (i32.const -21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+***rew < (i32.const -21) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 4294967275) (i32.const 10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+***rew < (i32.const 21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 21) (i32.const 4294967286) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+***rew < (i32.const -21) (i32.const -10) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
+rew < (i32.const 4294967275) (i32.const 4294967286) ("i32.rem_s") | EmptyStack | EmptyLocalStore > .
 
 rew < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) (local.get 2) (local.get 3) (i32.mul) | EmptyStack | EmptyLocalStore > .
 search < (i32.const 20) (i32.const 10) (local.set 2) (local.set 3) (local.get 2) (local.get 3) (i32.mul) | EmptyStack | EmptyLocalStore > =>* < nil | 200 | 2 |-> 10, 3 |-> 20  > .
@@ -93,3 +97,18 @@ red i32-to-int(int-to-i32(4294967295)) .
 ***reduce in WASMMOD : i32-to-int(int-to-i32(4294967295)) .
 ***rewrites: 689 in 0ms cpu (0ms real) (~ rewrites/second)
 ***result NzNat: 4294967295
+
+red signed(10, 32) .
+***reduce in WASMMOD : signed(10, 32) .
+***rewrites: 6 in 0ms cpu (0ms real) (~ rewrites/second)
+***result NzNat: 10
+red signed(4294967295, 32) .
+***reduce in WASMMOD : signed(4294967295, 32) .
+***rewrites: 13 in 0ms cpu (0ms real) (~ rewrites/second)
+***result NzInt: -1
+red signed(4294967294, 32) .
+***reduce in WASMMOD : signed(4294967294, 32) .
+***rewrites: 13 in 0ms cpu (0ms real) (~ rewrites/second)
+***result NzInt: -2
+
+red unsigned(signed(4294967295, 32), 32) .
