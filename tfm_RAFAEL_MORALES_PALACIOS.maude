@@ -1,3 +1,15 @@
+fmod WASM-TYPETOKEN-MOD is
+
+  sorts TypeToken .
+
+  ops i32 i64 : -> TypeToken [ctor] .
+
+endfm
+
+view TypeToken from TRIV to WASM-TYPETOKEN-MOD is
+  sort Elt to TypeToken .
+endv
+
 fmod WASM-BIT-MOD is
 
   protecting INT .
@@ -13,15 +25,16 @@ view Bit from TRIV to WASM-BIT-MOD is
   sort Elt to Bit .
 endv
 
-fmod WASM-BINARYVAL-MOD is
+fmod WASM-BITVAL-MOD is
 
+  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BIT-MOD .
   protecting INT .
   protecting LIST{Bit} .
   ***protecting FLOAT .
   ***protecting CONVERSION .
 
-  sorts Bini Bini32 Bini64 BitStringSize .
+  sorts Bini Bini32 Bini64 BitStringSize BitVal .
   ***sorts Binf Binf32 Binf64 ..
   ***subsorts Binf32 Binf64 < Binf < String .
   ***subsort BitStringSize < Int .
@@ -29,6 +42,8 @@ fmod WASM-BINARYVAL-MOD is
   var I I2 : Int .
   var N : Nat .
   var B : Bit .
+  var TypeToken : TypeToken .
+  var BitList : List{Bit} .
   ***var F : Float .
   ***var BitStringSize : BitStringSize .
 
@@ -36,13 +51,22 @@ fmod WASM-BINARYVAL-MOD is
   ***mb 32 : BitStringSize .
   ***mb 64 : BitStringSize .
 
+  *** BitVal representation (valid for int and float): contains typetoken for type-checking and bitstring. 
+  op {valtype _, bitstring _} : TypeToken List{Bit} -> BitVal [ctor] .
+
+  *** Auxliary functions for getting BitVal propperty values
+  op get-type-bitval : BitVal -> TypeToken .
+  eq get-type-bitval({valtype TypeToken, bitstring BitList}) = TypeToken .
+  op get-bitstring-bitval : BitVal -> List{Bit} .
+  eq get-bitstring-bitval({valtype TypeToken, bitstring BitList}) = BitList .
+
   *** Convert Maude Int to i32 bitstring
-  op int-to-i32 : Int -> List{Bit} [ctor] .
-  eq int-to-i32(I) = int-to-bitstring(I, 32) .
+  op int-to-i32 : Int -> BitVal [ctor] .
+  eq int-to-i32(I) = {valtype i32 , bitstring int-to-bitstring(I, 32)} .
 
   *** Convert Maude Int to i64 bitstring  
-  op int-to-i64 : Int -> List{Bit} [ctor] .
-  eq int-to-i64(I) = int-to-bitstring(I, 64) .
+  op int-to-i64 : Int -> BitVal [ctor] .
+  eq int-to-i64(I) = {valtype i64, bitstring int-to-bitstring(I, 64)} .
 
   *** Auxiliary op to convert int to bitstring of certain size
   *** TODO: Manage overflow
@@ -69,17 +93,6 @@ fmod WASM-BINARYVAL-MOD is
 
 endfm
 
-fmod WASM-TYPETOKEN-MOD is
-
-  sorts TypeToken .
-
-  ops i32 i64 : -> TypeToken [ctor] .
-
-endfm
-
-view TypeToken from TRIV to WASM-TYPETOKEN-MOD is
-  sort Elt to TypeToken .
-endv
 
 fmod WASM-FUNCTYPE-MOD is
 
@@ -275,7 +288,7 @@ mod WASMMOD is
   ***protecting INT .
   ***protecting STRING .
   ***protecting QID .
-  protecting WASM-BINARYVAL-MOD .
+  protecting WASM-BITVAL-MOD .
   protecting WASM-INST-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
