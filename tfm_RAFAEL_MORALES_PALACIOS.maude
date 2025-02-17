@@ -335,6 +335,7 @@ mod WASMMOD is
   protecting WASM-INST-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
+  protecting LIST{Map{ValRef, Value}} .
   protecting MAP{String, Addr} .
   protecting MAP{Addr, GlobalInstance} .
   protecting MAP{Addr, FuncDef} .
@@ -429,6 +430,8 @@ mod WASMMOD is
   vars IL IL1 IL2 : List{Inst} .
   vars ST TempST ST1 : Stack .
   var NeST : NeStack .
+  var LocalSTRList : List{Map{ValRef, Value}} .
+  var NeLocalSTRList : NeList{Map{ValRef, Value}} .
   var LocalSTR : Map{ValRef, Value} .
   var T : TypeToken .
   vars IntVal IntVal1 IntVal2 : IntValue .
@@ -448,6 +451,7 @@ mod WASMMOD is
   var ParamList : List{ParamType} .
   var ResultTypeList : List{ResultType} .
   var LocalsRef : LocalsRef .
+  var TypeTokenList : List{TypeToken} .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -460,117 +464,124 @@ mod WASMMOD is
   *** TODO: Maybe create rules to transform an input of the form of a usual program to this representation with initial empty stack and store??
 
   *** local.get rule: push to stack the value from ValR from the local store
-  rl [local.get] : < (local.get ValR) IL | ST | LocalSTR >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR > .
+  rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
 
   *** local.set rule: pop value from stack and store it in ValR in the local store
-  rl [local.set] : < (local.set ValR) IL | ST | LocalSTR >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) > .
+  rl [local.set] : < (local.set ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) LocalSTRList > .
   ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > if Val =/= st-head(ST) .
   ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- Val]LocalSTR > if Val == st-head(ST)  .
 
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
   *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
-  rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR > .
+  rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR LocalSTRList >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
 
   *** global variable rules
 
-  rl [global.get] : < (global.get Str) IL | ST | LocalSTR > # GlobalAddrs <-> GlobalsStore
+  rl [global.get] : < (global.get Str) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
-                  < IL | st-push(ST, global-val(GlobalsStore[GlobalAddrs[Str]])) | LocalSTR > # GlobalAddrs <-> GlobalsStore .
+                  < IL | st-push(ST, global-val(GlobalsStore[GlobalAddrs[Str]])) | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore .
 
-  rl [global.set] : < (global.set Str) IL | Val $ ST | LocalSTR > # GlobalAddrs <-> GlobalsStore
+  rl [global.set] : < (global.set Str) IL | Val $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
-                  < IL | ST | LocalSTR > # GlobalAddrs <-> insert-gb-val(GlobalAddrs[Str], Val, GlobalsStore) .
+                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert-gb-val(GlobalAddrs[Str], Val, GlobalsStore) .
 
 
 
   *** t.const rule: push Val of type T to stack
   *** TODO: maybe fix to use it as a template??
-  ***rl [t.const] : < (T .const Val) IL | ST | LocalSTR >   =>   < IL | st-push(ST, Val) | LocalSTR > .
-  ***crl [i32.const] : < (i32.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > if verify-const(IntVal, 32) .
-  rl [i32.const] : < (i32.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > .
-  ***crl [i64.const] : < (i64.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > if verify-const(IntVal, 64) .
+  ***rl [t.const] : < (T .const Val) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, Val) | NeLocalSTRList > .
+  ***crl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 32) .
+  rl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > .
+  ***crl [i64.const] : < (i64.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 64) .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
-  rl [i32.add] : < (i32.add) IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal + IntVal2) rem 2 ^ (32) ) | LocalSTR > .
-  rl [i32.sub] : < (i32.sub) IL | IntVal $ IntVal2 $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal - IntVal2 + (2 ^ (32))) rem (2 ^ (32))) | LocalSTR > .
-  rl [i32.mul] : < (i32.mul) IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal * IntVal2) rem 2 ^ (32)) | LocalSTR > .
+  rl [i32.add] : < (i32.add) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, (IntVal + IntVal2) rem 2 ^ (32) ) | NeLocalSTRList > .
+  rl [i32.sub] : < (i32.sub) IL | IntVal $ IntVal2 $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, (IntVal - IntVal2 + (2 ^ (32))) rem (2 ^ (32))) | NeLocalSTRList > .
+  rl [i32.mul] : < (i32.mul) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, (IntVal * IntVal2) rem 2 ^ (32)) | NeLocalSTRList > .
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
-  crl [i32.div_u-und] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if IntVal2 == 0 .
-  crl [i32.div_u] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, abs(IntVal quo IntVal2)) | LocalSTR > if IntVal2 =/= 0 .
+  crl [i32.div_u-und] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   trap("Binop result undefined") if IntVal2 == 0 .
+  crl [i32.div_u] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, abs(IntVal quo IntVal2)) | NeLocalSTRList > if IntVal2 =/= 0 .
   *** TODO: check "multiple distinct parses for statement" in div_s (Parses as String and Inst)
-  crl [i32.div_s-und] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if signed(IntVal2, 32) == 0 or (signed(IntVal, 32) quo signed(IntVal2, 32)) == 2 ^ (32 - 1) .
-  crl [i32.div_s] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, signed(IntVal, 32) quo signed(IntVal2, 32)) | LocalSTR > if signed(IntVal2, 32) =/= 0 and (signed(IntVal, 32) quo signed(IntVal2, 32)) =/= 2 ^ (32 - 1) .
-  crl [i32.rem_u-und] : < ("i32.rem_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined")  if IntVal2 == 0 .
-  crl [i32.rem_u] : < ("i32.rem_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, abs(IntVal rem IntVal2)) | LocalSTR > if IntVal2 =/= 0 .
-  crl [i32.rem_s-und] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   trap("Binop result undefined") if signed(IntVal2, 32) == 0 .
+  crl [i32.div_s-und] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   trap("Binop result undefined") if signed(IntVal2, 32) == 0 or (signed(IntVal, 32) quo signed(IntVal2, 32)) == 2 ^ (32 - 1) .
+  crl [i32.div_s] : < ("i32.div_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, signed(IntVal, 32) quo signed(IntVal2, 32)) | NeLocalSTRList > if signed(IntVal2, 32) =/= 0 and (signed(IntVal, 32) quo signed(IntVal2, 32)) =/= 2 ^ (32 - 1) .
+  crl [i32.rem_u-und] : < ("i32.rem_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   trap("Binop result undefined")  if IntVal2 == 0 .
+  crl [i32.rem_u] : < ("i32.rem_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, abs(IntVal rem IntVal2)) | NeLocalSTRList > if IntVal2 =/= 0 .
+  crl [i32.rem_s-und] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   trap("Binop result undefined") if signed(IntVal2, 32) == 0 .
   *** By definition: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (IntVal quo abs(IntVal)))
-  crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, unsigned(signed(IntVal, 32) - (signed(IntVal2, 32) * (signed(IntVal, 32) quo signed(IntVal2, 32))), 32)) | LocalSTR > if signed(IntVal2, 32) =/= 0 .
+  crl [i32.rem_s] : < ("i32.rem_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, unsigned(signed(IntVal, 32) - (signed(IntVal2, 32) * (signed(IntVal, 32) quo signed(IntVal2, 32))), 32)) | NeLocalSTRList > if signed(IntVal2, 32) =/= 0 .
 
   *** instructions with bitstring representation
-  rl [i32.and] : < (i32.and) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+  rl [i32.and] : < (i32.and) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
                 =>   
-                < IL | st-push(ST, i32-to-int({valtype i32, bitstring (iand((get-bitstring-bitval(int-to-i32(IntVal))), (get-bitstring-bitval(int-to-i32(IntVal2)))))})) | LocalSTR > .
+                < IL | st-push(ST, i32-to-int({valtype i32, bitstring (iand((get-bitstring-bitval(int-to-i32(IntVal))), (get-bitstring-bitval(int-to-i32(IntVal2)))))})) | NeLocalSTRList > .
 
   *** irelop
-  rl [ieq] : < (i32.eq) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+  rl [ieq] : < (i32.eq) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | ieq(IntVal, IntVal2) $ ST | LocalSTR > .
-  rl [ine] : < (i32.ne) IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | ieq(IntVal, IntVal2) $ ST | NeLocalSTRList > .
+  rl [ine] : < (i32.ne) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | ine(IntVal, IntVal2) $ ST | LocalSTR > .
-  rl [ilt_s] : < ("i32.lt_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | ine(IntVal, IntVal2) $ ST | NeLocalSTRList > .
+  rl [ilt_s] : < ("i32.lt_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "ilt_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
-  rl [ilt_u] : < ("i32.lt_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "ilt_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | NeLocalSTRList > .
+  rl [ilt_u] : < ("i32.lt_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "ilt_u"(IntVal, IntVal2) $ ST | LocalSTR > .
-  rl [igt_s] : < ("i32.gt_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "ilt_u"(IntVal, IntVal2) $ ST | NeLocalSTRList > .
+  rl [igt_s] : < ("i32.gt_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "igt_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
-  rl [igt_u] : < ("i32.gt_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "igt_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | NeLocalSTRList > .
+  rl [igt_u] : < ("i32.gt_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "igt_u"(IntVal, IntVal2) $ ST | LocalSTR > .
-  rl [ile_s] : < ("i32.le_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "igt_u"(IntVal, IntVal2) $ ST | NeLocalSTRList > .
+  rl [ile_s] : < ("i32.le_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "ile_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
-  rl [ile_u] : < ("i32.le_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "ile_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | NeLocalSTRList > .
+  rl [ile_u] : < ("i32.le_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "ile_u"(IntVal, IntVal2) $ ST | LocalSTR > .
-  rl [ige_s] : < ("i32.ge_s") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "ile_u"(IntVal, IntVal2) $ ST | NeLocalSTRList > .
+  rl [ige_s] : < ("i32.ge_s") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "ige_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | LocalSTR > .
-  rl [ige_u] : < ("i32.ge_u") IL | IntVal2 $ IntVal $ ST | LocalSTR >   
+            < IL | "ige_s"(signed(IntVal, 32), signed(IntVal2, 32)) $ ST | NeLocalSTRList > .
+  rl [ige_u] : < ("i32.ge_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | "ige_u"(IntVal, IntVal2) $ ST | LocalSTR > .
+            < IL | "ige_u"(IntVal, IntVal2) $ ST | NeLocalSTRList > .
 
   *** testop
-  rl [eqz] : < (i32.eqz) IL | IntVal $ ST | LocalSTR >   
+  rl [eqz] : < (i32.eqz) IL | IntVal $ ST | NeLocalSTRList >   
             =>   
-            < IL | ieq(IntVal, 0) $ ST | LocalSTR > .
+            < IL | ieq(IntVal, 0) $ ST | NeLocalSTRList > .
 
   *** Control instructions
   *** block:
   *** TODO: Check what to do with values on stack previous to label. Should label be after some values? How to calculate it?
-  rl [block] : < ((block Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, IL)) | LocalSTR > .
-  rl [end] : < end | NeST | LocalSTR >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | LocalSTR > .
-  rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | LocalSTR >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | LocalSTR > .
-  *** loop is an infinite loop
-  rl [loop] : < ((loop Str) IL2 end) IL | ST | LocalSTR >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | LocalSTR > .
-  rl [br] : < (br N) IL | ST | LocalSTR >   
+  rl [nop] : < nop IL | ST | NeLocalSTRList >   
             =>   
-            < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | LocalSTR > .
-  rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | LocalSTR > 
+            < IL | ST | NeLocalSTRList > .
+  rl [block] : < ((block Str) IL2 end) IL | ST | NeLocalSTRList >   =>   < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > .
+  rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
+  rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | NeLocalSTRList >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | NeLocalSTRList > .
+  *** loop is an infinite loop
+  rl [loop] : < ((loop Str) IL2 end) IL | ST | NeLocalSTRList >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | NeLocalSTRList > .
+  rl [br] : < (br N) IL | ST | NeLocalSTRList >   
+            =>   
+            < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | NeLocalSTRList > .
+  rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | NeLocalSTRList > 
                   =>
-                  < IL1 | ST1 | LocalSTR > .
-  crl [br_if] : < ("br_if" N) IL | IntVal $ ST | LocalSTR >
+                  < IL1 | ST1 | NeLocalSTRList > .
+  crl [br_if] : < ("br_if" N) IL | IntVal $ ST | NeLocalSTRList >
                =>   
-               < (br N) IL | ST | LocalSTR > if IntVal =/= 0 .
-  crl [br_if-else] : < ("br_if" N) IL | IntVal $ ST | LocalSTR >
+               < (br N) IL | ST | NeLocalSTRList > if IntVal =/= 0 .
+  crl [br_if-else] : < ("br_if" N) IL | IntVal $ ST | NeLocalSTRList >
               =>   
-              < IL | ST | LocalSTR > if IntVal == 0 .
-  rl [call] : < (call N) IL | ST | LocalSTR > # GlobalAddrs <-> GlobalsStore # FuncStore
+              < IL | ST | NeLocalSTRList > if IntVal == 0 .
+  rl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
-              < get-IL-func(FuncStore[N]) IL | ST | LocalSTR > # GlobalAddrs <-> GlobalsStore # FuncStore .
+              < get-IL-func(FuncStore[N]) exit-func end | st-push(ST, label("func", IL)) | inizialize-store-N(count-locals-localsref(get-localsref-func(FuncStore[N])), (empty).Map{ValRef,Value}) NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
+  rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+                  =>   
+                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
+    
 
 
   *** lookup rule: get value from reference from local store
@@ -641,6 +652,22 @@ mod WASMMOD is
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
+
+  op exit-func : -> Inst .
+
+  op get-localsref-func : FuncDef -> LocalsRef .
+  eq get-localsref-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = LocalsRef .
+
+  op count-locals-localsref : LocalsRef -> Nat .
+  eq count-locals-localsref(local nil) = 0 .
+  eq count-locals-localsref(local (T TypeTokenList)) = 1 + count-locals-localsref(local TypeTokenList) .
+
+  *** Inizialize a LocalStore with N variables
+  op inizialize-store-N : Nat Map{ValRef, Value} -> Map{ValRef, Value} .
+  eq inizialize-store-N(0, LocalSTR) = LocalSTR .
+  eq inizialize-store-N(1, LocalSTR) = insert(0, 0, LocalSTR) .
+  ceq inizialize-store-N(N, LocalSTR) = insert(N, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
+
 
   *** Auxiliary op for arithmetic instructions
   *** signed op : integer operators can be interpreted as if they had sign by some instructions.
