@@ -577,7 +577,10 @@ mod WASMMOD is
               < IL | ST | NeLocalSTRList > if IntVal == 0 .
   rl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
-              < get-IL-func(FuncStore[N]) exit-func end | st-push(ST, label("func", IL)) | inizialize-store-N(count-locals-localsref(get-localsref-func(FuncStore[N])), (empty).Map{ValRef,Value}) NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
+              < get-IL-func(FuncStore[N]) exit-func end | 
+                st-push(ST, label("func", IL)) | 
+                inizialize-store-N(count-locals-localsref(get-localsref-func(FuncStore[N])) + count-locals-paramlist(get-paramlist-func(FuncStore[N])), (empty).Map{ValRef,Value}) NeLocalSTRList 
+              > # GlobalAddrs <-> GlobalsStore # FuncStore .
   rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
@@ -658,15 +661,23 @@ mod WASMMOD is
   op get-localsref-func : FuncDef -> LocalsRef .
   eq get-localsref-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = LocalsRef .
 
+  op get-paramlist-func : FuncDef -> List{ParamType} .
+  eq get-paramlist-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = ParamList .
+
   op count-locals-localsref : LocalsRef -> Nat .
   eq count-locals-localsref(local nil) = 0 .
   eq count-locals-localsref(local (T TypeTokenList)) = 1 + count-locals-localsref(local TypeTokenList) .
+
+  op count-locals-paramlist : List{ParamType} -> Nat .
+  eq count-locals-paramlist((param nil) nil) = 0 .
+  eq count-locals-paramlist((param nil) ParamList) = count-locals-paramlist(ParamList) .
+  eq count-locals-paramlist((param (T TypeTokenList)) ParamList) = 1 + count-locals-paramlist((param TypeTokenList) ParamList) .
 
   *** Inizialize a LocalStore with N variables
   op inizialize-store-N : Nat Map{ValRef, Value} -> Map{ValRef, Value} .
   eq inizialize-store-N(0, LocalSTR) = LocalSTR .
   eq inizialize-store-N(1, LocalSTR) = insert(0, 0, LocalSTR) .
-  ceq inizialize-store-N(N, LocalSTR) = insert(N, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
+  ceq inizialize-store-N(N, LocalSTR) = insert(N - 1, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
 
 
   *** Auxiliary op for arithmetic instructions

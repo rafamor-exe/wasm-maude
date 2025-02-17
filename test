@@ -87,6 +87,7 @@ rew < (global.set "gb1") | 20 | empty > # ("gb1" |-> 0) <-> (0 |-> {type const i
 
 *** Test to call a function, creating its own local store based on the function definition (local spec) and without losing old local store and using it again.
 *** It can be followed step by step
+*** This should create a local store of 4 values after calling function 0 (1 param + 3 locals)
 rew < (i32.const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 i32))  ((i32.const 10) (local.set 0)) end) .
 
 
