@@ -189,9 +189,17 @@ fmod WASM-VALUE-MOD is
 
   protecting INT .
 
-  sorts Value IntValue UInt SInt .
+  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue .
 
   subsorts Int < UInt SInt IntValue < Value .
+  ***subsorts Int32Value Int64Value < IntValue .
+
+  *** Initial proposal for restricting i32 value
+  ***var IntValue : IntValue .
+  ***var Val : Value .
+  ***cmb IntValue : Int64Value if 0 < IntValue and IntValue < 18446744073709551616 .
+  ***cmb IntValue : Int32Value if 0 < IntValue and IntValue < 4294967295 .
+  ***cmb Val : FloatValue if (Val == (1 + ) * (2 ^ (e)) or (Val == (1 + ) * (2 ^ (e))) .
 
 endfm
 
@@ -236,6 +244,7 @@ fmod WASM-INST-MOD is
   *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
   ***op _.const _ : TypeToken Value -> Inst [ctor] .
   op i32.const _ : IntValue -> Inst [ctor] .
+  ***op i64.const _ : IntValue -> Inst [ctor] .
   *** TODO: Include more valid types
   ***ops i32 : -> Type [ctor] .
 
@@ -477,7 +486,9 @@ mod WASMMOD is
   *** t.const rule: push Val of type T to stack
   *** TODO: maybe fix to use it as a template??
   ***rl [t.const] : < (T .const Val) IL | ST | LocalSTR >   =>   < IL | st-push(ST, Val) | LocalSTR > .
+  ***crl [i32.const] : < (i32.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > if verify-const(IntVal, 32) .
   rl [i32.const] : < (i32.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > .
+  ***crl [i64.const] : < (i64.const IntVal) IL | ST | LocalSTR >   =>   < IL | st-push(ST, IntVal) | LocalSTR > if verify-const(IntVal, 64) .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
   rl [i32.add] : < (i32.add) IL | IntVal2 $ IntVal $ ST | LocalSTR >   =>   < IL | st-push(ST, (IntVal + IntVal2) rem 2 ^ (32) ) | LocalSTR > .
@@ -684,6 +695,14 @@ mod WASMMOD is
   op "ige_s" : IntValue IntValue -> IntValue .
   ceq "ige_s"(IntVal1, IntVal2) = 1 if IntVal1 >= IntVal2 .
   eq "ige_s"(IntVal1, IntVal2) = 0 [owise] .
+
+  ****************
+  *** Verification
+  ****************
+  *** Should this be verified at constructor level??
+  ***op verify-const : Value Nat -> Bool .
+  ***ceq verify-const(IntVal, N) = true if 0 <= IntVal and IntVal <= ((2 ^ (N)) - 1) .
+  ***eq verify-const(Val, N) = false .
 
 endm
 
