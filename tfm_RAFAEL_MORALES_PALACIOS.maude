@@ -187,9 +187,10 @@ endv
 
 fmod WASM-VALUE-MOD is
 
+  ***protecting WASM-TYPETOKEN-MOD .
   protecting INT .
 
-  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue .
+  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue Num .
 
   subsorts Int < UInt SInt IntValue < Value .
   ***subsorts Int32Value Int64Value < IntValue .
@@ -200,6 +201,9 @@ fmod WASM-VALUE-MOD is
   ***cmb IntValue : Int64Value if 0 < IntValue and IntValue < 18446744073709551616 .
   ***cmb IntValue : Int32Value if 0 < IntValue and IntValue < 4294967295 .
   ***cmb Val : FloatValue if (Val == (1 + ) * (2 ^ (e)) or (Val == (1 + ) * (2 ^ (e))) .
+
+  *** Represent values "(type).const (value)" pushed to stack
+  ***op const : TypeToken Num -> Value [ctor] .
 
 endfm
 
@@ -491,6 +495,7 @@ mod WASMMOD is
   *** TODO: maybe fix to use it as a template??
   ***rl [t.const] : < (T .const Val) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, Val) | NeLocalSTRList > .
   ***crl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 32) .
+  *** TODO: push "i32 .const IntVal" s.t. we store the type too
   rl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > .
   ***crl [i64.const] : < (i64.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 64) .
 
