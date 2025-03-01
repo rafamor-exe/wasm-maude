@@ -124,3 +124,25 @@ red signed(4294967294, 32) .
 ***result NzInt: -2
 
 red unsigned(signed(4294967295, 32), 32) .
+
+*** TEST OPERATIONS WITH INTS AND FLOATS
+Maude> rew < (i32 .const 20) (i32 .const 10) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrite in WASMMOD : < (i32 .const 20) (i32 .const 10) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrites: 51 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMLocalSim: < nil | const(i32, val(30)) | empty >
+Maude> rew < (i32 .const 20) (i32 .const 10) (i32 . mul) | EmptyStack | EmptyLocalStore > .
+rewrite in WASMMOD : < (i32 .const 20) (i32 .const 10) (i32 . mul) | EmptyStack | EmptyLocalStore > .
+rewrites: 51 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMLocalSim: < nil | const(i32, val(200)) | empty >
+Maude> rew < (i32 .const 20) (i32 .const 10.0) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrite in WASMMOD : < (i32 .const 20) (i32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrites: 1 in 0ms cpu (0ms real) (~ rewrites/second)
+result [Rat,WASMLocalSim,FindResult,ValRef,Addr,Id,Arity]: < (i32 .const 20) (i32 .const 1.0e+1) (i32 . add) | EmptyStack | empty >
+Maude> rew < (i32 .const 20) (f32 .const 10.0) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrite in WASMMOD : < (i32 .const 20) (f32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrites: 25 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMLocalSim: < i32 . add | const(f32, val(1.0e+1)) $ const(i32, val(20)) | empty >
+Maude> rew < (f32 .const 20) (f32 .const 10.0) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrite in WASMMOD : < (f32 .const 20) (f32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
+rewrites: 20 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMLocalSim: < i32 . add | const(f32, val(1.0e+1)) $ const(f32, val(2.0e+1)) | empty >

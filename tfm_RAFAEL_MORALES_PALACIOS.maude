@@ -1,8 +1,10 @@
 fmod WASM-TYPETOKEN-MOD is
 
-  sorts TypeToken .
+  sorts TypeToken IntTypeToken FloatTypeToken .
+  subsorts FloatTypeToken IntTypeToken < TypeToken .
 
-  ops i32 i64 f32 f64 : -> TypeToken [ctor] .
+  ops i32 i64 : -> IntTypeToken [ctor] .
+  ops f32 f64 : -> FloatTypeToken [ctor] .
 
 endfm
 
@@ -185,13 +187,33 @@ view Addr from TRIV to WASM-VALREF-MOD is
   sort Elt to Addr .
 endv
 
+fmod WASM-NANS-MOD is
+
+  protecting FLOAT .
+
+  sorts NaN NaNFloat NFloat .
+  subsorts NaN NFloat < NaNFloat .
+
+  op nanF : Float -> NFloat [ctor] .
+  *** TODO: To be more exact, NaN values include the value of the mantissa in the binary representation
+  op nan : -> NaN [ctor] .
+
+endfm
+
+view NaNFloat from TRIV to WASM-NANS-MOD is
+  sort Elt to NaNFloat .
+endv
+
 fmod WASM-VALUE-MOD is
 
   protecting WASM-TYPETOKEN-MOD .
+  protecting WASM-NANS-MOD .
+  protecting LIST{NaNFloat} .
   protecting FLOAT .
   protecting INT .
+  protecting CONVERSION .
 
-  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper .
+  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper NaNs Inf Sign Zero .
 
   subsorts Int < UInt SInt IntValue < Value .
   subsorts FloatValue < Value .
@@ -205,11 +227,46 @@ fmod WASM-VALUE-MOD is
   ***cmb Val : FloatValue if (Val == (1 + ) * (2 ^ (e)) or (Val == (1 + ) * (2 ^ (e))) .
 
   var T : TypeToken .
-  var ValWrapper : ValWrapper .
+  var ValWrapper VW1 VW2 : ValWrapper .
+  var I1 I2 : Int . 
+  var F1 F2 : Float . 
+
+  op pos neg : -> Sign .
+
+  op nans : List{NaNFloat} -> NaNs [ctor] .
+  op inf : Sign -> Inf [ctor] .
+  op zero : Sign -> Zero [ctor] .
 
   *** Wrapper for values
   op val : Int -> ValWrapper [ctor] .
   op val : Float -> ValWrapper [ctor] .
+  op val : NaN -> ValWrapper [ctor] .
+  op val : NaNs -> ValWrapper [ctor] .
+  op val : Inf -> ValWrapper [ctor] .
+  op val : Zero -> ValWrapper [ctor] .
+
+  op _+_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
+  eq val(I1) + val(I2) = val(I1 + I2) .
+  eq val(F1) + val(F2) = val(F1 + F2) .
+  op _-_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
+  eq val(I1) - val(I2) = val(I1 - I2) .
+  eq val(F1) - val(F2) = val(F1 - F2) .
+  op _*_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
+  eq val(I1) * val(I2) = val(I1 * I2) .
+  eq val(F1) * val(F2) = val(F1 * F2) .
+  op _quo_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
+  eq val(I1) quo val(I2) = val(I1 quo I2) .
+  ***eq val(F1) quo val(F2) = val(F1 quo F2) .
+  op _rem_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
+  eq val(I1) rem val(I2) = val(I1 rem I2) .
+  eq val(F1) rem val(F2) = val(F1 rem F2) .
+
+  op _+_ : ValWrapper Int -> ValWrapper [ctor] .
+  eq val(I1) + I2 = val(I1 + I2) .
+  ***eq val(F1) + I2 = val(F1 + I2) .  
+  op _rem_ : ValWrapper Int -> ValWrapper [ctor] .
+  eq val(I1) rem I2 = val(I1 rem I2) .
+  ***eq val(F1) rem I2 = val(F1 rem I2) .
 
   *** Represent values "(type).const (value)" pushed to stack
   op const : TypeToken ValWrapper -> Value [ctor] .
@@ -250,7 +307,7 @@ fmod WASM-INST-MOD is
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
 
-  sorts Inst .
+  sorts Inst BinopToken .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -264,7 +321,8 @@ fmod WASM-INST-MOD is
   *** TODO: maybe fix to use it as a template??
   *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
   ***op _.const _ : TypeToken Value -> Inst [ctor] .
-  op i32.const _ : IntValue -> Inst [ctor] .
+  op _ .const _ : TypeToken Int -> Inst [ctor] .
+  op _ .const _ : FloatTypeToken Float -> Inst [ctor] .
   ***op i64.const _ : IntValue -> Inst [ctor] .
   *** TODO: Include more valid types
   ***ops i32 : -> Type [ctor] .
@@ -272,9 +330,10 @@ fmod WASM-INST-MOD is
 
   *** binop (Binary Operations)
   *** ibinop (Integer binop) - add | sub | mul | div_sx | rem_sx | and | or | xor | shl | shr_sx | rotl | rotr
-  op i32.add : -> Inst [ctor] .
-  op i32.sub : -> Inst [ctor] .
-  op i32.mul : -> Inst [ctor] .
+  ops add sub mul : -> BinopToken [ctor] .
+  op _._ : TypeToken BinopToken -> Inst [ctor] .
+  ***op _._ : TypeToken BinopToken -> Inst [ctor] .
+  ***op _._ : TypeToken BinopToken -> Inst [ctor] .
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   op "i32.div_u" : -> Inst [ctor] .
   op "i32.div_s" : -> Inst [ctor] .
@@ -455,6 +514,8 @@ mod WASMMOD is
   var NeLocalSTRList : NeList{Map{ValRef, Value}} .
   var LocalSTR : Map{ValRef, Value} .
   var T : TypeToken .
+  var FloatT : FloatTypeToken .
+  var IntT : IntTypeToken .
   vars IntVal IntVal1 IntVal2 : IntValue .
   vars Int1 Int2 : Int .
   var STElem : StackElem .
@@ -473,6 +534,12 @@ mod WASMMOD is
   var ResultTypeList : List{ResultType} .
   var LocalsRef : LocalsRef .
   var TypeTokenList : List{TypeToken} .
+  var IntN : Int .
+  var FloatN F1 F2 : Float .
+  var ValW1 ValW2 : ValWrapper .
+  var Sg1 Sg2 : Sign .
+  var Inf : Inf .
+  var Zero : Zero .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -513,14 +580,19 @@ mod WASMMOD is
   ***rl [t.const] : < (T .const Val) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, Val) | NeLocalSTRList > .
   ***crl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 32) .
   *** TODO: push "i32 .const IntVal" s.t. we store the type too
-  rl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > .
+  rl [int-const] : < (IntT .const IntN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, val(IntN))) | NeLocalSTRList > .
+  rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, val(float(IntN)))) | NeLocalSTRList > .
+  rl [float-const] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, val(FloatN))) | NeLocalSTRList > .
   ***crl [i64.const] : < (i64.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 64) .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
-  rl [i32.add] : < (i32.add) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, (IntVal + IntVal2) rem 2 ^ (32) ) | NeLocalSTRList > .
-  rl [i32.sub] : < (i32.sub) IL | IntVal $ IntVal2 $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, (IntVal - IntVal2 + (2 ^ (32))) rem (2 ^ (32))) | NeLocalSTRList > .
-  rl [i32.mul] : < (i32.mul) IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, (IntVal * IntVal2) rem 2 ^ (32)) | NeLocalSTRList > .
-  *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
+  rl [int.add] : < (IntT . add) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, (ValW1 + ValW2) rem 2 ^ (32)))  | NeLocalSTRList > .
+  rl [int.sub] : < (IntT . sub) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, ((ValW1 - ValW2) + (2 ^ (32))) rem (2 ^ (32)))) | NeLocalSTRList > .
+  rl [int.mul] : < (IntT . mul) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
+  rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, fadd(ValW1, ValW2)))  | NeLocalSTRList > .
+  ***rl [float.sub] : < (FloatT . sub) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, ((ValW1 - ValW2) + (2 ^ (32))) rem (2 ^ (32)))) | NeLocalSTRList > .
+  ***rl [float.mul] : < (FloatT . mul) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
+   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   crl [i32.div_u-und] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   trap("Binop result undefined") if IntVal2 == 0 .
   crl [i32.div_u] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, abs(IntVal quo IntVal2)) | NeLocalSTRList > if IntVal2 =/= 0 .
   *** TODO: check "multiple distinct parses for statement" in div_s (Parses as String and Inst)
@@ -714,6 +786,21 @@ mod WASMMOD is
   op unsigned : SInt Nat -> UInt .
   ceq unsigned(Int1, N) = Int1 if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
   ceq unsigned(Int1, N) = Int1 + (2 ^ (N)) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
+
+  op fadd : ValWrapper ValWrapper -> ValWrapper .
+  eq fadd(val(nan), val(F1)) = val(nans(nan nanF(F1))) .
+  eq fadd(val(F1), val(nan)) = val(nans(nan nanF(F1))) .
+  ceq fadd(val(inf(Sg1)), val(inf(Sg2))) = val(nans(nil)) if Sg1 =/= Sg2 .
+  eq fadd(val(inf(Sg1)), val(inf(Sg1))) = val(inf(Sg1)) .
+  eq fadd(val(Inf), val(F1)) = val(Inf) .
+  eq fadd(val(F1), val(Inf)) = val(Inf) .
+  *** TODO: check why error on result
+  ***ceq fadd(val(zero(Sg1)), val(zero(Sg2))) = val(zero(pos)) if Sg1 =/= Sg2 .
+  eq fadd(val(zero(Sg1)), val(zero(Sg1))) = val(zero(Sg1)) .
+  eq fadd(val(Zero), val(F1)) = val(F1) .
+  eq fadd(val(F1), val(Zero)) = val(F1) .
+  *** TODO: Take into account "rounded to the nearest representable value"??
+  eq fadd(val(F1), val(F2)) = val(F1 + F2) .
 
   *** Auxiliary op for logic instructions
   op ieq : IntValue IntValue -> IntValue .
