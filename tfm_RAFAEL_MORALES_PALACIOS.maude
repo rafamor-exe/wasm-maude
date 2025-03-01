@@ -194,6 +194,7 @@ fmod WASM-VALUE-MOD is
   sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper .
 
   subsorts Int < UInt SInt IntValue < Value .
+  subsorts FloatValue < Value .
   ***subsorts Int32Value Int64Value < IntValue .
 
   *** Initial proposal for restricting i32 value
@@ -216,6 +217,10 @@ fmod WASM-VALUE-MOD is
   eq get-type(const(T, ValWrapper)) = T .
   op get-val : Value -> ValWrapper .
   eq get-val(const(T, ValWrapper)) = ValWrapper .
+
+  *** Memberships of different types
+  cmb const(T, ValWrapper) : IntValue if T == i32 or T == i64 . 
+  cmb const(T, ValWrapper) : FloatValue if T == f32 or T == f64 . 
 
 endfm
 
