@@ -2,7 +2,7 @@ fmod WASM-TYPETOKEN-MOD is
 
   sorts TypeToken .
 
-  ops i32 i64 : -> TypeToken [ctor] .
+  ops i32 i64 f32 f64 : -> TypeToken [ctor] .
 
 endfm
 
@@ -187,10 +187,11 @@ endv
 
 fmod WASM-VALUE-MOD is
 
-  ***protecting WASM-TYPETOKEN-MOD .
+  protecting WASM-TYPETOKEN-MOD .
+  protecting FLOAT .
   protecting INT .
 
-  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue Num .
+  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper .
 
   subsorts Int < UInt SInt IntValue < Value .
   ***subsorts Int32Value Int64Value < IntValue .
@@ -202,8 +203,19 @@ fmod WASM-VALUE-MOD is
   ***cmb IntValue : Int32Value if 0 < IntValue and IntValue < 4294967295 .
   ***cmb Val : FloatValue if (Val == (1 + ) * (2 ^ (e)) or (Val == (1 + ) * (2 ^ (e))) .
 
+  var T : TypeToken .
+  var ValWrapper : ValWrapper .
+
+  *** Wrapper for values
+  op val : Int -> ValWrapper [ctor] .
+  op val : Float -> ValWrapper [ctor] .
+
   *** Represent values "(type).const (value)" pushed to stack
-  ***op const : TypeToken Num -> Value [ctor] .
+  op const : TypeToken ValWrapper -> Value [ctor] .
+  op get-type : Value -> TypeToken .
+  eq get-type(const(T, ValWrapper)) = T .
+  op get-val : Value -> ValWrapper .
+  eq get-val(const(T, ValWrapper)) = ValWrapper .
 
 endfm
 
