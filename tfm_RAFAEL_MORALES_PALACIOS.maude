@@ -800,10 +800,10 @@ mod WASMMOD is
   *** irelop
   rl [eq] : < (T . eq) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(T, ieq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(T, eq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ne] : < (T . ne) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(T, ine(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(T, ne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ilt_s] : < (IntT . "lt_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(IntT, "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
@@ -832,7 +832,7 @@ mod WASMMOD is
   *** testop
   rl [eqz] : < (IntT . eqz) IL | const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, ieq(ValW1, val(0))) $ ST | NeLocalSTRList > .
+            < IL |  const(IntT, eq(ValW1, val(0))) $ ST | NeLocalSTRList > .
 
   *** Control instructions
   *** block:
@@ -976,13 +976,13 @@ mod WASMMOD is
   ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
 
   *** Auxiliary op for logic instructions
-  op ieq : ValWrapper ValWrapper -> ValWrapper .
-  ceq ieq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
-  eq ieq(ValW1, ValW2) = val(0) [owise] .
+  op eq : ValWrapper ValWrapper -> ValWrapper .
+  ceq eq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq eq(ValW1, ValW2) = val(0) [owise] .
   
-  op ine : ValWrapper ValWrapper -> ValWrapper .
-  ceq ine(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
-  eq ine(ValW1, ValW2) = val(0) [owise] .
+  op ne : ValWrapper ValWrapper -> ValWrapper .
+  ceq ne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
+  eq ne(ValW1, ValW2) = val(0) [owise] .
   
   op "ilt_u" : ValWrapper ValWrapper -> ValWrapper .
   ceq "ilt_u"(ValW1, ValW2) = val(1) if abs(ValW1) < abs(ValW2) .
