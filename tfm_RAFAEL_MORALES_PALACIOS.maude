@@ -800,39 +800,39 @@ mod WASMMOD is
   *** irelop
   rl [eq] : < (T . eq) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(T, eq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, eq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ne] : < (T . ne) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(T, ne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, ne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ilt_s] : < (IntT . "lt_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
   rl [ilt_u] : < (IntT . "lt_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, "ilt_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, "ilt_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [igt_s] : < (IntT . "gt_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, "igt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, "igt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
   rl [igt_u] : < (IntT . "gt_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, "igt_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, "igt_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ile_s] : < (IntT . "le_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, "ile_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, "ile_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
   rl [ile_u] : < (IntT . "le_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, "ile_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, "ile_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ige_s] : < (IntT . "ge_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(IntT, "ige_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
   rl [ige_u] : < (IntT . "ge_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL | const(IntT, "ige_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL | const(i32, "ige_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
 
   *** testop
   rl [eqz] : < (IntT . eqz) IL | const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(IntT, eq(ValW1, val(0))) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, eq(ValW1, val(0))) $ ST | NeLocalSTRList > .
 
   *** Control instructions
   *** block:
