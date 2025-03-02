@@ -146,3 +146,5 @@ Maude> rew < (f32 .const 20) (f32 .const 10.0) (i32 . add) | EmptyStack | EmptyL
 rewrite in WASMMOD : < (f32 .const 20) (f32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrites: 20 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMLocalSim: < i32 . add | const(f32, val(1.0e+1)) $ const(f32, val(2.0e+1)) | empty >
+
+rew run-nomodule((f32 .const 0) (f32 .const 30.0) (f32 . sub)) .

@@ -204,16 +204,46 @@ view NaNFloat from TRIV to WASM-NANS-MOD is
   sort Elt to NaNFloat .
 endv
 
-fmod WASM-VALUE-MOD is
+fmod WASM-FLOAT-MOD is
 
   protecting WASM-TYPETOKEN-MOD .
   protecting WASM-NANS-MOD .
   protecting LIST{NaNFloat} .
+
+  sorts NaNs InfF Sign ZeroF .
+
+  ops pos neg : -> Sign [ctor] .
+
+  op opposite : Sign -> Sign [ctor] .
+  eq opposite(pos) = neg .
+  eq opposite(neg) = pos .
+
+  op nans : List{NaNFloat} -> NaNs [ctor] .
+  op inf : Sign -> InfF [ctor] .
+  op zero : Sign -> ZeroF [ctor] .
+  
+  var FType : FloatTypeToken .
+
+  op expon : FloatTypeToken -> Nat .
+  eq expon(f32) = 8 .
+  eq expon(f64) = 11 .
+  op signif : FloatTypeToken -> Nat .
+  eq signif(f32) = 23 .
+  eq signif(f64) = 52 .
+
+  op limitF : FloatTypeToken -> Nat .
+  eq limitF(FType) = (2 ^ (2 ^ expon(FType))) .
+
+endfm
+
+fmod WASM-VALUE-MOD is
+
+  protecting WASM-FLOAT-MOD .
   protecting FLOAT .
   protecting INT .
   protecting CONVERSION .
 
-  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper NaNs Inf Sign Zero .
+  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper .
 
   subsorts Int < UInt SInt IntValue < Value .
   subsorts FloatValue < Value .
@@ -229,21 +259,23 @@ fmod WASM-VALUE-MOD is
   var T : TypeToken .
   var ValWrapper VW1 VW2 : ValWrapper .
   var I1 I2 : Int . 
-  var F1 F2 : Float . 
-
-  op pos neg : -> Sign .
-
-  op nans : List{NaNFloat} -> NaNs [ctor] .
-  op inf : Sign -> Inf [ctor] .
-  op zero : Sign -> Zero [ctor] .
+  var F1 F2 : Float .
+  var FType : FloatTypeToken .
+  var FVal : FloatValue .
 
   *** Wrapper for values
   op val : Int -> ValWrapper [ctor] .
   op val : Float -> ValWrapper [ctor] .
   op val : NaN -> ValWrapper [ctor] .
   op val : NaNs -> ValWrapper [ctor] .
-  op val : Inf -> ValWrapper [ctor] .
-  op val : Zero -> ValWrapper [ctor] .
+  op val : InfF -> ValWrapper [ctor] .
+  op val : ZeroF -> ValWrapper [ctor] .
+
+  op correctFloat : FloatValue -> FloatValue [ctor] .
+  ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(pos))) if F1 >= float(limitF(FType)) .
+  ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(neg))) if F1 <= - float(limitF(FType)) .
+  eq correctFloat(const(FType, val(0))) = const(FType, val(zero(pos))) .
+  eq correctFloat(FVal) = FVal [owise] .
 
   op _+_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
   eq val(I1) + val(I2) = val(I1 + I2) .
@@ -278,6 +310,48 @@ fmod WASM-VALUE-MOD is
   *** Memberships of different types
   cmb const(T, ValWrapper) : IntValue if T == i32 or T == i64 . 
   cmb const(T, ValWrapper) : FloatValue if T == f32 or T == f64 . 
+
+endfm
+
+fmod WASM-BINOPS-MOD is
+
+  protecting WASM-VALUE-MOD .
+
+  var FloatN F1 F2 : Float .
+  var ValW1 ValW2 : ValWrapper .
+  var Sg1 Sg2 : Sign .
+  var InfF : InfF .
+  var ZeroF : ZeroF .
+
+  *** FLOAT Binops
+
+  op fadd : ValWrapper ValWrapper -> ValWrapper .
+  eq fadd(val(nan), val(F1)) = val(nans(nan nanF(F1))) .
+  eq fadd(val(F1), val(nan)) = val(nans(nan nanF(F1))) .
+  ceq fadd(val(inf(Sg1)), val(inf(Sg2))) = val(nans(nil)) if Sg1 =/= Sg2 .
+  eq fadd(val(inf(Sg1)), val(inf(Sg1))) = val(inf(Sg1)) .
+  eq fadd(val(InfF), val(F1)) = val(InfF) .
+  eq fadd(val(F1), val(InfF)) = val(InfF) .
+  ceq fadd(val(zero(Sg1)), val(zero(Sg2))) = val(zero(pos)) if Sg1 =/= Sg2 .
+  eq fadd(val(zero(Sg1)), val(zero(Sg1))) = val(zero(Sg1)) .
+  eq fadd(val(ZeroF), val(F1)) = val(F1) .
+  eq fadd(val(F1), val(ZeroF)) = val(F1) .
+  *** TODO: Take into account "rounded to the nearest representable value"??
+  eq fadd(val(F1), val(F2)) = val(F1 + F2) .
+
+  op fsub : ValWrapper ValWrapper -> ValWrapper .
+  eq fsub(val(nan), val(F1)) = val(nans(nan nanF(F1))) .
+  eq fsub(val(F1), val(nan)) = val(nans(nan nanF(F1))) .
+  eq fsub(val(inf(Sg1)), val(inf(Sg1))) = val(nans(nil)) .
+  ceq fsub(val(inf(Sg1)), val(inf(Sg2))) = val(inf(Sg1)) if Sg1 =/= Sg2 .
+  eq fsub(val(F1), val(inf(Sg1))) = val(inf(opposite(Sg1))) .
+  eq fsub(val(InfF), val(F1)) = val(InfF) .
+  eq fsub(val(zero(Sg1)), val(zero(Sg1))) = val(zero(pos)) .
+  ceq fsub(val(zero(Sg1)), val(zero(Sg2))) = val(zero(Sg1)) if Sg1 =/= Sg2 .
+  eq fsub(val(F1), val(ZeroF)) = val(F1) .
+  eq fsub(val(ZeroF), val(F1)) = val(- F1) .
+  *** TODO: Take into account "rounded to the nearest representable value"??
+  eq fsub(val(F1), val(F2)) = val(F1 - F2) .
 
 endfm
 
@@ -413,6 +487,7 @@ mod WASMMOD is
   ***protecting QID .
   protecting WASM-BITVAL-MOD .
   protecting WASM-INST-MOD .
+  protecting WASM-BINOPS-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
   protecting LIST{Map{ValRef, Value}} .
@@ -538,12 +613,16 @@ mod WASMMOD is
   var FloatN F1 F2 : Float .
   var ValW1 ValW2 : ValWrapper .
   var Sg1 Sg2 : Sign .
-  var Inf : Inf .
-  var Zero : Zero .
+  var InfF : InfF .
+  var ZeroF : ZeroF .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
 
+
+  *** Run trigger
+  op run-nomodule : List{Inst} -> WASMFuncGlobalSim .
+  eq run-nomodule(IL) = < IL | EmptyStack | empty > # empty <-> empty # empty .
 
 
   *** Rules
@@ -582,15 +661,25 @@ mod WASMMOD is
   *** TODO: push "i32 .const IntVal" s.t. we store the type too
   rl [int-const] : < (IntT .const IntN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, val(IntN))) | NeLocalSTRList > .
   rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, val(float(IntN)))) | NeLocalSTRList > .
-  rl [float-const] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, val(FloatN))) | NeLocalSTRList > .
+  rl [float-const] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(FloatN)))) | NeLocalSTRList > .
   ***crl [i64.const] : < (i64.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 64) .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
-  rl [int.add] : < (IntT . add) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, (ValW1 + ValW2) rem 2 ^ (32)))  | NeLocalSTRList > .
-  rl [int.sub] : < (IntT . sub) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, ((ValW1 - ValW2) + (2 ^ (32))) rem (2 ^ (32)))) | NeLocalSTRList > .
-  rl [int.mul] : < (IntT . mul) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
-  rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, fadd(ValW1, ValW2)))  | NeLocalSTRList > .
-  ***rl [float.sub] : < (FloatT . sub) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, ((ValW1 - ValW2) + (2 ^ (32))) rem (2 ^ (32)))) | NeLocalSTRList > .
+  rl [int.add] : < (IntT . add) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
+                 => 
+                 < IL | st-push(ST, const(IntT, (ValW1 + ValW2) rem 2 ^ (32)))  | NeLocalSTRList > .
+  rl [int.sub] : < (IntT . sub) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >  
+                 => 
+                 < IL | st-push(ST, const(IntT, ((ValW1 - ValW2) + (2 ^ (32))) rem (2 ^ (32)))) | NeLocalSTRList > .
+  rl [int.mul] : < (IntT . mul) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
+                 => 
+                 < IL | st-push(ST, const(IntT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
+  rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   => 
+                   < IL | st-push(ST, correctFloat(const(FloatT, fadd(ValW1, ValW2))) ) | NeLocalSTRList > .
+  rl [float.sub] : < (FloatT . sub) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   => 
+                   < IL | st-push(ST, correctFloat(const(FloatT, fsub(ValW1, ValW2)))) | NeLocalSTRList > .
   ***rl [float.mul] : < (FloatT . mul) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(FloatT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
    *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   crl [i32.div_u-und] : < ("i32.div_u") IL | IntVal2 $ IntVal $ ST | NeLocalSTRList >   =>   trap("Binop result undefined") if IntVal2 == 0 .
@@ -786,21 +875,6 @@ mod WASMMOD is
   op unsigned : SInt Nat -> UInt .
   ceq unsigned(Int1, N) = Int1 if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
   ceq unsigned(Int1, N) = Int1 + (2 ^ (N)) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
-
-  op fadd : ValWrapper ValWrapper -> ValWrapper .
-  eq fadd(val(nan), val(F1)) = val(nans(nan nanF(F1))) .
-  eq fadd(val(F1), val(nan)) = val(nans(nan nanF(F1))) .
-  ceq fadd(val(inf(Sg1)), val(inf(Sg2))) = val(nans(nil)) if Sg1 =/= Sg2 .
-  eq fadd(val(inf(Sg1)), val(inf(Sg1))) = val(inf(Sg1)) .
-  eq fadd(val(Inf), val(F1)) = val(Inf) .
-  eq fadd(val(F1), val(Inf)) = val(Inf) .
-  *** TODO: check why error on result
-  ***ceq fadd(val(zero(Sg1)), val(zero(Sg2))) = val(zero(pos)) if Sg1 =/= Sg2 .
-  eq fadd(val(zero(Sg1)), val(zero(Sg1))) = val(zero(Sg1)) .
-  eq fadd(val(Zero), val(F1)) = val(F1) .
-  eq fadd(val(F1), val(Zero)) = val(F1) .
-  *** TODO: Take into account "rounded to the nearest representable value"??
-  eq fadd(val(F1), val(F2)) = val(F1 + F2) .
 
   *** Auxiliary op for logic instructions
   op ieq : IntValue IntValue -> IntValue .
