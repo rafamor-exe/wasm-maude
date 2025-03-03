@@ -177,3 +177,19 @@ Maude> rew run-nomodule((f32 .const 30) (f32 .const 30.1) (f32 . ne)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 3.0100000000000001e+1) (f32 . ne)) .
 rewrites: 62 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMFuncGlobalSim: < nil | const(f32, val((1).NzNat)) | empty > # empty <-> empty # empty
+
+
+*** TEST BR IF NEW SYNTAX
+Maude> rew run-nomodule((i32 .const 20) (block "l1" (i32 .const 15) (i32 .const 0) ("br_if" 0) (local.set 1) (i32 .const 1)  end)) .
+rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (i32 .const (0).Zero) "br_if" 0 local.set 1 (i32 .const (1).NzNat) end) .
+rewrites: 77 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) $ const(i32, val(20)) | 1 |-> const(i32, val(15)) > # empty <-> empty # empty
+Maude> rew run-nomodule((i32 .const 20) (block "l1" (i32 .const 15) (i32 .const 1) ("br_if" 0) (local.set 1) (i32 .const 1)  end)) .
+rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (i32 .const (1).NzNat) "br_if" 0 local.set 1 (i32 .const (1).NzNat) end) .
+rewrites: 56 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(15)) $ const(i32, val(20)) | empty > # empty <-> empty # empty
+Maude> rew run-nomodule((i32 .const 20) (block "l1" (i32 .const 15) (f32 .const 0) ("br_if" 0) (local.set 1) (i32 .const 1)  end)) .
+rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (f32 .const (0).Zero) "br_if" 0 local.set 1 (i32 .const (1).NzNat) end) .
+rewrites: 47 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < "br_if" 0 local.set 1 (i32 .const (1).NzNat) end | const(f32, val(zero(pos))) $ const(i32, val(15)) $ label("l1", nil) $ const(i32, val(20)) |
+    empty > # empty <-> empty # empty

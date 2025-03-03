@@ -842,21 +842,27 @@ mod WASMMOD is
             < IL | ST | NeLocalSTRList > .
   rl [block] : < ((block Str) IL2 end) IL | ST | NeLocalSTRList >   =>   < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
-  rl [if-else] : < (if IL1 else IL2 end) IL | IntVal $ ST | NeLocalSTRList >   =>   < if-else(IntVal, IL1, IL2, IL) | ST | NeLocalSTRList > .
+  rl [if-else] : < (if IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
+                 =>
+                 < if-else(ValW1, IL1, IL2, IL) | ST | NeLocalSTRList > .
   *** loop is an infinite loop
-  rl [loop] : < ((loop Str) IL2 end) IL | ST | NeLocalSTRList >   =>   < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | NeLocalSTRList > .
+  rl [loop] : < ((loop Str) IL2 end) IL | ST | NeLocalSTRList >   
+              =>
+              < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | NeLocalSTRList > .
   rl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
             < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | NeLocalSTRList > .
   rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | NeLocalSTRList > 
                   =>
                   < IL1 | ST1 | NeLocalSTRList > .
-  crl [br_if] : < ("br_if" N) IL | IntVal $ ST | NeLocalSTRList >
+  crl [br_if] : < ("br_if" N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
                =>   
-               < (br N) IL | ST | NeLocalSTRList > if IntVal =/= 0 .
-  crl [br_if-else] : < ("br_if" N) IL | IntVal $ ST | NeLocalSTRList >
+               < (br N) IL | ST | NeLocalSTRList > 
+               if Int1 =/= 0 .
+  crl [br_if-else] : < ("br_if" N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
               =>   
-              < IL | ST | NeLocalSTRList > if IntVal == 0 .
+              < IL | ST | NeLocalSTRList > 
+              if Int1 == 0 .
   rl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
               < get-IL-func(FuncStore[N]) exit-func end | 
@@ -931,9 +937,9 @@ mod WASMMOD is
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = get-ith-stackandlabel(ST, N - 1, TempST) if N > 0 .
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = TempST $ ST || Label if N == 0 .
 
-  op if-else : IntValue List{Inst} List{Inst} List{Inst} -> List{Inst} .
-  ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if IntVal == 0 .
-  ceq if-else(IntVal, IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if IntVal =/= 0 .
+  op if-else : ValWrapper List{Inst} List{Inst} List{Inst} -> List{Inst} .
+  ceq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if Int1 == 0 .
+  ceq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if Int1 =/= 0 .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
