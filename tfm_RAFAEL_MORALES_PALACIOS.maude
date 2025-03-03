@@ -906,12 +906,12 @@ mod WASMMOD is
                    < IL | st-push(ST, correctFloat(const(FloatT, fsqrt(ValW1)))) | NeLocalSTRList > .
 
   *** irelop
-  rl [eq] : < (T . eq) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
+  rl [ieq] : < (IntT . eq) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(i32, eq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [ne] : < (T . ne) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
+            < IL |  const(i32, ieq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  rl [ine] : < (IntT . ne) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(i32, ne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, ine(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   rl [ilt_s] : < (IntT . "lt_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(i32, "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
@@ -940,7 +940,16 @@ mod WASMMOD is
   *** testop
   rl [eqz] : < (IntT . eqz) IL | const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(i32, eq(ValW1, val(0))) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, ieq(ValW1, val(0))) $ ST | NeLocalSTRList > .
+
+  ***frelop
+  rl [feq] : < (FloatT . eq) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+            =>   
+            < IL |  const(i32, feq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  ***rl [fne] : < (FloatT . ne) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+  ***          =>   
+  ***          < IL |  const(i32, fne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  
 
   *** Control instructions
   *** block:
@@ -1090,15 +1099,13 @@ mod WASMMOD is
   ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
 
   *** Auxiliary op for logic instructions
-  op eq : ValWrapper ValWrapper -> ValWrapper .
-  ***ceq eq(ValW1, ValW2) = val(1) if ValW1 == ValW2 and ValW1 =/= val(NaN) .
-  eq eq(val(ZeroF1), val(ZeroF2)) = val(1) .
-  eq eq(ValW1, ValW2) = val(0) [owise] .
+  op ieq : ValWrapper ValWrapper -> ValWrapper .
+  ceq ieq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq ieq(ValW1, ValW2) = val(0) [owise] .
   
-  op ne : ValWrapper ValWrapper -> ValWrapper .
-  ***ceq ne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 or ValW1 == val(NaN) or ValW2 == val(NaN) .
-  ceq ne(val(zero(Sg1)), val(zero(Sg2))) = val(0) if Sg1 =/= Sg2.
-  eq ne(ValW1, ValW2) = val(0) [owise] .
+  op ine : ValWrapper ValWrapper -> ValWrapper .
+  ceq ine(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
+  eq ine(ValW1, ValW2) = val(0) [owise] .
   
   op "ilt_u" : ValWrapper ValWrapper -> ValWrapper .
   ceq "ilt_u"(ValW1, ValW2) = val(1) if abs(ValW1) < abs(ValW2) .
@@ -1131,6 +1138,21 @@ mod WASMMOD is
   op "ige_s" : ValWrapper ValWrapper -> ValWrapper .
   ceq "ige_s"(ValW1, ValW2) = val(1) if ValW1 >= ValW2 .
   eq "ige_s"(ValW1, ValW2) = val(0) [owise] .
+
+  *** float comparison ops
+  op feq : ValWrapper ValWrapper -> ValWrapper .
+  eq feq(val(NaN), ValW2) = val(0) .
+  eq feq(ValW1, val(NaN)) = val(0) .
+  ceq feq(val(zero(Sg1)), val(zero(Sg2))) = val(1) if Sg1 =/= Sg2 .
+  ceq feq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq feq(ValW1, ValW2) = val(0) [owise] .
+
+  op fne : ValWrapper ValWrapper -> ValWrapper .
+  eq fne(val(NaN), ValW2) = val(1) .
+  eq fne(ValW1, val(NaN)) = val(1) .
+  ceq fne(val(zero(Sg1)), val(zero(Sg2))) = val(0) if Sg1 =/= Sg2 .
+  ceq fne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
+  eq fne(ValW1, ValW2) = val(0) [owise] .
 
   ****************
   *** Verification
