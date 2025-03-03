@@ -773,7 +773,8 @@ mod WASMMOD is
   var ValW1 ValW2 : ValWrapper .
   var Sg1 Sg2 : Sign .
   var InfF : InfF .
-  var ZeroF : ZeroF .
+  var ZeroF ZeroF1 ZeroF2 : ZeroF .
+  var NaN : NaN .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -1090,11 +1091,13 @@ mod WASMMOD is
 
   *** Auxiliary op for logic instructions
   op eq : ValWrapper ValWrapper -> ValWrapper .
-  ceq eq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  ***ceq eq(ValW1, ValW2) = val(1) if ValW1 == ValW2 and ValW1 =/= val(NaN) .
+  eq eq(val(ZeroF1), val(ZeroF2)) = val(1) .
   eq eq(ValW1, ValW2) = val(0) [owise] .
   
   op ne : ValWrapper ValWrapper -> ValWrapper .
-  ceq ne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
+  ***ceq ne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 or ValW1 == val(NaN) or ValW2 == val(NaN) .
+  ceq ne(val(zero(Sg1)), val(zero(Sg2))) = val(0) if Sg1 =/= Sg2.
   eq ne(ValW1, ValW2) = val(0) [owise] .
   
   op "ilt_u" : ValWrapper ValWrapper -> ValWrapper .
