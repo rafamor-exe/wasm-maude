@@ -227,6 +227,7 @@ fmod WASM-NANS-MOD is
 
   op nanF : Float -> NFloat [ctor] .
   *** TODO: To be more exact, NaN values include the value of the mantissa in the binary representation
+  *** TODO: Take into account canon NaNs
   op nan : Sign -> NaN [ctor] .
 
 endfm
@@ -387,6 +388,70 @@ fmod WASM-VALUE-MOD is
   *** Memberships of different types
   cmb const(T, ValWrapper) : IntValue if T == i32 or T == i64 . 
   cmb const(T, ValWrapper) : FloatValue if T == f32 or T == f64 . 
+
+endfm
+
+fmod WASM-IOPS-MOD is
+
+  protecting WASM-VALUE-MOD .
+
+  var N : Nat .
+  var Int1 Int2 : Int .
+  var ValW1 ValW2 : ValWrapper .
+
+  *** Auxiliary op for arithmetic instructions
+  *** signed op : integer operators can be interpreted as if they had sign by some instructions.
+  *** signed takes the number and the number of bits in its representation (32/64) 
+  *** TODO: FIX multiple parses for statement
+  op signed : ValWrapper Nat -> ValWrapper .
+  ceq signed(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
+  ceq signed(val(Int1), N) = val(Int1 - (2 ^ (N))) if (2 ^ (N - 1)) <= Int1 and Int1 < (2 ^ (N)) .
+
+  *** inverted function from signed
+  op unsigned : ValWrapper Nat -> ValWrapper .
+  ceq unsigned(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
+  ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
+
+  *** Auxiliary op for logic instructions
+  op ieq : ValWrapper ValWrapper -> ValWrapper .
+  ceq ieq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq ieq(ValW1, ValW2) = val(0) [owise] .
+  
+  op ine : ValWrapper ValWrapper -> ValWrapper .
+  ceq ine(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
+  eq ine(ValW1, ValW2) = val(0) [owise] .
+  
+  op "ilt_u" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "ilt_u"(ValW1, ValW2) = val(1) if abs(ValW1) < abs(ValW2) .
+  eq "ilt_u"(ValW1, ValW2) = val(0) [owise] .
+  
+  op "ilt_s" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "ilt_s"(ValW1, ValW2) = val(1) if ValW1 < ValW2 .
+  eq "ilt_s"(ValW1, ValW2) = val(0) [owise] .
+  
+  op "igt_u" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "igt_u"(ValW1, ValW2) = val(1) if abs(ValW1) > abs(ValW2) .
+  eq "igt_u"(ValW1, ValW2) = val(0) [owise] .
+  
+  op "igt_s" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "igt_s"(ValW1, ValW2) = val(1) if ValW1 > ValW2 .
+  eq "igt_s"(ValW1, ValW2) = val(0) [owise] .
+
+  op "ile_u" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "ile_u"(ValW1, ValW2) = val(1) if abs(ValW1) <= abs(ValW2) .
+  eq "ile_u"(ValW1, ValW2) = val(0) [owise] .
+  
+  op "ile_s" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "ile_s"(ValW1, ValW2) = val(1) if ValW1 <= ValW2 .
+  eq "ile_s"(ValW1, ValW2) = val(0) [owise] .
+  
+  op "ige_u" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "ige_u"(ValW1, ValW2) = val(1) if abs(ValW1) >= abs(ValW2) .
+  eq "ige_u"(ValW1, ValW2) = val(0) [owise] .
+  
+  op "ige_s" : ValWrapper ValWrapper -> ValWrapper .
+  ceq "ige_s"(ValW1, ValW2) = val(1) if ValW1 >= ValW2 .
+  eq "ige_s"(ValW1, ValW2) = val(0) [owise] .
 
 endfm
 
@@ -572,6 +637,34 @@ fmod WASM-FOPS-MOD is
 
 endfm
 
+fmod WASM-CONVERSIONOPS-MOD is
+
+  protecting WASM-VALUE-MOD .
+
+  var Int1 : Int .
+  var F1 : Float .
+  var NaN : NaN .
+  var InfF : InfF .
+  var ZeroF : ZeroF .
+  var ValW : ValWrapper .
+
+  op wrap : IntTypeToken IntTypeToken ValWrapper -> ValWrapper .
+  eq wrap(i64, i32, val(Int1)) = val(Int1 rem (2 ^ (bit-width(i32)))) .
+
+  op demote : FloatTypeToken FloatTypeToken ValWrapper -> ValWrapper .
+  *** TODO: Take into account canon NaNs
+  eq demote(f64, f32, val(NaN)) = val(nans(nil)) .
+  eq demote(f64, f32, val(InfF)) = val(InfF) .
+  eq demote(f64, f32, val(ZeroF)) = val(ZeroF) .
+  eq demote(f64, f32, val(F1)) = val(correctFloat(const(f32, val(F1)))) .
+
+  op promote : FloatTypeToken FloatTypeToken ValWrapper -> ValWrapper .
+  *** TODO: Take into account canon NaNs
+  eq promote(f32, f64, val(NaN)) = val(nans(nil)) .
+  eq promote(f32, f64, ValW) = ValW .
+
+endfm
+
 fmod WASM-GLOBALINSTANCE-MOD is
   
   protecting WASM-TYPETOKEN-MOD .
@@ -599,7 +692,7 @@ fmod WASM-INST-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts Inst .
-  sorts BinopToken IBinopToken FBinopToken UBinopToken RelopToken IRelopToken FRelopToken TestopToken .
+  sorts BinopToken IBinopToken FBinopToken UBinopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -653,6 +746,10 @@ fmod WASM-INST-MOD is
   *** testop
   ops eqz : -> TestopToken [ctor] .
   op _._ : IntTypeToken TestopToken -> Inst [ctor] .
+
+  *** conversions
+  ops "wrap_" "demote_" "promote_" : -> CvtopToken [ctor] .
+  op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor] .
 
   *** Parametric instructions
   ops drop select : -> Inst [ctor] .
@@ -712,7 +809,9 @@ mod WASMMOD is
   ***protecting QID .
   protecting WASM-BITVAL-MOD .
   protecting WASM-INST-MOD .
+  protecting WASM-IOPS-MOD .
   protecting WASM-FOPS-MOD .
+  protecting WASM-CONVERSIONOPS-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
   protecting LIST{Map{ValRef, Value}} .
@@ -1040,6 +1139,17 @@ mod WASMMOD is
   rl [fge] : < (FloatT . ge) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(i32, fge(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+
+  *** Conversions
+  rl [i32.wrap_i64] : < (i32 . "wrap_" i64) IL | const(i64, ValW1) $ ST | NeLocalSTRList >   
+                    =>   
+                    < IL |  const(i32, wrap(i64, i32, ValW1)) $ ST | NeLocalSTRList > .
+  rl [f32.demote_f64] : < (f32 . "demote_" f64) IL | const(f64, ValW1) $ ST | NeLocalSTRList >   
+                    =>   
+                    < IL |  const(i32, demote(f64, f32, ValW1)) $ ST | NeLocalSTRList > .
+  rl [f64.promote_f32] : < (f64 . "promote_" f32) IL | const(f32, ValW1) $ ST | NeLocalSTRList >   
+                    =>   
+                    < IL |  const(i32, promote(f32, f64, ValW1)) $ ST | NeLocalSTRList > .
   
 
   *** Control instructions
@@ -1174,61 +1284,6 @@ mod WASMMOD is
   eq inizialize-store-N(0, LocalSTR) = LocalSTR .
   eq inizialize-store-N(1, LocalSTR) = insert(0, 0, LocalSTR) .
   ceq inizialize-store-N(N, LocalSTR) = insert(N - 1, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
-
-
-  *** Auxiliary op for arithmetic instructions
-  *** signed op : integer operators can be interpreted as if they had sign by some instructions.
-  *** signed takes the number and the number of bits in its representation (32/64) 
-  *** TODO: FIX multiple parses for statement
-  op signed : ValWrapper Nat -> ValWrapper .
-  ceq signed(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
-  ceq signed(val(Int1), N) = val(Int1 - (2 ^ (N))) if (2 ^ (N - 1)) <= Int1 and Int1 < (2 ^ (N)) .
-
-  *** inverted function from signed
-  op unsigned : ValWrapper Nat -> ValWrapper .
-  ceq unsigned(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
-  ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
-
-  *** Auxiliary op for logic instructions
-  op ieq : ValWrapper ValWrapper -> ValWrapper .
-  ceq ieq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
-  eq ieq(ValW1, ValW2) = val(0) [owise] .
-  
-  op ine : ValWrapper ValWrapper -> ValWrapper .
-  ceq ine(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
-  eq ine(ValW1, ValW2) = val(0) [owise] .
-  
-  op "ilt_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ilt_u"(ValW1, ValW2) = val(1) if abs(ValW1) < abs(ValW2) .
-  eq "ilt_u"(ValW1, ValW2) = val(0) [owise] .
-  
-  op "ilt_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ilt_s"(ValW1, ValW2) = val(1) if ValW1 < ValW2 .
-  eq "ilt_s"(ValW1, ValW2) = val(0) [owise] .
-  
-  op "igt_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "igt_u"(ValW1, ValW2) = val(1) if abs(ValW1) > abs(ValW2) .
-  eq "igt_u"(ValW1, ValW2) = val(0) [owise] .
-  
-  op "igt_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "igt_s"(ValW1, ValW2) = val(1) if ValW1 > ValW2 .
-  eq "igt_s"(ValW1, ValW2) = val(0) [owise] .
-
-  op "ile_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ile_u"(ValW1, ValW2) = val(1) if abs(ValW1) <= abs(ValW2) .
-  eq "ile_u"(ValW1, ValW2) = val(0) [owise] .
-  
-  op "ile_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ile_s"(ValW1, ValW2) = val(1) if ValW1 <= ValW2 .
-  eq "ile_s"(ValW1, ValW2) = val(0) [owise] .
-  
-  op "ige_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ige_u"(ValW1, ValW2) = val(1) if abs(ValW1) >= abs(ValW2) .
-  eq "ige_u"(ValW1, ValW2) = val(0) [owise] .
-  
-  op "ige_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ige_s"(ValW1, ValW2) = val(1) if ValW1 >= ValW2 .
-  eq "ige_s"(ValW1, ValW2) = val(0) [owise] .
 
   *** Auxiliary parametric instructions
   op selectVal : ValWrapper Value Value -> Value .

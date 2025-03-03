@@ -229,3 +229,17 @@ Maude> rew run-nomodule((i32 .const 8) (i32 .const 1) (i32 . or)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 8) (i32 .const (1).NzNat) (i32 . or)) .
 rewrites: 779 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMFuncGlobalSim: < nil | const(i32, val(9)) | empty > # empty <-> empty # empty
+
+*** TEST TYPE CONVERSIONS
+Maude> rew run-nomodule((i64 .const 10) (i32 . "wrap_" i64)) .
+rewrite in WASMMOD : run-nomodule((i64 .const 10) (i32 . "wrap_" i64)) .
+rewrites: 34 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(10)) | empty > # empty <-> empty # empty
+Maude> rew run-nomodule((f64 .const 10) (f32 . "demote_" f64)) .
+rewrite in WASMMOD : run-nomodule((f64 .const 10) (f32 . "demote_" f64)) .
+rewrites: 50 in 0ms cpu (0ms real) (~ rewrites/second)
+result [WASMFuncGlobalSim]: < nil | const(i32, val(const(f32, val(1.0e+1)))) | empty > # empty <-> empty # empty 
+Maude> rew run-nomodule((f32 .const 10) (f64 . "promote_" f32)) .
+rewrite in WASMMOD : run-nomodule((f32 .const 10) (f64 . "promote_" f32)) .
+rewrites: 42 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(1.0e+1)) | empty > # empty <-> empty # empty
