@@ -200,3 +200,8 @@ rew run-nomodule((f32 .const 10) (f32 .const 10) (f32 . div)) .
 rew run-nomodule((f32 .const 10) (f32 .const 11) (f32 . min)) .
 rew run-nomodule((f32 .const 10) (f32 .const -11) (f32 . copysign)) .
 rew run-nomodule((f32 .const -1) (f32 . sqrt)) .
+
+*** TES PARAMETRIC FUNCTIONS
+rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 20) (f32 .const 10) drop (i32 .const 5) select) .
+rewrites: 98 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(f32, val(3.0e+1)) | empty > # empty <-> empty # empty

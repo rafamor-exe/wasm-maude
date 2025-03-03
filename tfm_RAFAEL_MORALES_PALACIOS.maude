@@ -591,6 +591,9 @@ fmod WASM-INST-MOD is
   ops eqz : -> TestopToken [ctor] .
   op _._ : IntTypeToken TestopToken -> Inst [ctor] .
 
+  *** Parametric instructions
+  ops drop select : -> Inst [ctor] .
+
   *** Control Instructions
   op nop : -> Inst [ctor] .
   op unreachable : -> Inst [ctor] .
@@ -812,6 +815,13 @@ mod WASMMOD is
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert-gb-val(GlobalAddrs[Str], Val, GlobalsStore) .
 
+  *** Parametric Instructions
+  rl [drop] : < (drop) IL | Val $ ST | NeLocalSTRList > 
+                  =>   
+                  < IL | ST | NeLocalSTRList > .
+  rl [select] : < (select) IL | const(i32, ValW2) $ Val2 $ Val1 $ ST | NeLocalSTRList > 
+                  =>   
+                  < IL | selectVal(ValW2, Val1, Val2) $ ST | NeLocalSTRList > .
 
 
   *** t.const rule: push Val of type T to stack
@@ -1153,6 +1163,11 @@ mod WASMMOD is
   ceq fne(val(zero(Sg1)), val(zero(Sg2))) = val(0) if Sg1 =/= Sg2 .
   ceq fne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
   eq fne(ValW1, ValW2) = val(0) [owise] .
+
+  *** Auxiliary parametric instructions
+  op selectVal : ValWrapper Value Value -> Value .
+  ceq selectVal(val(Int1), Val1, Val2) = Val1 if Int1 =/= 0 .
+  eq selectVal(val(Int1), Val1, Val2) = Val2 [owise] .
 
   ****************
   *** Verification
