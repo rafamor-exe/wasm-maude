@@ -205,3 +205,12 @@ rew run-nomodule((f32 .const -1) (f32 . sqrt)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 20) (f32 .const 10) drop (i32 .const 5) select) .
 rewrites: 98 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMFuncGlobalSim: < nil | const(f32, val(3.0e+1)) | empty > # empty <-> empty # empty
+
+*** TEST BITWISE OPERATORS
+rewrite in WASMMOD : run-nomodule((i32 .const 8) (i32 .const 7) (i32 . xor)) .
+rewrites: 797 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(15)) | empty > # empty <-> empty # empty
+Maude> rew run-nomodule((i32 .const 8) (i32 .const 1) (i32 . or)) .
+rewrite in WASMMOD : run-nomodule((i32 .const 8) (i32 .const (1).NzNat) (i32 . or)) .
+rewrites: 779 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(9)) | empty > # empty <-> empty # empty

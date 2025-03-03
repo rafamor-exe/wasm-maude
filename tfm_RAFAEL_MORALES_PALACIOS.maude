@@ -123,6 +123,19 @@ fmod WASM-BITVAL-MOD is
   eq iand(1, 1) = 1 .
   eq iand(BS1 B1, BS2 B2) = iand(BS1, BS2) iand(B1, B2) .
 
+  op ior : List{Bit} List{Bit} -> List{Bit} [ctor] .
+  eq ior(B, 0) = B .
+  eq ior(0, B) = B .
+  eq ior(1, 1) = 1 .
+  eq ior(BS1 B1, BS2 B2) = ior(BS1, BS2) ior(B1, B2) .
+
+  op ixor : List{Bit} List{Bit} -> List{Bit} [ctor] .
+  eq ixor(0, 0) = 0 .
+  eq ixor(0, 1) = 1 .
+  eq ixor(1, 0) = 1 .
+  eq ixor(1, 1) = 0 .
+  eq ixor(BS1 B1, BS2 B2) = ixor(BS1, BS2) ixor(B1, B2) .
+
   *** string() conversion allows to modify the base of the representation
   ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
   ***eq int-to-bitstring(I, BitStringSize) = 
@@ -571,7 +584,7 @@ fmod WASM-INST-MOD is
   op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
 
   *** bitstring representation ops
-  ops and : -> IBinopToken [ctor] .
+  ops and or xor : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
 
   ops div min max copysign : -> FBinopToken [ctor] .
@@ -880,6 +893,12 @@ mod WASMMOD is
   rl [int.and] : < (IntT . and) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                 =>   
                 < IL | st-push(ST, const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
+  rl [int.or] : < (IntT . or) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
+                =>   
+                < IL | st-push(ST, const(IntT, val(bitstring-to-int((ior((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
+  rl [int.xor] : < (IntT . xor) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
+                =>   
+                < IL | st-push(ST, const(IntT, val(bitstring-to-int((ixor((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
 
   *** OPerations with floats
   rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
