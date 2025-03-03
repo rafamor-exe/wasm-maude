@@ -377,7 +377,7 @@ fmod WASM-VALUE-MOD is
 
 endfm
 
-fmod WASM-BINOPS-MOD is
+fmod WASM-FOPS-MOD is
 
   protecting WASM-VALUE-MOD .
 
@@ -486,6 +486,29 @@ fmod WASM-BINOPS-MOD is
   ceq fcopysign(val(F1), val(F2)) = val(F1) if get-sign(F1) == get-sign(F2) .
   eq fcopysign(ValW1, ValW2) = - ValW1 .
 
+  *** FUNOPS
+  ***fabs
+  op fabs : ValWrapper -> ValWrapper .
+  eq fabs(val(nan(Sg1))) = val(nan(pos)) .
+  eq fabs(val(inf(Sg1))) = val(inf(pos)) .
+  eq fabs(val(zero(Sg1))) = val(zero(pos)) .
+  eq fabs(val(F1)) = val(abs(F1)) .
+
+  ***fneg
+  op fneg : ValWrapper -> ValWrapper .
+  eq fneg(val(nan(Sg1))) = val(nan(opposite(Sg1))) .
+  eq fneg(val(inf(Sg1))) = val(inf(opposite(Sg1))) .
+  eq fneg(val(zero(Sg1))) = val(zero(opposite(Sg1))) .
+  eq fneg(val(F1)) = val(- F1) .
+
+  ***fsqrt
+  op fsqrt : ValWrapper -> ValWrapper .
+  eq fsqrt(val(NaN)) = val(nans(NaN)) .
+  eq fsqrt(val(inf(neg))) = val(nans(nil)) .
+  eq fsqrt(val(inf(pos))) = val(inf(pos)) .
+  eq fsqrt(val(ZeroF)) = val(ZeroF) .
+  ceq fsqrt(val(F1)) = val(nans(nil)) if get-sign(F1) == neg .
+  eq fsqrt(val(F1)) = val(sqrt(F1)) [owise] .
 
 endfm
 
@@ -516,7 +539,7 @@ fmod WASM-INST-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts Inst .
-  sorts BinopToken IBinopToken FBinopToken RelopToken IRelopToken TestopToken .
+  sorts BinopToken IBinopToken FBinopToken UBinopToken RelopToken IRelopToken TestopToken .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -547,12 +570,15 @@ fmod WASM-INST-MOD is
   ops "div_u" "div_s" "rem_u" "rem_s" : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
 
-  ops div min max copysign : -> FBinopToken [ctor] .
-  op _._ : FloatTypeToken FBinopToken -> Inst [ctor] .
-
   *** bitstring representation ops
   ops and : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
+
+  ops div min max copysign : -> FBinopToken [ctor] .
+  op _._ : FloatTypeToken FBinopToken -> Inst [ctor] .
+  
+  ops abs neg sqrt : -> UBinopToken [ctor] .
+  op _._ : FloatTypeToken UBinopToken -> Inst [ctor] .
 
   *** relop
   ops eq ne : -> RelopToken [ctor] .
@@ -620,7 +646,7 @@ mod WASMMOD is
   ***protecting QID .
   protecting WASM-BITVAL-MOD .
   protecting WASM-INST-MOD .
-  protecting WASM-BINOPS-MOD .
+  protecting WASM-FOPS-MOD .
   protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
   protecting LIST{Map{ValRef, Value}} .
@@ -810,28 +836,7 @@ mod WASMMOD is
   rl [int.mul] : < (IntT . mul) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
                  => 
                  < IL | st-push(ST, const(IntT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
-  rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   => 
-                   < IL | st-push(ST, correctFloat(const(FloatT, fadd(ValW1, ValW2))) ) | NeLocalSTRList > .
-  rl [float.sub] : < (FloatT . sub) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   => 
-                   < IL | st-push(ST, correctFloat(const(FloatT, fsub(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.mul] : < (FloatT . mul) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fmul(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.div] : < (FloatT . div) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fdiv(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.min] : < (FloatT . min) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fmin(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.max] : < (FloatT . max) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fmax(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.copysign] : < (FloatT . copysign) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fcopysign(ValW1, ValW2)))) | NeLocalSTRList > .
-             
+  
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   crl [int.div_u-und] : < (IntT . "div_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                       =>   trap("Binop result undefined")
@@ -864,6 +869,40 @@ mod WASMMOD is
   rl [int.and] : < (IntT . and) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                 =>   
                 < IL | st-push(ST, const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
+
+  *** OPerations with floats
+  rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   => 
+                   < IL | st-push(ST, correctFloat(const(FloatT, fadd(ValW1, ValW2))) ) | NeLocalSTRList > .
+  rl [float.sub] : < (FloatT . sub) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   => 
+                   < IL | st-push(ST, correctFloat(const(FloatT, fsub(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.mul] : < (FloatT . mul) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fmul(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.div] : < (FloatT . div) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fdiv(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.min] : < (FloatT . min) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fmin(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.max] : < (FloatT . max) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fmax(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.copysign] : < (FloatT . copysign) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fcopysign(ValW1, ValW2)))) | NeLocalSTRList > .
+  
+  *** FUnops
+  rl [float.abs] : < (FloatT . abs) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fabs(ValW1)))) | NeLocalSTRList > .
+  rl [float.neg] : < (FloatT . abs) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fneg(ValW1)))) | NeLocalSTRList > .
+  rl [float.sqrt] : < (FloatT . sqrt) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fsqrt(ValW1)))) | NeLocalSTRList > .
 
   *** irelop
   rl [eq] : < (T . eq) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
