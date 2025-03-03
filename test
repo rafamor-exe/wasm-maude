@@ -193,3 +193,6 @@ rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (f3
 rewrites: 47 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMFuncGlobalSim: < "br_if" 0 local.set 1 (i32 .const (1).NzNat) end | const(f32, val(zero(pos))) $ const(i32, val(15)) $ label("l1", nil) $ const(i32, val(20)) |
     empty > # empty <-> empty # empty
+
+
+rew run-nomodule((i32 .const 10) (i32 .const 10) (i32 . and)) .

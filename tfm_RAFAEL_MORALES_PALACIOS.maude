@@ -81,7 +81,7 @@ fmod WASM-BITVAL-MOD is
 
   *** Auxiliary op to convert int to bitstring of certain size
   *** TODO: Manage overflow
-  op int-to-bitstring : Int Int -> List{Bit} [ctor] .
+  op int-to-bitstring : Int Nat -> List{Bit} [ctor] .
   ceq int-to-bitstring(0, I2) = 0 if I2 == 1 .
   eq int-to-bitstring(0, I2) = padding(I2) 0 [owise] .
   ceq int-to-bitstring(1, I2) = 1 if I2 == 1 .
@@ -104,7 +104,7 @@ fmod WASM-BITVAL-MOD is
   eq i64-to-int({valtype i64 , bitstring BitList}) = bitstring-to-int(BitList, 64) .
 
   *** Convert bitstring to int
-  op bitstring-to-int : List{Bit} Int -> Int .
+  op bitstring-to-int : List{Bit} Nat -> Int .
   ceq bitstring-to-int(B BitList, 1) = 0 if B == 0 .
   ceq bitstring-to-int(B BitList, 1) = 1 if B == 1 .
   ceq bitstring-to-int(B BitList, I) = bitstring-to-int(BitList, I - 1) if B == 0 and I > 1 .
@@ -795,7 +795,7 @@ mod WASMMOD is
   *** instructions with bitstring representation
   rl [int.and] : < (IntT . and) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                 =>   
-                < IL | st-push(ST, i32-to-int({valtype i32, bitstring (iand((get-bitstring-bitval(int-to-i32(Int1))), (get-bitstring-bitval(int-to-i32(Int2)))))})) | NeLocalSTRList > .
+                < IL | st-push(ST, const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
 
   *** irelop
   rl [eq] : < (T . eq) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
