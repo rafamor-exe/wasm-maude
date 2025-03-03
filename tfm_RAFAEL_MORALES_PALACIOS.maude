@@ -300,6 +300,7 @@ fmod WASM-VALUE-MOD is
   var F1 F2 : Float .
   var FType : FloatTypeToken .
   var FVal : FloatValue .
+  var Sg1 : Sign .
 
   *** Wrapper for values
   op val : Int -> ValWrapper [ctor] .
@@ -315,6 +316,10 @@ fmod WASM-VALUE-MOD is
   eq correctFloat(const(FType, val(0))) = const(FType, val(zero(pos))) .
   eq correctFloat(FVal) = FVal [owise] .
 
+  op -_ : ValWrapper -> ValWrapper [ctor] .
+  eq - val(inf(Sg1)) = val(inf(opposite(Sg1))) .
+  eq - val(zero(Sg1)) = val(zero(opposite(Sg1))) .
+  eq - val(F1) = val(- F1) .
   op _+_ : ValWrapper ValWrapper -> ValWrapper [ctor] .
   eq val(I1) + val(I2) = val(I1 + I2) .
   eq val(F1) + val(F2) = val(F1 + F2) .
@@ -378,9 +383,9 @@ fmod WASM-BINOPS-MOD is
 
   var FloatN F1 F2 : Float .
   var ValW1 ValW2 : ValWrapper .
-  var Sg1 Sg2 : Sign .
-  var InfF : InfF .
-  var ZeroF : ZeroF .
+  var Sg Sg1 Sg2 : Sign .
+  var InfF InfF1 InfF2 : InfF .
+  var ZeroF ZeroF1 ZeroF2 : ZeroF .
   var NaN : NaN .
 
   *** FLOAT Binops
@@ -435,6 +440,53 @@ fmod WASM-BINOPS-MOD is
   *** TODO: Take into account "rounded to the nearest representable value"??
   eq fmul(val(F1), val(F2)) = val(F1 * F2) .
 
+  ***fdiv
+  op fdiv : ValWrapper ValWrapper -> ValWrapper .
+  eq fdiv(val(NaN), val(F1)) = val(nans(NaN nanF(F1))) .
+  eq fdiv(val(F1), val(NaN)) = val(nans(NaN nanF(F1))) .
+  eq fdiv(val(InfF1), val(InfF2)) = val(nans(nil)) .
+  eq fdiv(val(ZeroF1), val(ZeroF2)) = val(nans(nil)) .
+  ceq fdiv(val(F1), val(inf(Sg1))) = val(zero(pos)) if get-sign(F1) == Sg1 .
+  ceq fdiv(val(F1), val(inf(Sg1))) = val(zero(neg)) if get-sign(F1) =/= Sg1 .
+  ceq fdiv(val(inf(Sg1)), val(F1)) = val(inf(pos)) if get-sign(F1) == Sg1 .
+  ceq fdiv(val(inf(Sg1)), val(F1)) = val(inf(neg)) if get-sign(F1) =/= Sg1 .
+  ceq fdiv(val(F1), val(zero(Sg2))) = val(inf(pos)) if get-sign(F1) == Sg2 .
+  ceq fdiv(val(F1), val(zero(Sg2))) = val(inf(neg)) if get-sign(F1) =/= Sg2 .
+  ceq fdiv(val(zero(Sg2)), val(F1)) = val(zero(pos)) if get-sign(F1) == Sg2 .
+  ceq fdiv(val(zero(Sg2)), val(F1)) = val(zero(neg)) if get-sign(F1) =/= Sg2 .
+  *** TODO: Take into account "rounded to the nearest representable value"??
+  eq fdiv(val(F1), val(F2)) = val(F1 / F2) .
+
+  ***fmin
+  op fmin : ValWrapper ValWrapper -> ValWrapper .
+  eq fmin(val(NaN), val(F1)) = val(nans(NaN nanF(F1))) .
+  eq fmin(val(F1), val(NaN)) = val(nans(NaN nanF(F1))) .
+  eq fmin(val(inf(pos)), val(F2)) = val(F2) .
+  eq fmin(val(inf(neg)), val(F2)) = val(inf(neg)) .
+  eq fmin(val(F1), val(inf(pos))) = val(F1) .
+  eq fmin(val(F1), val(inf(neg))) = val(inf(neg)) .
+  ceq fmin(val(zero(Sg1)), val(zero(Sg2))) = val(zero(neg)) if Sg1 =/= Sg2 .
+  eq fmin(val(F1), val(F2)) = val(min(F1, F2)) .
+
+  ***fmax
+  op fmax : ValWrapper ValWrapper -> ValWrapper .
+  eq fmax(val(NaN), val(F1)) = val(nans(NaN nanF(F1))) .
+  eq fmax(val(F1), val(NaN)) = val(nans(NaN nanF(F1))) .
+  eq fmax(val(inf(pos)), val(F2)) = val(inf(pos)) .
+  eq fmax(val(inf(neg)), val(F2)) = val(F2) .
+  eq fmax(val(F1), val(inf(pos))) = val(inf(pos)) .
+  eq fmax(val(F1), val(inf(neg))) = val(F1) .
+  ceq fmax(val(zero(Sg1)), val(zero(Sg2))) = val(zero(pos)) if Sg1 =/= Sg2 .
+  eq fmax(val(F1), val(F2)) = val(max(F1, F2)) .
+
+  ***fcopysign
+  op fcopysign : ValWrapper ValWrapper -> ValWrapper .
+  eq fcopysign(val(zero(Sg)), val(zero(Sg))) = val(zero(Sg)) .
+  eq fcopysign(val(inf(Sg)), val(inf(Sg))) = val(inf(Sg)) .
+  ceq fcopysign(val(F1), val(F2)) = val(F1) if get-sign(F1) == get-sign(F2) .
+  eq fcopysign(ValW1, ValW2) = - ValW1 .
+
+
 endfm
 
 fmod WASM-GLOBALINSTANCE-MOD is
@@ -464,7 +516,7 @@ fmod WASM-INST-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts Inst .
-  sorts BinopToken IBinopToken RelopToken IRelopToken TestopToken .
+  sorts BinopToken IBinopToken FBinopToken RelopToken IRelopToken TestopToken .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -494,6 +546,9 @@ fmod WASM-INST-MOD is
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   ops "div_u" "div_s" "rem_u" "rem_s" : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
+
+  ops div min max copysign : -> FBinopToken [ctor] .
+  op _._ : FloatTypeToken FBinopToken -> Inst [ctor] .
 
   *** bitstring representation ops
   ops and : -> IBinopToken [ctor] .
@@ -764,7 +819,20 @@ mod WASMMOD is
   rl [float.mul] : < (FloatT . mul) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
                    =>
                    < IL | st-push(ST, correctFloat(const(FloatT, fmul(ValW1, ValW2)))) | NeLocalSTRList > .
-   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
+  rl [float.div] : < (FloatT . div) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fdiv(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.min] : < (FloatT . min) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fmin(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.max] : < (FloatT . max) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fmax(ValW1, ValW2)))) | NeLocalSTRList > .
+  rl [float.copysign] : < (FloatT . copysign) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fcopysign(ValW1, ValW2)))) | NeLocalSTRList > .
+             
+  *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   crl [int.div_u-und] : < (IntT . "div_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                       =>   trap("Binop result undefined")
                       if Int2 == 0 .
