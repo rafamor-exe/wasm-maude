@@ -201,7 +201,22 @@ rew run-nomodule((f32 .const 10) (f32 .const 11) (f32 . min)) .
 rew run-nomodule((f32 .const 10) (f32 .const -11) (f32 . copysign)) .
 rew run-nomodule((f32 .const -1) (f32 . sqrt)) .
 
-*** TES PARAMETRIC FUNCTIONS
+*** TEST COMPARISON FLOATS
+Maude> rew run-nomodule((f32 .const 8) (f32 .const 7) (f32 . gt)) .
+rewrite in WASMMOD : run-nomodule((f32 .const 8) (f32 .const 7) (f32 . gt)) .
+rewrites: 69 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
+Maude> rew run-nomodule((f32 .const 8) (f32 .const 7) (f32 . lt)) .
+rewrite in WASMMOD : run-nomodule((f32 .const 8) (f32 .const 7) (f32 . lt)) .
+rewrites: 69 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val((0).Zero)) | empty > # empty <-> empty # empty
+Maude> rew run-nomodule((f32 .const 8) (f32 .const 8.0) (f32 . ge)) .
+rewrite in WASMMOD : run-nomodule((f32 .const 8) (f32 .const 8.0) (f32 . ge)) .
+rewrites: 68 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
+Maude> rew run-nomodule((f32 .const 8) (f32 .const 8.0) (f32 . ge)) . 
+
+*** TEST PARAMETRIC FUNCTIONS
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 20) (f32 .const 10) drop (i32 .const 5) select) .
 rewrites: 98 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMFuncGlobalSim: < nil | const(f32, val(3.0e+1)) | empty > # empty <-> empty # empty

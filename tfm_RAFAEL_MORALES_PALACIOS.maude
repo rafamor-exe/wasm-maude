@@ -523,6 +523,53 @@ fmod WASM-FOPS-MOD is
   ceq fsqrt(val(F1)) = val(nans(nil)) if get-sign(F1) == neg .
   eq fsqrt(val(F1)) = val(sqrt(F1)) [owise] .
 
+  *** COMPARISON FUNCTIONS
+  ***feq
+  op feq : ValWrapper ValWrapper -> ValWrapper .
+  ceq feq(val(zero(Sg1)), val(zero(Sg2))) = val(1) if Sg1 =/= Sg2 .
+  ceq feq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq feq(ValW1, ValW2) = val(0) [owise] .
+
+  ***fne
+  op fne : ValWrapper ValWrapper -> ValWrapper .
+  eq fne(val(NaN), ValW2) = val(1) .
+  eq fne(ValW1, val(NaN)) = val(1) .
+  ceq fne(val(zero(Sg1)), val(zero(Sg2))) = val(0) if Sg1 =/= Sg2 .
+  ceq fne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
+  eq fne(ValW1, ValW2) = val(0) [owise] .
+
+  ***flt
+  op flt : ValWrapper ValWrapper -> ValWrapper .
+  eq flt(val(inf(neg)), val(F2)) = val(1) .
+  eq flt(val(F1), val(inf(pos))) = val(1) .
+  ceq flt(val(F1), val(F2)) = val(1) if F1 < F2 .
+  eq flt(ValW1, ValW2) = val(0) [owise] .
+
+  ***fgt
+  op fgt : ValWrapper ValWrapper -> ValWrapper .
+  eq fgt(val(inf(pos)), val(F2)) = val(1) .
+  eq fgt(val(F1), val(inf(neg))) = val(1) .
+  ceq fgt(val(F1), val(F2)) = val(1) if F1 > F2 .
+  eq fgt(ValW1, ValW2) = val(0) [owise] .
+
+  ***fle
+  op fle : ValWrapper ValWrapper -> ValWrapper .
+  eq fle(val(inf(neg)), val(F2)) = val(1) .
+  eq fle(val(F1), val(inf(pos))) = val(1) .
+  eq fle(val(ZeroF1), val(ZeroF2)) = val(1) .
+  ceq fle(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  ceq fle(val(F1), val(F2)) = val(1) if F1 < F2 .
+  eq fle(ValW1, ValW2) = val(0) [owise] .
+
+  ***fge
+  op fge : ValWrapper ValWrapper -> ValWrapper .
+  eq fge(val(inf(pos)), val(F2)) = val(1) .
+  eq fge(val(F1), val(inf(neg))) = val(1) .
+  eq fge(val(ZeroF1), val(ZeroF2)) = val(1) .
+  ceq fge(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  ceq fge(val(F1), val(F2)) = val(1) if F1 > F2 .
+  eq fge(ValW1, ValW2) = val(0) [owise] .
+
 endfm
 
 fmod WASM-GLOBALINSTANCE-MOD is
@@ -552,7 +599,7 @@ fmod WASM-INST-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts Inst .
-  sorts BinopToken IBinopToken FBinopToken UBinopToken RelopToken IRelopToken TestopToken .
+  sorts BinopToken IBinopToken FBinopToken UBinopToken RelopToken IRelopToken FRelopToken TestopToken .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -599,6 +646,9 @@ fmod WASM-INST-MOD is
   
   ops "lt_s" "lt_u" "gt_s" "gt_u" "le_s" "le_u" "ge_s" "ge_u" : -> IRelopToken [ctor] .
   op _._ : IntTypeToken IRelopToken -> Inst [ctor] .
+
+  ops lt gt le ge : -> FRelopToken [ctor] .
+  op _._ : FloatTypeToken FRelopToken -> Inst [ctor] .
 
   *** testop
   ops eqz : -> TestopToken [ctor] .
@@ -975,9 +1025,21 @@ mod WASMMOD is
   rl [feq] : < (FloatT . eq) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(i32, feq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  ***rl [fne] : < (FloatT . ne) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-  ***          =>   
-  ***          < IL |  const(i32, fne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  rl [fne] : < (FloatT . ne) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+            =>   
+            < IL |  const(i32, fne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  rl [flt] : < (FloatT . lt) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+            =>   
+            < IL |  const(i32, flt(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  rl [fgt] : < (FloatT . gt) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+            =>   
+            < IL |  const(i32, fgt(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  rl [fle] : < (FloatT . le) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+            =>   
+            < IL |  const(i32, fle(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+  rl [fge] : < (FloatT . ge) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+            =>   
+            < IL |  const(i32, fge(ValW1, ValW2)) $ ST | NeLocalSTRList > .
   
 
   *** Control instructions
@@ -1167,21 +1229,6 @@ mod WASMMOD is
   op "ige_s" : ValWrapper ValWrapper -> ValWrapper .
   ceq "ige_s"(ValW1, ValW2) = val(1) if ValW1 >= ValW2 .
   eq "ige_s"(ValW1, ValW2) = val(0) [owise] .
-
-  *** float comparison ops
-  op feq : ValWrapper ValWrapper -> ValWrapper .
-  eq feq(val(NaN), ValW2) = val(0) .
-  eq feq(ValW1, val(NaN)) = val(0) .
-  ceq feq(val(zero(Sg1)), val(zero(Sg2))) = val(1) if Sg1 =/= Sg2 .
-  ceq feq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
-  eq feq(ValW1, ValW2) = val(0) [owise] .
-
-  op fne : ValWrapper ValWrapper -> ValWrapper .
-  eq fne(val(NaN), ValW2) = val(1) .
-  eq fne(ValW1, val(NaN)) = val(1) .
-  ceq fne(val(zero(Sg1)), val(zero(Sg2))) = val(0) if Sg1 =/= Sg2 .
-  ceq fne(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
-  eq fne(ValW1, ValW2) = val(0) [owise] .
 
   *** Auxiliary parametric instructions
   op selectVal : ValWrapper Value Value -> Value .
