@@ -585,8 +585,24 @@ fmod WASM-FOPS-MOD is
   eq fsqrt(val(inf(neg))) = val(nans(nil)) .
   eq fsqrt(val(inf(pos))) = val(inf(pos)) .
   eq fsqrt(val(ZeroF)) = val(ZeroF) .
-  ceq fsqrt(val(F1)) = val(nans(nil)) if get-sign(F1) == neg .
+  ceq fsqrt(val(F1)) = val(nans(nil)) if F1 < 0.0 .
   eq fsqrt(val(F1)) = val(sqrt(F1)) [owise] .
+
+  ***fceil
+  op fceil : ValWrapper -> ValWrapper .
+  eq fceil(val(NaN)) = val(nans(NaN)) .
+  eq fceil(val(InfF)) = val(InfF) .
+  eq fceil(val(ZeroF)) = val(ZeroF) .
+  ceq fceil(val(F1)) = val(zero(neg)) if F1 < 0.0 and -1.0 < F1 .
+  eq fceil(val(F1)) = val(ceiling(F1)) [owise] .
+
+  ***ffloor
+  op ffloor : ValWrapper -> ValWrapper .
+  eq ffloor(val(NaN)) = val(nans(NaN)) .
+  eq ffloor(val(InfF)) = val(InfF) .
+  eq ffloor(val(ZeroF)) = val(ZeroF) .
+  ceq ffloor(val(F1)) = val(zero(pos)) if F1 > 0.0 and F1 < 1.0 .
+  eq ffloor(val(F1)) = val(floor(F1)) [owise] .
 
   *** COMPARISON FUNCTIONS
   ***feq
@@ -692,7 +708,7 @@ fmod WASM-INST-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts Inst .
-  sorts BinopToken IBinopToken FBinopToken UBinopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
+  sorts BinopToken IBinopToken FBinopToken FUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -730,8 +746,8 @@ fmod WASM-INST-MOD is
   ops div min max copysign : -> FBinopToken [ctor] .
   op _._ : FloatTypeToken FBinopToken -> Inst [ctor] .
   
-  ops abs neg sqrt : -> UBinopToken [ctor] .
-  op _._ : FloatTypeToken UBinopToken -> Inst [ctor] .
+  ops abs neg sqrt ceil floor : -> FUnopToken [ctor] .
+  op _._ : FloatTypeToken FUnopToken -> Inst [ctor] .
 
   *** relop
   ops eq ne : -> RelopToken [ctor] .
@@ -1082,6 +1098,12 @@ mod WASMMOD is
   rl [float.sqrt] : < (FloatT . sqrt) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
                    =>
                    < IL | st-push(ST, correctFloat(const(FloatT, fsqrt(ValW1)))) | NeLocalSTRList > .
+  rl [float.ceil] : < (FloatT . ceil) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, fceil(ValW1)))) | NeLocalSTRList > .
+  rl [float.floor] : < (FloatT . floor) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   =>
+                   < IL | st-push(ST, correctFloat(const(FloatT, ffloor(ValW1)))) | NeLocalSTRList > .
 
   *** irelop
   rl [ieq] : < (IntT . eq) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
