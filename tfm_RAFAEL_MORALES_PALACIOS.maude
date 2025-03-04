@@ -309,6 +309,8 @@ fmod WASM-VALUE-MOD is
   ***cmb Val : FloatValue if (Val == (1 + ) * (2 ^ (e)) or (Val == (1 + ) * (2 ^ (e))) .
 
   var T : TypeToken .
+  var IntT : IntTypeToken .
+  var FloatT : FloatTypeToken .
   var ValWrapper VW1 VW2 : ValWrapper .
   var I1 I2 : Int . 
   var F1 F2 : Float .
@@ -380,10 +382,16 @@ fmod WASM-VALUE-MOD is
 
   *** Represent values "(type).const (value)" pushed to stack
   op const : TypeToken ValWrapper -> Value [ctor] .
+
   op get-type : Value -> TypeToken .
   eq get-type(const(T, ValWrapper)) = T .
+
   op get-val : Value -> ValWrapper .
   eq get-val(const(T, ValWrapper)) = ValWrapper .
+  
+  op defaultVal : TypeToken -> Value [ctor] .
+  eq defaultVal(IntT) = const(IntT, val(0)) .
+  eq defaultVal(FloatT) = const(FloatT, val(0.0)) .
 
   *** Memberships of different types
   cmb const(T, ValWrapper) : IntValue if T == i32 or T == i64 . 
@@ -949,6 +957,7 @@ mod WASMMOD is
   var ResultTypeList : List{ResultType} .
   var LocalsRef : LocalsRef .
   var TypeTokenList TList : List{TypeToken} .
+  var NeTList : NeList{TypeToken} .
   var IntN : Int .
   var FloatN F1 F2 : Float .
   var ValW1 ValW2 : ValWrapper .
@@ -956,6 +965,7 @@ mod WASMMOD is
   var InfF : InfF .
   var ZeroF ZeroF1 ZeroF2 : ZeroF .
   var NaN : NaN .
+  var FuncDef : FuncDef .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -1203,13 +1213,15 @@ mod WASMMOD is
               =>   
               < IL | ST | NeLocalSTRList > 
               if Int1 == 0 .
-  *** TODO: FIX store initialization to be coherent with types
-  rl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+  *** According to Specification: param init precedes local vars init
+  *** TODO: Assert there are n values on top of stack
+  crl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
               < get-IL-func(FuncStore[N]) exit-func end | 
-                st-push(ST, label("func", IL)) | 
-                inizialize-store-N(count-locals-localsref(get-localsref-func(FuncStore[N])) + count-locals-paramlist(get-paramlist-func(FuncStore[N])), (empty).Map{ValRef,Value}) NeLocalSTRList 
-              > # GlobalAddrs <-> GlobalsStore # FuncStore .
+                label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[N])) | 
+                init-store(get-paramlistTList-func(FuncStore[N]) get-localsTList-func(FuncStore[N]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[N])), (empty).Map{ValRef,Value}) NeLocalSTRList 
+              > # GlobalAddrs <-> GlobalsStore # FuncStore 
+              if valid-stack(ST, get-paramlistTList-func(FuncStore[N])) .
   rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
@@ -1242,6 +1254,14 @@ mod WASMMOD is
   op st-rev : Stack -> Stack .
   eq st-rev(STElem $ ST) = st-rev(ST) $ STElem .
   eq st-rev(EmptyStack) = EmptyStack .
+
+  op st-popN : Stack Nat -> Stack .
+  eq st-popN(ST, 0) = ST .
+  ceq st-popN(STElem $ ST, N) = st-popN(ST, N - 1) if N > 0 .
+
+  op st-getTopVals : Stack List{TypeToken} -> Stack .
+  eq st-getTopVals(ST, nil) = ST .
+  eq st-getTopVals(const(T, ValW1) $ ST, T TList) = const(T, ValW1) $ st-getTopVals(ST, TList) .
 
   *** Globals auxiliary ops
   op global-val : GlobalInstance -> Value .
@@ -1285,7 +1305,7 @@ mod WASMMOD is
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
 
-  op exit-func : -> Inst .
+  op exit-func : -> Inst [ctor] .
 
   op get-localsref-func : FuncDef -> LocalsRef .
   eq get-localsref-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = LocalsRef .
@@ -1296,9 +1316,12 @@ mod WASMMOD is
   op get-paramlist-func : FuncDef -> List{ParamType} .
   eq get-paramlist-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = ParamList .
 
-  ***op get-paramlistTList-func : FuncDef -> List{TypeToken} .
-  ***eq get-paramlist-func(func N TypeRef nil ResultTypeList LocalsRef IL end) = nil .
-  ***eq get-paramlist-func(func N TypeRef (param TList) ParamList ResultTypeList LocalsRef IL end) = TList get-paramlistTList-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) .
+  op aux-get-paramlistTList-func : List{ParamType} -> List{TypeToken} .
+  eq aux-get-paramlistTList-func(nil) = nil .
+  eq aux-get-paramlistTList-func((param TList) ParamList) = TList aux-get-paramlistTList-func(ParamList) .
+
+  op get-paramlistTList-func : FuncDef -> List{TypeToken} .
+  eq get-paramlistTList-func(FuncDef) = aux-get-paramlistTList-func(get-paramlist-func(FuncDef)) .
 
   op count-locals-localsref : LocalsRef -> Nat .
   eq count-locals-localsref(local nil) = 0 .
@@ -1309,11 +1332,24 @@ mod WASMMOD is
   eq count-locals-paramlist((param nil) ParamList) = count-locals-paramlist(ParamList) .
   eq count-locals-paramlist((param (T TypeTokenList)) ParamList) = 1 + count-locals-paramlist((param TypeTokenList) ParamList) .
 
+  op count-paramlist-func : FuncDef -> Nat .
+  eq count-paramlist-func(FuncDef) = count-locals-paramlist(get-paramlist-func(FuncDef)) .
+
   *** Inizialize a LocalStore with N variables
-  op inizialize-store-N : Nat Map{ValRef, Value} -> Map{ValRef, Value} .
-  eq inizialize-store-N(0, LocalSTR) = LocalSTR .
-  eq inizialize-store-N(1, LocalSTR) = insert(0, 0, LocalSTR) .
-  ceq inizialize-store-N(N, LocalSTR) = insert(N - 1, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
+  ***op inizialize-store-N : Nat Map{ValRef, Value} -> Map{ValRef, Value} .
+  ***eq inizialize-store-N(0, LocalSTR) = LocalSTR .
+  ***eq inizialize-store-N(1, LocalSTR) = insert(0, 0, LocalSTR) .
+  ***ceq inizialize-store-N(N, LocalSTR) = insert(N - 1, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
+
+  *** Inizialize a LocalStore with typed variables
+  op init-store : List{TypeToken} Stack Map{ValRef, Value} -> Map{ValRef, Value} .
+  eq init-store(nil, ST, LocalSTR) = LocalSTR .
+  eq init-store(NeTList, ST, LocalSTR) = inizialize-store(0, NeTList, ST, LocalSTR) .
+
+  op inizialize-store : Nat List{TypeToken} Stack Map{ValRef, Value} -> Map{ValRef, Value} .
+  eq inizialize-store(N, nil, ST, LocalSTR) = LocalSTR .
+  eq inizialize-store(N, T TList, const(T, ValW1) $ ST, LocalSTR) = insert(N, const(T, ValW1), inizialize-store(N + 1, TList, ST, LocalSTR)) .
+  eq inizialize-store(N, T TList, EmptyStack, LocalSTR) = insert(N, defaultVal(T), inizialize-store(N + 1, TList, EmptyStack, LocalSTR)) .
 
   *** Auxiliary parametric instructions
   op selectVal : ValWrapper Value Value -> Value .
@@ -1327,6 +1363,12 @@ mod WASMMOD is
   ***op verify-const : Value Nat -> Bool .
   ***ceq verify-const(IntVal, N) = true if 0 <= IntVal and IntVal <= ((2 ^ (N)) - 1) .
   ***eq verify-const(Val, N) = false .
+  
+  *** Assert there are n values on top of stack with specific types
+  op valid-stack : Stack List{TypeToken} -> Bool .
+  eq valid-stack(ST, nil) = true .
+  eq valid-stack(const(T, ValW1) $ ST, T TList) = valid-stack(ST, TList) .
+  eq valid-stack(ST, TList) = false [owise] .
 
 endm
 

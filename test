@@ -243,3 +243,34 @@ Maude> rew run-nomodule((f32 .const 10) (f64 . "promote_" f32)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 10) (f64 . "promote_" f32)) .
 rewrites: 42 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMFuncGlobalSim: < nil | const(i32, val(1.0e+1)) | empty > # empty <-> empty # empty
+
+*** TEST TYPED FUNCTION CALL
+Maude> rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 i32))  ((i32 .const 10) (local.set 0)) end) .
+rewrite in WASMMOD : < (i32 .const 20) local.set 0 call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 i32)) ((i32 .const 10) local.set 0) end .
+rewrites: 143 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 i32)) ((i32 .const 10) local.set 0) end
+
+***
+rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
+*** AT SOME POINT: < local.set 0 exit-func end | st-push(label("func", local.get 0), const(i32, val(10))) | (0 |-> const(i32, val((0).Zero)), 1 |-> const(f32, val(0.0)), 2 |-> const(i32, val((0).Zero)), 3 |-> const(i32, val((0).Zero))) (0 |-> const(i32, val(20))) >
+
+*** Calls only reduce when assert over the stack is true
+Maude> rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
+rewrite in WASMMOD : < (i32 .const 20) local.set 0 call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end .
+rewrites: 28 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < call 0 local.get 0 | EmptyStack | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+Maude> rew < (i32 .const 20) (local.set 0) (i32 .const 15) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
+rewrite in WASMMOD : < (i32 .const 20) local.set 0 (i32 .const 15) call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end .
+rewrites: 151 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(20)) $ st-popN(EmptyStack, 0) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+
+*** TEST WITH CONSUMABLE TYPED PARAMS
+Maude> rew < (i32 .const 20) (local.set 0) (i32 .const 15) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
+rewrite in WASMMOD : < (i32 .const 20) local.set 0 (i32 .const 15) call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end .
+rewrites: 140 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+Maude> rew < (i32 .const 20) (local.set 0) (i32 .const 15) (f32 .const 25.5) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
+rewrite in WASMMOD : < (i32 .const 20) local.set 0 (i32 .const 15) (f32 .const 2.55e+1) call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32)) ((i32 .const 10)
+    local.set 0) end .
+rewrites: 174 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMFuncGlobalSim: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
