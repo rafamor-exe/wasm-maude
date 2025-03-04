@@ -842,6 +842,7 @@ mod WASMMOD is
   protecting MAP{String, Addr} .
   protecting MAP{Addr, GlobalInstance} .
   protecting MAP{Addr, FuncDef} .
+  protecting MAP{Addr, TypeDef} .
 
   protecting WASM-TYPEDEF-MOD .
   protecting LIST{TypeDef} .
@@ -851,7 +852,7 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WASMFuncGlobalSim WASMGlobalSim WASMLocalSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
+  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMFuncGlobalSim WASMGlobalSim WASMLocalSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
   
   *** Simulator components
   subsorts Stack List{Inst} < WASMLocalSim .
@@ -889,11 +890,18 @@ mod WASMMOD is
   op _ # _ <-> _ : WASMLocalSim Map{String, Addr} Map{Addr, GlobalInstance} -> WASMGlobalSim [ctor] .
 
   *** Functions + Global enviroment
-  op _ # _ : WASMGlobalSim Map{Addr, FuncDef} -> WASMFuncGlobalSim .
+  op _ # _ : WASMGlobalSim Map{Addr, FuncDef} -> WASMFuncGlobalSim [ctor] .
+
+  *** Types + Functions + Global enviroment
+  op _ # _ : WASMFuncGlobalSim Map{Addr, TypeDef} -> WASMTypeFuncGlobalSim [ctor] .
 
   *** WASM Simulator
   *** # WASMModule # WASMGlobalSim # FuncStore #
-  op # _ # _ # : WASMModule WASMFuncGlobalSim -> WASMSim [ctor] .
+  op # _ # _ # : WASMModule WASMTypeFuncGlobalSim -> WASMSim [ctor] .
+
+  op {start _, indctr _} : Nat Nat -> WasmTrigger [ctor] .
+
+  op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor] .
   
 
   *** Map{ValRef, Value} definition
@@ -944,7 +952,7 @@ mod WASMMOD is
   var STElem : StackElem .
   var Str : String .
   var Label : Label .
-  var N : Nat .
+  var N N1 N2 Ctr : Nat .
   var GlobalAddrs : Map{String, Addr} .
   var GlobalsStore : Map{Addr, GlobalInstance} .
   var GlobalType : GlobalType .
@@ -952,6 +960,7 @@ mod WASMMOD is
   var GlobalInstance : GlobalInstance .
   var Addr : Addr .
   var FuncStore : Map{Addr, FuncDef} .
+  var TypeStore : Map{Addr, TypeDef} .
   var TypeRef : TypeRef .
   var ParamList : List{ParamType} .
   var ResultTypeList : List{ResultType} .
@@ -966,20 +975,45 @@ mod WASMMOD is
   var ZeroF ZeroF1 ZeroF2 : ZeroF .
   var NaN : NaN .
   var FuncDef : FuncDef .
+  var TypeDef : TypeDef .
+  var FuncDefL : List{FuncDef} .
+  var TypeDefL : List{TypeDef} .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
 
 
   *** Run trigger
-  op run-nomodule : List{Inst} -> WASMFuncGlobalSim .
-  eq run-nomodule(IL) = < IL | EmptyStack | empty > # empty <-> empty # empty .
+  op run-nomodule : List{Inst} -> WASMTypeFuncGlobalSim .
+  eq run-nomodule(IL) = < IL | EmptyStack | empty > # empty <-> empty # empty # empty .
 
+  op run-module-func : WASMModule Nat -> WASMSimTrigger .
+  eq run-module-func(WASMModule, N) = {start N, indctr 0} # WASMModule # < nil | EmptyStack | empty > # empty <-> empty # empty # empty # .
 
   *** Rules
   
   *** TODO: Include validation in rules as eqs in preconditions
   *** TODO: Maybe create rules to transform an input of the form of a usual program to this representation with initial empty stack and store??
+
+  rl [parse-typedef] : {start N, indctr Ctr} # (module (TypeDef TypeDefL) FuncDefL) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {start N, indctr Ctr + 1} # (module TypeDefL FuncDefL) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
+
+  rl [parse-typedef-last] : {start N, indctr Ctr} # (module (TypeDef) FuncDefL) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {start N, indctr 0} # (module nil FuncDefL) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
+
+  rl [parse-funcdef] : {start N, indctr Ctr} # (module nil (FuncDef FuncDefL)) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {start N, indctr Ctr + 1} # (module nil FuncDefL) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
+
+  rl [parse-funcdef-last] : {start N, indctr Ctr} # (module nil (FuncDef)) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {start N, indctr 0} # (module nil nil) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
+
+  rl [start-sim] : {start N, indctr Ctr} # (module nil nil) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                   =>
+                   {start N, indctr Ctr + 1} # (module nil nil) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore # .
 
   *** local.get rule: push to stack the value from ValR from the local store
   rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
@@ -1213,13 +1247,13 @@ mod WASMMOD is
               =>   
               < IL | ST | NeLocalSTRList > 
               if Int1 == 0 .
-              
+
   *** According to Specification: param init precedes local vars init
-  crl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+  crl [call] : < (call N) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
               < get-IL-func(FuncStore[N]) exit-func end | 
                 label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[N])) | 
-                init-store(get-paramlistTList-func(FuncStore[N]) get-localsTList-func(FuncStore[N]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[N])), (empty).Map{ValRef,Value}) NeLocalSTRList 
+                init-store(get-paramlistTList-func(FuncStore[N]) get-localsTList-func(FuncStore[N]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[N])), (empty).Map{ValRef,Value}) LocalSTRList 
               > # GlobalAddrs <-> GlobalsStore # FuncStore 
               if valid-stack(ST, get-paramlistTList-func(FuncStore[N])) .
   rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
