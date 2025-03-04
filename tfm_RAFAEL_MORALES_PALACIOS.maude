@@ -263,7 +263,7 @@ fmod WASM-FLOAT-MOD is
   ***eq wasmF(F1) rem wasmF(F2) = wasmF(F1 rem F2) .
 
   op get-sign : Float -> Sign .
-  ceq get-sign(F1) = pos if (F1 / abs(F1)) == 1.0 .
+  ceq get-sign(F1) = pos if F1 > 0.0 .
   eq get-sign(F1) = neg [owise] .
 
   op opposite : Sign -> Sign [ctor] .
@@ -394,8 +394,8 @@ fmod WASM-VALUE-MOD is
   eq defaultVal(FloatT) = const(FloatT, val(0.0)) .
 
   *** Memberships of different types
-  cmb const(T, ValWrapper) : IntValue if T == i32 or T == i64 . 
-  cmb const(T, ValWrapper) : FloatValue if T == f32 or T == f64 . 
+  mb const(IntT, ValWrapper) : IntValue . 
+  mb const(FloatT, ValWrapper) : FloatValue . 
 
 endfm
 
@@ -1213,8 +1213,8 @@ mod WASMMOD is
               =>   
               < IL | ST | NeLocalSTRList > 
               if Int1 == 0 .
+              
   *** According to Specification: param init precedes local vars init
-  *** TODO: Assert there are n values on top of stack
   crl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
               < get-IL-func(FuncStore[N]) exit-func end | 
