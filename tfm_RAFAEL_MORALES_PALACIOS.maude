@@ -715,8 +715,10 @@ fmod WASM-INST-MOD is
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
 
-  sorts Inst .
+  sorts Inst ConstInst .
   sorts BinopToken IBinopToken FBinopToken FUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
+
+  subsorts ConstInst < Inst .
 
   *** Instruction ops declarations
   op local.get _ : ValRef -> Inst [ctor] .
@@ -730,8 +732,8 @@ fmod WASM-INST-MOD is
   *** TODO: maybe fix to use it as a template??
   *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
   ***op _.const _ : TypeToken Value -> Inst [ctor] .
-  op _ .const _ : TypeToken Int -> Inst [ctor] .
-  op _ .const _ : FloatTypeToken Float -> Inst [ctor] .
+  op _ .const _ : TypeToken Int -> ConstInst [ctor] .
+  op _ .const _ : FloatTypeToken Float -> ConstInst [ctor] .
   ***op i64.const _ : IntValue -> Inst [ctor] .
   *** TODO: Include more valid types
   ***ops i32 : -> Type [ctor] .
@@ -823,6 +825,22 @@ view FuncDef from TRIV to WASM-FUNCDEF-MOD is
   sort Elt to FuncDef .
 endv
 
+fmod WASM-GLOBALDEF-MOD is
+
+  protecting WASM-TYPEDEF-MOD .
+  protecting WASM-GLOBALINSTANCE-MOD .
+  protecting WASM-INST-MOD .
+
+  sorts GlobalDef .
+
+  op (global _ (_) (_)) : String GlobalType ConstInst -> GlobalDef [ctor] .
+
+endfm
+
+view GlobalDef from TRIV to WASM-GLOBALDEF-MOD is
+  sort Elt to GlobalDef .
+endv
+
 mod WASMMOD is
   *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
@@ -848,6 +866,8 @@ mod WASMMOD is
   protecting LIST{TypeDef} .
   protecting WASM-FUNCDEF-MOD .
   protecting LIST{FuncDef} .
+  protecting WASM-GLOBALDEF-MOD .
+  protecting LIST{GlobalDef} .
 
   
   
@@ -912,7 +932,8 @@ mod WASMMOD is
 
   *** Module sections
   *** TODO: complete module parts (global, exports, etc.)
-  op (module _ _) : List{TypeDef} List{FuncDef} -> WASMModule [ctor] .
+  *** TODO: These components should probably be a multiset
+  op (module _ _ _) : List{TypeDef} List{FuncDef} List{GlobalDef} -> WASMModule [ctor] .
 
   ***op __ : ExportDef ExportVec -> NeExportVec [assoc ctor id: EmptyList] .
 
@@ -935,7 +956,9 @@ mod WASMMOD is
   *** Variable definition
 
   var WASMModule : WASMModule .
+  var WASMTypeFuncGlobalSim : WASMTypeFuncGlobalSim .
   vars I1 S1 : Inst .
+  var ConstInst : ConstInst .
   vars ValR ValR2 : ValRef .
   vars Val Val1 Val2 : Value .
   vars IL IL1 IL2 : List{Inst} .
@@ -978,6 +1001,7 @@ mod WASMMOD is
   var TypeDef : TypeDef .
   var FuncDefL : List{FuncDef} .
   var TypeDefL : List{TypeDef} .
+  var GlobalDefL : List{GlobalDef} .
 
   *** Map{ValRef, Value} is a Set
   ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
@@ -987,33 +1011,46 @@ mod WASMMOD is
   op run-nomodule : List{Inst} -> WASMTypeFuncGlobalSim .
   eq run-nomodule(IL) = < IL | EmptyStack | empty > # empty <-> empty # empty # empty .
 
+  op uninitialized : -> Inst [ctor] .
+
   op run-module-func : WASMModule Nat -> WASMSimTrigger .
-  eq run-module-func(WASMModule, N) = {start N, indctr 0} # WASMModule # < nil | EmptyStack | empty > # empty <-> empty # empty # empty # .
+  eq run-module-func(WASMModule, N) = {start N, indctr 0} # WASMModule # < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty # .
+
+  op simulate-wasm : WASMTypeFuncGlobalSim -> WASMTypeFuncGlobalSim .
+  eq simulate-wasm(WASMTypeFuncGlobalSim) = WASMTypeFuncGlobalSim .
 
   *** Rules
   
   *** TODO: Include validation in rules as eqs in preconditions
   *** TODO: Maybe create rules to transform an input of the form of a usual program to this representation with initial empty stack and store??
 
-  rl [parse-typedef] : {start N, indctr Ctr} # (module (TypeDef TypeDefL) FuncDefL) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-typedef] : {start N, indctr Ctr} # (module (TypeDef TypeDefL) FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr Ctr + 1} # (module TypeDefL FuncDefL) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
+                      {start N, indctr Ctr + 1} # (module TypeDefL FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
 
-  rl [parse-typedef-last] : {start N, indctr Ctr} # (module (TypeDef) FuncDefL) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-typedef-last] : {start N, indctr Ctr} # (module (TypeDef) FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr 0} # (module nil FuncDefL) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
+                      {start N, indctr 0} # (module nil FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
 
-  rl [parse-funcdef] : {start N, indctr Ctr} # (module nil (FuncDef FuncDefL)) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-funcdef] : {start N, indctr Ctr} # (module nil (FuncDef FuncDefL) GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr Ctr + 1} # (module nil FuncDefL) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
+                      {start N, indctr Ctr + 1} # (module nil FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
 
-  rl [parse-funcdef-last] : {start N, indctr Ctr} # (module nil (FuncDef)) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-funcdef-last] : {start N, indctr Ctr} # (module nil (FuncDef) GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr 0} # (module nil nil) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
+                      {start N, indctr 0} # (module nil nil GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
 
-  rl [start-sim] : {start N, indctr Ctr} # (module nil nil) # < nil | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-globaldef] : {start N, indctr Ctr} # (module nil nil ((global Str (GlobalType) (ConstInst)) GlobalDefL) ) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {start N, indctr Ctr + 1} # (module nil nil GlobalDefL) # < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+
+  rl [parse-globaldef-last] : {start N, indctr Ctr} # (module nil nil (global Str (GlobalType) (ConstInst))) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {start N, indctr 0} # (module nil nil nil) # < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+
+  rl [start-sim] : {start N, indctr Ctr} # (module nil nil nil) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                    =>
-                   {start N, indctr Ctr + 1} # (module nil nil) # < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore # .
+                   {start N, indctr 0} # (module nil nil nil) # simulate-wasm(< (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
 
   *** local.get rule: push to stack the value from ValR from the local store
   rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
@@ -1033,9 +1070,11 @@ mod WASMMOD is
                   =>   
                   < IL | st-push(ST, global-val(GlobalsStore[GlobalAddrs[Str]])) | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore .
 
-  rl [global.set] : < (global.set Str) IL | Val $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
+  *** TODO: generlize for all types of values (refs, labels, etc.)
+  crl [global.set] : < (global.set Str) IL | const(T, ValW1) $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
-                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert-gb-val(GlobalAddrs[Str], Val, GlobalsStore) .
+                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert(GlobalAddrs[Str], {type (mut T), value const(T, ValW1)}, GlobalsStore) 
+                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)) or GlobalsStore == empty .
 
   *** Parametric Instructions
   rl [drop] : < (drop) IL | Val $ ST | NeLocalSTRList > 
@@ -1305,8 +1344,8 @@ mod WASMMOD is
   eq global-type({type GlobalType, value Val}) = GlobalType .
 
   *** Only change value if it is marked as mutable (mut/var) global variable (due to validation requirements).
-  op insert-gb-val : Addr Value Map{Addr, GlobalInstance} -> Map{Addr, GlobalInstance} .
-  eq insert-gb-val(Addr, Val2, (Addr |-> {type MutGlobalType, value Val1}, GlobalsStore)) = (Addr |-> {type MutGlobalType, value Val2}, GlobalsStore) .
+  ***op insert-gb-val : Addr Value Map{Addr, GlobalInstance} -> Map{Addr, GlobalInstance} .
+  ***eq insert-gb-val(Addr, Val2, (Addr |-> {type MutGlobalType, value Val1}, GlobalsStore)) = (Addr |-> {type MutGlobalType, value Val2}, GlobalsStore) .
 
   *** reset stack to eliminate label
   op _||_ : Stack Label -> StackAndLabel .
