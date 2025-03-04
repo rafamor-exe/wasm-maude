@@ -948,7 +948,7 @@ mod WASMMOD is
   var ParamList : List{ParamType} .
   var ResultTypeList : List{ResultType} .
   var LocalsRef : LocalsRef .
-  var TypeTokenList : List{TypeToken} .
+  var TypeTokenList TList : List{TypeToken} .
   var IntN : Int .
   var FloatN F1 F2 : Float .
   var ValW1 ValW2 : ValWrapper .
@@ -1203,6 +1203,7 @@ mod WASMMOD is
               =>   
               < IL | ST | NeLocalSTRList > 
               if Int1 == 0 .
+  *** TODO: FIX store initialization to be coherent with types
   rl [call] : < (call N) IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
               < get-IL-func(FuncStore[N]) exit-func end | 
@@ -1289,8 +1290,15 @@ mod WASMMOD is
   op get-localsref-func : FuncDef -> LocalsRef .
   eq get-localsref-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = LocalsRef .
 
+  op get-localsTList-func : FuncDef -> List{TypeToken} .
+  eq get-localsTList-func(func N TypeRef ParamList ResultTypeList (local TList) IL end) = TList .
+
   op get-paramlist-func : FuncDef -> List{ParamType} .
   eq get-paramlist-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = ParamList .
+
+  ***op get-paramlistTList-func : FuncDef -> List{TypeToken} .
+  ***eq get-paramlist-func(func N TypeRef nil ResultTypeList LocalsRef IL end) = nil .
+  ***eq get-paramlist-func(func N TypeRef (param TList) ParamList ResultTypeList LocalsRef IL end) = TList get-paramlistTList-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) .
 
   op count-locals-localsref : LocalsRef -> Nat .
   eq count-locals-localsref(local nil) = 0 .
