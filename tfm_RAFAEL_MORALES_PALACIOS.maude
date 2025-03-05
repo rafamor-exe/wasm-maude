@@ -297,7 +297,7 @@ fmod WASM-VALUE-MOD is
 
   sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper .
 
-  subsorts Int < UInt SInt IntValue < Value .
+  subsorts IntValue < Value .
   subsorts FloatValue < Value .
   ***subsorts Int32Value Int64Value < IntValue .
 
@@ -311,7 +311,7 @@ fmod WASM-VALUE-MOD is
   var T : TypeToken .
   var IntT : IntTypeToken .
   var FloatT : FloatTypeToken .
-  var ValWrapper VW1 VW2 : ValWrapper .
+  var ValWrapper VW1 ValW1 VW2 ValW2 : ValWrapper .
   var I1 I2 : Int . 
   var F1 F2 : Float .
   var FType : FloatTypeToken .
@@ -325,6 +325,14 @@ fmod WASM-VALUE-MOD is
   op val : NaNs -> ValWrapper [ctor] .
   op val : InfF -> ValWrapper [ctor] .
   op val : ZeroF -> ValWrapper [ctor] .
+
+  op get-type : Value -> TypeToken .
+  eq get-type(const(IntT, ValW1)) = IntT .
+  eq get-type(const(FloatT, ValW1)) = FloatT .
+
+  op get-valW : Value -> ValWrapper .
+  eq get-valW(const(IntT, ValW1)) = ValW1 .
+  eq get-valW(const(FloatT, ValW1)) = ValW1 .
 
   op correctFloat : FloatValue -> FloatValue [ctor] .
   ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(pos))) if F1 >= float(limitF(FType)) .
@@ -680,7 +688,7 @@ fmod WASM-CONVERSIONOPS-MOD is
   eq demote(f64, f32, val(NaN)) = val(nans(nil)) .
   eq demote(f64, f32, val(InfF)) = val(InfF) .
   eq demote(f64, f32, val(ZeroF)) = val(ZeroF) .
-  eq demote(f64, f32, val(F1)) = val(correctFloat(const(f32, val(F1)))) .
+  eq demote(f64, f32, val(F1)) = get-valW(correctFloat(const(f32, val(F1)))) .
 
   op promote : FloatTypeToken FloatTypeToken ValWrapper -> ValWrapper .
   *** TODO: Take into account canon NaNs
@@ -1115,7 +1123,7 @@ mod WASMMOD is
                       if Int2 == 0 .
   crl [int.div_u] : < (IntT . "div_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                       =>   
-                      < IL | st-push(ST, abs(Int1 quo Int2)) | NeLocalSTRList > 
+                      < IL | st-push(ST, const(IntT, val(abs(Int1 quo Int2)))) | NeLocalSTRList > 
                       if Int2 =/= 0 .
   *** TODO: check "multiple distinct parses for statement" in div_s (Parses as String and Inst)
   crl [int.div_s-und] : < (IntT . "div_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
@@ -1128,7 +1136,7 @@ mod WASMMOD is
                     =>   trap("Binop result undefined")  
                     if Int2 == 0 .
   crl [int.rem_u] : < (IntT . "rem_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                    =>   < IL | st-push(ST, abs(Int1 rem Int2)) | NeLocalSTRList > 
+                    =>   < IL | st-push(ST, const(IntT, val(abs(Int1 rem Int2)))) | NeLocalSTRList > 
                     if Int2 =/= 0 .
   crl [int.rem_s-und] : < (IntT . "rem_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                         =>   trap("Binop result undefined") 
