@@ -858,11 +858,14 @@ mod WASMMOD is
   protecting WASM-GLOBALDEF-MOD .
   protecting LIST{GlobalDef} .
 
+  protecting MAP{Addr, String} .
+
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMFuncGlobalSim WASMGlobalSim WASMLocalSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
-  
+  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMFuncGlobalSim WASMFuncGlobalIndSim WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
+  sorts LocalIndCtx GlobalIndCtx FuncIndCtx .
+
   *** Simulator components
   subsorts Stack List{Inst} < WASMLocalSim .
   subsorts EmptyStack NeStack < Stack .
@@ -888,16 +891,28 @@ mod WASMMOD is
 
   op if _ else _ : List{Inst} List{Inst} -> Inst [ctor] .
 
+  *** Indices stores
+  *** TODO: Some are left (types, etc.)
+  op {localIndCtx _} : Map{Addr, String} -> LocalIndCtx [ctor] .
+  op {globalIndCtx _} : Map{Addr, String} -> GlobalIndCtx [ctor] .
+  op {funcIndCtx _} : Map{Addr, String} -> FuncIndCtx [ctor] .
+
   *** Local environment
   *** < InstList(List{Inst}) | Stack | LocalStore(Map{ValRef, Value}) >
   op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMLocalSim [ctor] .
+
+  op _ _ : LocalIndCtx WASMLocalSim -> WASMLocalIndSim [ctor] .
 
   *** Global environment
   *** WASMLocalSim # GlobalAddrs(Map{ValRef, Nat} <-> GlobalStore(Map{ValRef, Value})
   op _ # _ <-> _ : WASMLocalSim Map{String, Addr} Map{Addr, GlobalInstance} -> WASMGlobalSim [ctor] .
 
+  op _ _ : GlobalIndCtx WASMGlobalSim -> WASMGlobalIndSim [ctor] .
+
   *** Functions + Global enviroment
   op _ # _ : WASMGlobalSim Map{Addr, FuncDef} -> WASMFuncGlobalSim [ctor] .
+
+  op _ _ : FuncIndCtx WASMFuncGlobalSim -> WASMFuncGlobalIndSim [ctor] .
 
   *** Types + Functions + Global enviroment
   op _ # _ : WASMFuncGlobalSim Map{Addr, TypeDef} -> WASMTypeFuncGlobalSim [ctor] .

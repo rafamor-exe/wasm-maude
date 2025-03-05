@@ -285,8 +285,7 @@ rew run-module-func((module  (type 3 (func (param i32) (result i32)))  (type 4 (
 rew {start 4, indctr 0} # (module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) (global.set "gb1")) end) (global "gb1" (mut i32) (i32 .const 1))) # < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty # .
 
 *** TEST MODULE WITH GLOBALS
-Maude> rew run-module-func((module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 4 (type 0) (param nil) 
-(result i32) (local i32) ((i32 .const 10) (global.set "gb1")) end) (global "gb1" (mut i32) (i32 .const 1))), 0) .
+Maude> rew run-module-func((module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) (global.set "gb1")) end) (global "gb1" (mut i32) (i32 .const 1))), 0) .
 rewrites: 85 in 10ms cpu (7ms real) (8500 rewrites/second)
 result WASMSimTrigger: {start 0, indctr 0} # module nil nil nil # < nil | EmptyStack | empty > # "gb1" |-> 1 <-> 1 |-> {type mut i32, value const(i32, val(10))} # 0 |-> func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end 
     # (0 |-> type 3 func param i32 result i32, 1 |-> type 4 func param (i32 i32) result i32, 2 |-> type 5 func param (i32 i32 i32) result i32, 3 |-> type 6 func param (i32 i64 i32) result i64) #
