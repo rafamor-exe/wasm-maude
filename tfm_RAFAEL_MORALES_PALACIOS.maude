@@ -58,10 +58,6 @@ fmod WASM-BITVAL-MOD is
   ***var F : Float .
   ***var BitStringSize : BitStringSize .
 
-  
-  ***mb 32 : BitStringSize .
-  ***mb 64 : BitStringSize .
-
   *** BitVal representation (valid for int and float): contains typetoken for type-checking and bitstring. 
   op {valtype _, bitstring _} : TypeToken List{Bit} -> BitVal [ctor] .
 
@@ -246,7 +242,7 @@ fmod WASM-FLOAT-MOD is
 
   var F1 F2 : Float .
 
-  *** Wrapper for sign-carrying floats
+  *** Proposition for wrapper for sign-carrying floats
   ***op wasmF : Sign Float -> WASMFloat .
   ***op _+_ : WASMFloat WASMFloat -> WASMFloat [ctor] .
   ***eq wasmF(pos, F1) + wasmF(pos, F2) = wasmF(pos, F1 + F2) .
@@ -300,13 +296,6 @@ fmod WASM-VALUE-MOD is
   subsorts IntValue < Value .
   subsorts FloatValue < Value .
   ***subsorts Int32Value Int64Value < IntValue .
-
-  *** Initial proposal for restricting i32 value
-  ***var IntValue : IntValue .
-  ***var Val : Value .
-  ***cmb IntValue : Int64Value if 0 < IntValue and IntValue < 18446744073709551616 .
-  ***cmb IntValue : Int32Value if 0 < IntValue and IntValue < 4294967295 .
-  ***cmb Val : FloatValue if (Val == (1 + ) * (2 ^ (e)) or (Val == (1 + ) * (2 ^ (e))) .
 
   var T : TypeToken .
   var IntT : IntTypeToken .
@@ -418,7 +407,6 @@ fmod WASM-IOPS-MOD is
   *** Auxiliary op for arithmetic instructions
   *** signed op : integer operators can be interpreted as if they had sign by some instructions.
   *** signed takes the number and the number of bits in its representation (32/64) 
-  *** TODO: FIX multiple parses for statement
   op signed : ValWrapper Nat -> ValWrapper .
   ceq signed(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
   ceq signed(val(Int1), N) = val(Int1 - (2 ^ (N))) if (2 ^ (N - 1)) <= Int1 and Int1 < (2 ^ (N)) .
@@ -737,22 +725,15 @@ fmod WASM-INST-MOD is
   op global.get _ : String -> Inst [ctor] .
   op global.set _ : String -> Inst [ctor] .
 
-  *** TODO: maybe fix to use it as a template??
-  *** - The problem is that I think Maude obligues to separate the tokens so it would be like "i32 .const, not i32.const"
   ***op _.const _ : TypeToken Value -> Inst [ctor] .
   op _ .const _ : TypeToken Int -> ConstInst [ctor] .
   op _ .const _ : FloatTypeToken Float -> ConstInst [ctor] .
-  ***op i64.const _ : IntValue -> Inst [ctor] .
-  *** TODO: Include more valid types
-  ***ops i32 : -> Type [ctor] .
 
 
   *** binop (Binary Operations)
   *** ibinop (Integer binop) - add | sub | mul | div_sx | rem_sx | and | or | xor | shl | shr_sx | rotl | rotr
   ops add sub mul : -> BinopToken [ctor] .
   op _._ : TypeToken BinopToken -> Inst [ctor] . *** Valid for ints and floats
-  ***op _._ : TypeToken BinopToken -> Inst [ctor] .
-  ***op _._ : TypeToken BinopToken -> Inst [ctor] .
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   ops "div_u" "div_s" "rem_u" "rem_s" : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
@@ -906,8 +887,6 @@ mod WASMMOD is
   op und : -> Und [ctor] .
 
   op if _ else _ : List{Inst} List{Inst} -> Inst [ctor] .
-  ***op EmptyList : -> EmptyList [ctor] .
-
 
   *** Local environment
   *** < InstList(List{Inst}) | Stack | LocalStore(Map{ValRef, Value}) >
@@ -932,11 +911,9 @@ mod WASMMOD is
   op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor] .
   
 
-  *** Map{ValRef, Value} definition
-  ***op [_<-_] : ValRef Value -> Assign [ctor] .
+  *** Empty Map{ValRef, Value} definition
   op EmptyLocalStore : -> Map{ValRef, Value} [ctor] .
   eq EmptyLocalStore = empty .
-  ***op __ : Assign Map{ValRef, Value} -> NeLocalStore [assoc comm ctor id: EmptyLocalStore] .  *** Store[n <- v] means local n = v
 
   *** Module sections
   *** TODO: complete module parts (global, exports, etc.)
@@ -955,8 +932,6 @@ mod WASMMOD is
 
   *** lookup: auxiliar op to lookup values from store
   op lookup : Map{ValRef, Value} ValRef -> Value .
-  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = Val if ValR == ValR2 .
-  ***ceq lookup([ValR2 <- Val] LocalSTR, ValR) = lookup(LocalSTR, ValR) if ValR =/= ValR2 .
   *** TODO: error otherwise or leave undefined??
   op jump-to-L : StackAndLabel -> Inst [ctor] .
 
@@ -1011,9 +986,6 @@ mod WASMMOD is
   var TypeDefL : List{TypeDef} .
   var GlobalDefL : List{GlobalDef} .
 
-  *** Map{ValRef, Value} is a Set
-  ***eq [ValR <- Val][ValR <- Val] = [ValR <- Val] .
-
 
   *** Run trigger
   op run-nomodule : List{Inst} -> WASMTypeFuncGlobalSim .
@@ -1030,7 +1002,6 @@ mod WASMMOD is
   *** Rules
   
   *** TODO: Include validation in rules as eqs in preconditions
-  *** TODO: Maybe create rules to transform an input of the form of a usual program to this representation with initial empty stack and store??
 
   rl [parse-typedef] : {start N, indctr Ctr} # (module (TypeDef TypeDefL) FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
@@ -1065,8 +1036,6 @@ mod WASMMOD is
 
   *** local.set rule: pop value from stack and store it in ValR in the local store
   rl [local.set] : < (local.set ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) LocalSTRList > .
-  ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- st-head(ST)]LocalSTR > if Val =/= st-head(ST) .
-  ***crl [local-set-ow] : < (local.set ValR) IL | ST | [ValR <- Val]LocalSTR >   =>   < IL | st-pop(ST) | [ValR <- Val]LocalSTR > if Val == st-head(ST)  .
 
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
   *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
@@ -1094,17 +1063,15 @@ mod WASMMOD is
 
 
   *** t.const rule: push Val of type T to stack
-  *** TODO: maybe fix to use it as a template??
-  ***rl [t.const] : < (T .const Val) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, Val) | NeLocalSTRList > .
-  ***crl [i32.const] : < (i32.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 32) .
-  *** TODO: push "i32 .const IntVal" s.t. we store the type too
-  rl [int-const] : < (IntT .const IntN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, const(IntT, val(IntN))) | NeLocalSTRList > .
+  crl [int-const] : < (IntT .const IntN) IL | ST | NeLocalSTRList >   
+                    =>   
+                    < IL | st-push(ST, const(IntT, val(IntN))) | NeLocalSTRList > 
+                    if 0 <= IntN and IntN < (2 ^ (bit-width(IntT))) .
   rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | NeLocalSTRList >   =>   < (FloatT .const float(IntN)) IL | ST | NeLocalSTRList > .
   crl [float-const-nonZ] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(FloatN)))) | NeLocalSTRList > 
                             if FloatN =/= 0.0 .
   crl [float-const-Z] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList > 
                           if FloatN == 0.0 .
-  ***crl [i64.const] : < (i64.const IntVal) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, IntVal) | NeLocalSTRList > if verify-const(IntVal, 64) .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
   rl [int.add] : < (IntT . add) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
@@ -1125,13 +1092,12 @@ mod WASMMOD is
                       =>   
                       < IL | st-push(ST, const(IntT, val(abs(Int1 quo Int2)))) | NeLocalSTRList > 
                       if Int2 =/= 0 .
-  *** TODO: check "multiple distinct parses for statement" in div_s (Parses as String and Inst)
   crl [int.div_s-und] : < (IntT . "div_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                         =>   trap("Binop result undefined") 
                         if signed(val(Int2), bit-width(IntT)) == val(0) or (signed(val(Int1), bit-width(IntT)) quo signed(val(Int2), bit-width(IntT))) == val(2 ^ (bit-width(IntT) - 1)) .
-  ***crl [IntT .div_s] : < (IntT . "div_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-  ***                  =>   < IL | st-push(ST, signed(val(Int1), bit-width(IntT)) quo signed(val(Int2), bit-width(IntT))) | NeLocalSTRList > 
-  ***                  if signed(val(Int2), bit-width(IntT)) =/= val(0) and (signed(val(Int1), bit-width(IntT)) quo signed(val(Int2), bit-width(IntT))) =/= val(2 ^ (bit-width(IntT) - 1)) .
+  crl [int.div_s] : < (IntT . "div_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
+                    =>   < IL | st-push(ST, const(IntT, unsigned(signed(ValW1, bit-width(IntT)) quo signed(ValW2, bit-width(IntT)), bit-width(IntT)))) | NeLocalSTRList > 
+                    if signed(ValW2, bit-width(IntT)) =/= val(0) and (signed(ValW1, bit-width(IntT)) quo signed(ValW2, bit-width(IntT))) =/= val(2 ^ (bit-width(IntT) - 1)) .
   crl [int.rem_u-und] : < (IntT . "rem_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
                     =>   trap("Binop result undefined")  
                     if Int2 == 0 .
@@ -1142,8 +1108,9 @@ mod WASMMOD is
                         =>   trap("Binop result undefined") 
                         if signed(val(Int2), bit-width(IntT)) == val(0) .
   *** By definition: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (Int1 quo abs(Int1)))
-  ***crl [IntT .rem_s] : < (IntT . "rem_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-  ***                  => < IL | st-push(ST, unsigned(signed(val(Int1), bit-width(IntT)) - (signed(val(Int2), bit-width(IntT)) * (signed(val(Int1), bit-width(IntT)) quo signed(val(Int2), bit-width(IntT)))), bit-width(IntT))) | NeLocalSTRList > if signed(val(Int2), bit-width(IntT)) =/= val(0) .
+  crl [int.rem_s] : < (IntT . "rem_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
+                      => < IL | st-push(ST, const(IntT, unsigned(signed(ValW1, bit-width(IntT)) - (signed(ValW2, bit-width(IntT)) * (signed(ValW1, bit-width(IntT)) quo signed(ValW2, bit-width(IntT)))), bit-width(IntT)))) | NeLocalSTRList > 
+                      if signed(ValW2, bit-width(IntT)) =/= val(0) .
 
   *** instructions with bitstring representation
   rl [int.and] : < (IntT . and) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
@@ -1308,7 +1275,6 @@ mod WASMMOD is
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
     
 
-
   *** lookup rule: get value from reference from local store
   rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
 
@@ -1416,12 +1382,6 @@ mod WASMMOD is
   op count-paramlist-func : FuncDef -> Nat .
   eq count-paramlist-func(FuncDef) = count-locals-paramlist(get-paramlist-func(FuncDef)) .
 
-  *** Inizialize a LocalStore with N variables
-  ***op inizialize-store-N : Nat Map{ValRef, Value} -> Map{ValRef, Value} .
-  ***eq inizialize-store-N(0, LocalSTR) = LocalSTR .
-  ***eq inizialize-store-N(1, LocalSTR) = insert(0, 0, LocalSTR) .
-  ***ceq inizialize-store-N(N, LocalSTR) = insert(N - 1, 0, inizialize-store-N(N - 1, LocalSTR)) if N > 1 .
-
   *** Inizialize a LocalStore with typed variables
   op init-store : List{TypeToken} Stack Map{ValRef, Value} -> Map{ValRef, Value} .
   eq init-store(nil, ST, LocalSTR) = LocalSTR .
@@ -1437,13 +1397,10 @@ mod WASMMOD is
   ceq selectVal(val(Int1), Val1, Val2) = Val1 if Int1 =/= 0 .
   eq selectVal(val(Int1), Val1, Val2) = Val2 [owise] .
 
+
   ****************
   *** Verification
   ****************
-  *** Should this be verified at constructor level??
-  ***op verify-const : Value Nat -> Bool .
-  ***ceq verify-const(IntVal, N) = true if 0 <= IntVal and IntVal <= ((2 ^ (N)) - 1) .
-  ***eq verify-const(Val, N) = false .
   
   *** Assert there are n values on top of stack with specific types
   op valid-stack : Stack List{TypeToken} -> Bool .
