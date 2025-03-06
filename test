@@ -299,3 +299,14 @@ rewrites: 94 in 0ms cpu (0ms real) (~ rewrites/second)
 result WASMSimTrigger: {start 4, indctr 0} # module nil nil nil # < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value const(i32, val(10))} # 4
     |-> func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end # (0 |-> type 3 func param i32 result i32, 1 |-> type 4 func param
     (i32 i32) result i32, 2 |-> type 5 func param (i32 i32 i32) result i32, 3 |-> type 6 func param (i32 i64 i32) result i64) #
+
+*** TEST resolve function name
+Maude> rew run-module-func((module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) (global.set "gb1")) end) (global "gb1" (mut i32) (i32 .const 1))), "start") .
+rewrite in WASMMOD : run-module-func(module (type 3 func param i32 result i32) (type 4 func param (i32 i32) result i32) (type 5 func param (i32 i32 i32) result i32) (
+    type 6 func param (i32 i64 i32) result i64) func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end global "gb1"(mut
+    i32)(i32 .const (1).NzNat), "start") .
+rewrites: 99 in 1ms cpu (0ms real) (99000 rewrites/second)
+result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "start" |-> 0} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32,
+    value const(i32, val(10))} # 0 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end # (0 |-> type 3 func param
+    i32 result i32, 1 |-> type 4 func param (i32 i32) result i32, 2 |-> type 5 func param (i32 i32 i32) result i32, 3 |-> type 6 func param (i32 i64 i32) result i64)
+    #
