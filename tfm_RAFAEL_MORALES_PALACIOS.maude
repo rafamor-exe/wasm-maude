@@ -780,6 +780,7 @@ fmod WASM-INST-MOD is
   op end : -> Inst [ctor] .
 
   op call _ : Addr -> Inst [ctor] .
+  op call _ : String -> Inst [ctor] .
 
 endfm
 
@@ -1314,6 +1315,11 @@ mod WASMMOD is
                 init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
               > # GlobalAddrs <-> GlobalsStore # FuncStore 
               if valid-stack(ST, get-paramlistTList-func(FuncStore[Addr])) .
+  
+  rl [call-by-name] : {funcIndCtx IndFuncCtxSTR } < (call Str) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+              =>   
+              {funcIndCtx IndFuncCtxSTR } < (call (IndFuncCtxSTR[Str])) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
+
   rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
