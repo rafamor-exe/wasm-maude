@@ -335,3 +335,22 @@ result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcInd
     |-> {type mut i32, value const(i32, val((0).Zero))} # (1 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 11) global.set "gb1"
     global.get "gb1" call "isEven") end, 2 |-> func "isEven" (type 0) (param i32) (result i32) (local i32) (local.get 0 (i32 .const 2) (i32 . ("rem_u").IBinopToken) (
     i32 . eqz) global.set "gb1") end) # 0 |-> type 3 func param i32 result i32 #
+
+*** Structured
+rew run-module-func(
+    (module
+      (type 3 (func (param i32) (result i32)))
+      (func "start" (type 0) (param nil) (result i32)
+       (local i32)
+        (
+            (i32 .const 10) (global.set "gb1") (global.get "gb1") (call "isEven")
+        )
+        end)
+      (func "isEven" (type 0) (param i32) (result i32)
+       (local i32)
+        (
+            (local.get 0) (i32 .const 2) (i32 . "rem_u") (i32 . eqz) (global.set "gb1")
+        )
+        end)
+      (global "gb1" (mut i32) (i32 .const 1)))
+    , "start") .
