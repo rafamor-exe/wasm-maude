@@ -1096,7 +1096,7 @@ mod WASMMOD is
   crl [global.set] : < (global.set Str) IL | const(T, ValW1) $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert(GlobalAddrs[Str], {type (mut T), value const(T, ValW1)}, GlobalsStore) 
-                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)) or GlobalsStore == empty .
+                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)) or GlobalsStore[GlobalAddrs[Str]] == undefined .
 
   *** Parametric Instructions
   rl [drop] : < (drop) IL | Val $ ST | NeLocalSTRList > 
@@ -1283,7 +1283,9 @@ mod WASMMOD is
   rl [nop] : < nop IL | ST | NeLocalSTRList >   
             =>   
             < IL | ST | NeLocalSTRList > .
-  rl [block] : < ((block Str) IL2 end) IL | ST | NeLocalSTRList >   =>   < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > .
+  rl [block] : < ((block Str) IL2 end) IL | ST | NeLocalSTRList >
+               =>
+               < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
   rl [if-else] : < (if IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
@@ -1396,8 +1398,8 @@ mod WASMMOD is
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = TempST $ ST || Label if N == 0 .
 
   op if-else : ValWrapper List{Inst} List{Inst} List{Inst} -> List{Inst} .
-  ceq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if Int1 == 0 .
-  ceq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL if Int1 =/= 0 .
+  ceq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if Int1 =/= 0 .
+  eq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL [owise] .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
