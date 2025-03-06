@@ -779,7 +779,7 @@ fmod WASM-INST-MOD is
   op "br_if" _ : Nat -> Inst [ctor] .
   op end : -> Inst [ctor] .
 
-  op call _ : Nat -> Inst [ctor] .
+  op call _ : Addr -> Inst [ctor] .
 
 endfm
 
@@ -807,6 +807,7 @@ fmod WASM-FUNCDEF-MOD is
 
   *** TODO: look for a way of making ParamType, ResultType lists and LocalsRef optional
   op (func _ _ _ _ _ _ end) : Id TypeRef List{ParamType} List{ResultType} LocalsRef List{Inst} -> FuncDef [ctor] .
+  op (func _ _ _ _ _ _ end) : String TypeRef List{ParamType} List{ResultType} LocalsRef List{Inst} -> FuncDef [ctor] .
 
 endfm
 
@@ -858,13 +859,14 @@ mod WASMMOD is
   protecting WASM-GLOBALDEF-MOD .
   protecting LIST{GlobalDef} .
 
-  protecting MAP{Addr, String} .
+  ***protecting MAP{Addr, String} .
 
   
   
   *** Declare sorts to be used and hierarchy between them.
   sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMFuncGlobalSim WASMFuncGlobalIndSim WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
   sorts LocalIndCtx GlobalIndCtx FuncIndCtx .
+  sorts Starter .
 
   *** Simulator components
   subsorts Stack List{Inst} < WASMLocalSim .
@@ -893,9 +895,9 @@ mod WASMMOD is
 
   *** Indices stores
   *** TODO: Some are left (types, etc.)
-  op {localIndCtx _} : Map{Addr, String} -> LocalIndCtx [ctor] .
-  op {globalIndCtx _} : Map{Addr, String} -> GlobalIndCtx [ctor] .
-  op {funcIndCtx _} : Map{Addr, String} -> FuncIndCtx [ctor] .
+  op {localIndCtx _} : Map{String, Addr} -> LocalIndCtx [ctor] .
+  op {globalIndCtx _} : Map{String, Addr} -> GlobalIndCtx [ctor] .
+  op {funcIndCtx _} : Map{String, Addr} -> FuncIndCtx [ctor] .
 
   *** Local environment
   *** < InstList(List{Inst}) | Stack | LocalStore(Map{ValRef, Value}) >
@@ -915,13 +917,16 @@ mod WASMMOD is
   op _ _ : FuncIndCtx WASMFuncGlobalSim -> WASMFuncGlobalIndSim [ctor] .
 
   *** Types + Functions + Global enviroment
-  op _ # _ : WASMFuncGlobalSim Map{Addr, TypeDef} -> WASMTypeFuncGlobalSim [ctor] .
+  op _ # _ : WASMFuncGlobalIndSim Map{Addr, TypeDef} -> WASMTypeFuncGlobalSim [ctor] .
 
   *** WASM Simulator
   *** # WASMModule # WASMGlobalSim # FuncStore #
   op # _ # _ # : WASMModule WASMTypeFuncGlobalSim -> WASMSim [ctor] .
 
-  op {start _, indctr _} : Nat Nat -> WasmTrigger [ctor] .
+  op start _ : Nat -> Starter [ctor] .
+  op start _ : String -> Starter [ctor] .
+
+  op {_, indctr _} : Starter Nat -> WasmTrigger [ctor] .
 
   op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor] .
   
@@ -998,53 +1003,77 @@ mod WASMMOD is
   var FuncDef : FuncDef .
   var TypeDef : TypeDef .
   var FuncDefL : List{FuncDef} .
+  var NeFuncDefL : NeList{FuncDef} .
   var TypeDefL : List{TypeDef} .
   var GlobalDefL : List{GlobalDef} .
+  var Id : Id .
+  var IndFuncCtx : FuncIndCtx .
+  var IndFuncCtxSTR : Map{String, Addr} .
+  var StartFunc : Starter .
 
 
   *** Run trigger
   op run-nomodule : List{Inst} -> WASMTypeFuncGlobalSim .
-  eq run-nomodule(IL) = < IL | EmptyStack | empty > # empty <-> empty # empty # empty .
+  eq run-nomodule(IL) = {funcIndCtx empty} < IL | EmptyStack | empty > # empty <-> empty # empty # empty .
 
   op uninitialized : -> Inst [ctor] .
 
   op run-module-func : WASMModule Nat -> WASMSimTrigger .
-  eq run-module-func(WASMModule, N) = {start N, indctr 0} # WASMModule # < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty # .
+  eq run-module-func(WASMModule, N) = {start N, indctr 0} # WASMModule # {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty # .
+
+  op run-module-func : WASMModule String -> WASMSimTrigger .
+  eq run-module-func(WASMModule, Str) = {start Str, indctr 0} # WASMModule # {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty # .
+
 
   op simulate-wasm : WASMTypeFuncGlobalSim -> WASMTypeFuncGlobalSim .
   eq simulate-wasm(WASMTypeFuncGlobalSim) = WASMTypeFuncGlobalSim .
+
+  op insert : String Nat FuncIndCtx -> FuncIndCtx .
+  eq insert(Str, Ctr, {funcIndCtx IndFuncCtxSTR}) = {funcIndCtx insert(Str, Ctr, IndFuncCtxSTR)} .
 
   *** Rules
   
   *** TODO: Include validation in rules as eqs in preconditions
 
-  rl [parse-typedef] : {start N, indctr Ctr} # (module (TypeDef TypeDefL) FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-typedef] : {StartFunc, indctr Ctr} # (module (TypeDef TypeDefL) FuncDefL GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr Ctr + 1} # (module TypeDefL FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
+                      {StartFunc, indctr Ctr + 1} # (module TypeDefL FuncDefL GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
 
-  rl [parse-typedef-last] : {start N, indctr Ctr} # (module (TypeDef) FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-typedef-last] : {StartFunc, indctr Ctr} # (module (TypeDef) FuncDefL GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr 0} # (module nil FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
+                      {StartFunc, indctr 0} # (module nil FuncDefL GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, TypeDef, TypeStore) # .
 
-  rl [parse-funcdef] : {start N, indctr Ctr} # (module nil (FuncDef FuncDefL) GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-funcdef] : {StartFunc, indctr Ctr} # (module nil ((func Id TypeRef ParamList ResultTypeList LocalsRef IL end) NeFuncDefL) GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr Ctr + 1} # (module nil FuncDefL GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
+                      {StartFunc, indctr Ctr + 1} # (module nil NeFuncDefL GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id TypeRef ParamList ResultTypeList LocalsRef IL end), FuncStore) # TypeStore # .
 
-  rl [parse-funcdef-last] : {start N, indctr Ctr} # (module nil (FuncDef) GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-funcdef-last] : {StartFunc, indctr Ctr} # (module nil (func Id TypeRef ParamList ResultTypeList LocalsRef IL end) GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr 0} # (module nil nil GlobalDefL) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, FuncDef, FuncStore) # TypeStore # .
+                      {StartFunc, indctr 0} # (module nil nil GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id TypeRef ParamList ResultTypeList LocalsRef IL end), FuncStore) # TypeStore # .
 
-  rl [parse-globaldef] : {start N, indctr Ctr} # (module nil nil ((global Str (GlobalType) (ConstInst)) GlobalDefL) ) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-funcdef-str] : {StartFunc, indctr Ctr} # (module nil ((func Str TypeRef ParamList ResultTypeList LocalsRef IL end) NeFuncDefL) GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr Ctr + 1} # (module nil nil GlobalDefL) # < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+                      {StartFunc, indctr Ctr + 1} # (module nil NeFuncDefL GlobalDefL) # insert(Str, Ctr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, (func Str TypeRef ParamList ResultTypeList LocalsRef IL end), FuncStore) # TypeStore # .
 
-  rl [parse-globaldef-last] : {start N, indctr Ctr} # (module nil nil (global Str (GlobalType) (ConstInst))) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-funcdef-last-str] : {StartFunc, indctr Ctr} # (module nil (func Str TypeRef ParamList ResultTypeList LocalsRef IL end) GlobalDefL) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {start N, indctr 0} # (module nil nil nil) # < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+                      {StartFunc, indctr 0} # (module nil nil GlobalDefL) # insert(Str, Ctr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, (func Str TypeRef ParamList ResultTypeList LocalsRef IL end), FuncStore) # TypeStore # .
 
-  rl [start-sim] : {start N, indctr Ctr} # (module nil nil nil) # < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+
+  rl [parse-globaldef] : {StartFunc, indctr Ctr} # (module nil nil ((global Str (GlobalType) (ConstInst)) GlobalDefL) ) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {StartFunc, indctr Ctr + 1} # (module nil nil GlobalDefL) # IndFuncCtx < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+
+  rl [parse-globaldef-last] : {StartFunc, indctr Ctr} # (module nil nil (global Str (GlobalType) (ConstInst))) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                      =>
+                      {StartFunc, indctr 0} # (module nil nil nil) # IndFuncCtx < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+
+  rl [start-sim] : {start N, indctr Ctr} # (module nil nil nil) # IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                    =>
-                   {start N, indctr 0} # (module nil nil nil) # simulate-wasm(< (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
+                   {start N, indctr 0} # (module nil nil nil) # simulate-wasm(IndFuncCtx < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
+  rl [start-sim-str] : {start Str, indctr Ctr} # (module nil nil nil) # {funcIndCtx IndFuncCtxSTR } < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+                        =>
+                        {start Str, indctr 0} # (module nil nil nil) # simulate-wasm({funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
 
   *** local.get rule: push to stack the value from ValR from the local store
   rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
@@ -1278,13 +1307,13 @@ mod WASMMOD is
               if Int1 == 0 .
 
   *** According to Specification: param init precedes local vars init
-  crl [call] : < (call N) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+  crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
               =>   
-              < get-IL-func(FuncStore[N]) exit-func end | 
-                label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[N])) | 
-                init-store(get-paramlistTList-func(FuncStore[N]) get-localsTList-func(FuncStore[N]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[N])), (empty).Map{ValRef,Value}) LocalSTRList 
+              < get-IL-func(FuncStore[Addr]) exit-func end | 
+                label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[Addr])) | 
+                init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
               > # GlobalAddrs <-> GlobalsStore # FuncStore 
-              if valid-stack(ST, get-paramlistTList-func(FuncStore[N])) .
+              if valid-stack(ST, get-paramlistTList-func(FuncStore[Addr])) .
   rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
@@ -1366,17 +1395,21 @@ mod WASMMOD is
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
+  eq get-IL-func(func Str TypeRef ParamList ResultTypeList LocalsRef IL end) = IL .
 
   op exit-func : -> Inst [ctor] .
 
   op get-localsref-func : FuncDef -> LocalsRef .
   eq get-localsref-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = LocalsRef .
+  eq get-localsref-func(func Str TypeRef ParamList ResultTypeList LocalsRef IL end) = LocalsRef .
 
   op get-localsTList-func : FuncDef -> List{TypeToken} .
   eq get-localsTList-func(func N TypeRef ParamList ResultTypeList (local TList) IL end) = TList .
+  eq get-localsTList-func(func Str TypeRef ParamList ResultTypeList (local TList) IL end) = TList .
 
   op get-paramlist-func : FuncDef -> List{ParamType} .
   eq get-paramlist-func(func N TypeRef ParamList ResultTypeList LocalsRef IL end) = ParamList .
+  eq get-paramlist-func(func Str TypeRef ParamList ResultTypeList LocalsRef IL end) = ParamList .
 
   op aux-get-paramlistTList-func : List{ParamType} -> List{TypeToken} .
   eq aux-get-paramlistTList-func(nil) = nil .
