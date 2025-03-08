@@ -163,12 +163,22 @@ view ResultType from TRIV to WASM-FUNCTYPE-MOD is
   sort Elt to ResultType .
 endv
 
-fmod WASM-TYPEDEF-MOD is
+fmod WASM-BLOCKTYPE-MOD is
 
-  protecting NAT .
   protecting WASM-FUNCTYPE-MOD .
   protecting LIST{ParamType} .
   protecting LIST{ResultType} .
+
+  sorts BlockType .
+
+  op _ _ : List{ParamType} List{ResultType} -> BlockType [ctor] .
+
+endfm
+
+fmod WASM-TYPEDEF-MOD is
+
+  protecting NAT .
+  protecting WASM-BLOCKTYPE-MOD .
 
   sorts TypeDef Id FuncType ParamResultFuncType .
   subsorts Nat < Id .
