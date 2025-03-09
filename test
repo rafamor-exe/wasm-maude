@@ -386,7 +386,7 @@ rew run-module-func(
             (i32 .const 0)
             (local.get 0)
             (i32 . eq)
-            (if
+            (if (type 0)
                 (i32 .const 1)
             else
                 (local.get 0)

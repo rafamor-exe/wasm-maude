@@ -173,22 +173,29 @@ view ResultType from TRIV to WASM-FUNCTYPE-MOD is
   sort Elt to ResultType .
 endv
 
-fmod WASM-BLOCKTYPE-MOD is
+fmod WASM-PARAMRESULTTYPE-MOD is
 
   protecting WASM-FUNCTYPE-MOD .
   ***protecting LIST{ParamType} .
   ***protecting LIST{ResultType} .
 
-  sorts BlockType .
-  subsorts ParamType ResultType < BlockType .
+  sorts ParamResultType .
+  subsorts ParamType ResultType < ParamResultType .
 
   var ParamType : ParamType .
   var ResultType : ResultType .
   var TList1 TList2 : List{TypeToken} .
 
-  op _ _ : ParamType ResultType -> BlockType [ctor] .
+  op _ _ : ParamType ResultType -> ParamResultType [ctor] .
   eq (param TList1) (param TList2) = (param (TList1 TList2)) .
   eq (result TList1) (result TList2) = (result (TList1 TList2)) .  
+
+  op getParamType : ParamResultType -> ParamType .
+  eq getParamType((param TList1) (result TList2)) = (param TList1) .
+  eq getParamType((result TList2)) = (param nil) .
+
+  op getResultType : ParamResultType -> ResultType .
+  eq getResultType((param TList1) (result TList2)) = (result TList2) .
 
   mb (param (TList1 TList2)) : ParamType .
   mb (result (TList1 TList2)) : ResultType .
@@ -199,9 +206,9 @@ fmod WASM-TYPEDEF-MOD is
 
   protecting NAT .
   protecting STRING .
-  protecting WASM-BLOCKTYPE-MOD .
+  protecting WASM-PARAMRESULTTYPE-MOD .
 
-  sorts TypeDef Id FuncType ParamResultFuncType .
+  sorts TypeDef TypeRef Id FuncType ParamResultFuncType .
   subsorts Nat < Id .
 
   *** TODO: (for syntax reasons) be able to declare only param or result or none (now nil is required)
@@ -210,24 +217,37 @@ fmod WASM-TYPEDEF-MOD is
   ***op _ : List{ResultType} -> ParamResultFuncType [ctor] .
 
   ***op (func _) : ParamResultFuncType -> FuncType [ctor] .
-  op (func _) : BlockType -> FuncType [ctor] .
+
+  op (type _) : Id -> TypeRef [ctor] .
+  op (type _) : String -> TypeRef [ctor] .
+
+  op (func _) : ParamResultType -> FuncType [ctor] .
 
   op (type _ _) : Id FuncType -> TypeDef [ctor] .
   op (type _ _) : String FuncType -> TypeDef [ctor] .
 
   var Id : Id .
   var Str : String .
-  var BlockType : BlockType .
+  var ParamResultType : ParamResultType .
 
-  op get-functype-typedef : TypeDef -> BlockType .
-  eq get-functype-typedef(type Id (func BlockType)) = BlockType .
-  eq get-functype-typedef(type Str (func BlockType)) = BlockType .
+  op get-functype-typedef : TypeDef -> ParamResultType .
+  eq get-functype-typedef(type Id (func ParamResultType)) = ParamResultType .
+  eq get-functype-typedef(type Str (func ParamResultType)) = ParamResultType .
 
 endfm
 
 view TypeDef from TRIV to WASM-TYPEDEF-MOD is
   sort Elt to TypeDef .
 endv
+
+fmod WASM-BLOCKTYPE-MOD is
+
+  protecting WASM-TYPEDEF-MOD .
+
+  sorts BlockType .
+  subsorts TypeRef ResultType < BlockType .
+
+endfm
 
 fmod WASM-VALREF-MOD is
 
@@ -748,6 +768,7 @@ endv
 fmod WASM-INST-MOD is
 
   protecting WASM-TYPETOKEN-MOD .
+  protecting WASM-BLOCKTYPE-MOD .
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
 
@@ -813,8 +834,8 @@ fmod WASM-INST-MOD is
   op nop : -> Inst [ctor] .
   op unreachable : -> Inst [ctor] .
 
-  op block _ : String -> Inst [ctor] .
-  op loop _ : String -> Inst [ctor] .
+  op block _ _ : BlockType String -> Inst [ctor] .
+  op loop _ _ : BlockType String -> Inst [ctor] .
   op br _ : Nat -> Inst [ctor] .
   op "br_if" _ : Nat -> Inst [ctor] .
   op end : -> Inst [ctor] .
@@ -843,14 +864,12 @@ fmod WASM-FUNCDEF-MOD is
   protecting MAP{String, Addr} .
   protecting MAP{Addr, TypeDef} . 
 
-  sorts FuncDef FuncTypeDef TypeRef LocalsRef .
-  subsorts BlockType TypeRef < FuncTypeDef .
+  sorts FuncDef FuncTypeDef LocalsRef .
+  subsorts ParamResultType TypeRef < FuncTypeDef .
 
-  op (type _) : Id -> TypeRef [ctor] .
-  op (type _) : String -> TypeRef [ctor] .
   op (local _) : List{TypeToken} -> LocalsRef [ctor] .
 
-  op _ _ : TypeRef BlockType -> FuncTypeDef [ctor] .
+  op _ _ : TypeRef ParamResultType -> FuncTypeDef [ctor] .
 
   *** TODO: look for a way of making ParamType, ResultType lists and LocalsRef optional
   op (func _ _ _ _ end) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor] .
@@ -858,26 +877,26 @@ fmod WASM-FUNCDEF-MOD is
 
   var FuncTypeDef : FuncTypeDef .
   var TypeRef : TypeRef .
-  var BlockType : BlockType .
+  var ParamResultType : ParamResultType .
   var TypeStore : Map{Addr, TypeDef} .
   var IndTypeCtxSTR : Map{String, Addr} .
   var Id : Id .
   var Str : String .
 
   *** TODO: Check whether this should be simplified
-  op get-functype : FuncTypeDef Map{Addr, TypeDef} Map{String, Addr} -> BlockType .
-  ceq get-functype(TypeRef BlockType, TypeStore, IndTypeCtxSTR) = BlockType if coherent-typedef(TypeRef, BlockType, TypeStore, IndTypeCtxSTR) .
+  op get-functype : FuncTypeDef Map{Addr, TypeDef} Map{String, Addr} -> ParamResultType .
+  ceq get-functype(TypeRef ParamResultType, TypeStore, IndTypeCtxSTR) = ParamResultType if coherent-typedef(TypeRef, ParamResultType, TypeStore, IndTypeCtxSTR) .
   eq get-functype((type Id), TypeStore, IndTypeCtxSTR) = get-functype-typedef(TypeStore[Id]) .
   eq get-functype((type Str), TypeStore, IndTypeCtxSTR) = get-functype-typedef(TypeStore[IndTypeCtxSTR[Str]]) .
-  eq get-functype(BlockType, TypeStore, IndTypeCtxSTR) = BlockType .
+  eq get-functype(ParamResultType, TypeStore, IndTypeCtxSTR) = ParamResultType .
 
-  op coherent-typedef : TypeRef BlockType Map{Addr, TypeDef} Map{String, Addr} -> Bool .
-  ceq coherent-typedef((type Id), BlockType, TypeStore, IndTypeCtxSTR) = true if BlockType == get-functype-typedef(TypeStore[Id]) .
-  ceq coherent-typedef((type Str), BlockType, TypeStore, IndTypeCtxSTR) = true if BlockType == get-functype-typedef(TypeStore[IndTypeCtxSTR[Str]]) .
-  eq coherent-typedef(TypeRef, BlockType, TypeStore, IndTypeCtxSTR) = false [owise] .
+  op coherent-typedef : TypeRef ParamResultType Map{Addr, TypeDef} Map{String, Addr} -> Bool .
+  ceq coherent-typedef((type Id), ParamResultType, TypeStore, IndTypeCtxSTR) = true if ParamResultType == get-functype-typedef(TypeStore[Id]) .
+  ceq coherent-typedef((type Str), ParamResultType, TypeStore, IndTypeCtxSTR) = true if ParamResultType == get-functype-typedef(TypeStore[IndTypeCtxSTR[Str]]) .
+  eq coherent-typedef(TypeRef, ParamResultType, TypeStore, IndTypeCtxSTR) = false [owise] .
 
   op valid-functype : FuncTypeDef Map{Addr, TypeDef} Map{String, Addr} -> Bool .
-  ceq valid-functype(TypeRef BlockType, TypeStore, IndTypeCtxSTR) = false if  not coherent-typedef(TypeRef, BlockType, TypeStore, IndTypeCtxSTR) .
+  ceq valid-functype(TypeRef ParamResultType, TypeStore, IndTypeCtxSTR) = false if  not coherent-typedef(TypeRef, ParamResultType, TypeStore, IndTypeCtxSTR) .
   eq valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) = true [owise] .
 
 
@@ -936,7 +955,7 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
+  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
   sorts IndCtx LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx .
   sorts Starter .
 
@@ -965,7 +984,7 @@ mod WASMMOD is
 
   op und : -> Und [ctor] .
 
-  op if _ else _ : List{Inst} List{Inst} -> Inst [ctor] .
+  op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor] .
 
   *** Indices stores
   *** TODO: Some are left (types, etc.)
@@ -982,7 +1001,8 @@ mod WASMMOD is
 
   *** Global environment
   *** WASMLocalSim # GlobalAddrs(Map{ValRef, Nat} <-> GlobalStore(Map{ValRef, Value})
-  op _ # _ <-> _ : WASMLocalSim Map{String, Addr} Map{Addr, GlobalInstance} -> WASMGlobalSim [ctor] .
+  op _ <-> _ : Map{String, Addr} Map{Addr, GlobalInstance} -> GlobalInventory [ctor] .
+  op _ # _ : WASMLocalSim GlobalInventory -> WASMGlobalSim [ctor] .
 
   op _ _ : GlobalIndCtx WASMGlobalSim -> WASMGlobalIndSim [ctor] .
 
@@ -1091,7 +1111,8 @@ mod WASMMOD is
   var StartFunc : Starter .
   var FuncType : FuncType .
   var FuncTypeDef : FuncTypeDef .
-  
+  var BlockType : BlockType .
+  var GlobalInventory : GlobalInventory .
 
 
   *** Run trigger
@@ -1377,17 +1398,27 @@ mod WASMMOD is
   rl [nop] : < nop IL | ST | NeLocalSTRList >   
             =>   
             < IL | ST | NeLocalSTRList > .
-  rl [block] : < ((block Str) IL2 end) IL | ST | NeLocalSTRList >
+  crl [block-resultT] : < ((block ResultTypeList Str) IL2 end) IL | ST | NeLocalSTRList >
                =>
-               < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > .
+               < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList >
+               if valid-stack(ST, nil) .
+  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef Str) IL2 end) IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               =>
+               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
-  rl [if-else] : < (if IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
+  rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
-                 < if-else(ValW1, IL1, IL2, IL) | ST | NeLocalSTRList > .
+                 < if-else(ValW1, IL1, IL2, IL, BlockType) | ST | NeLocalSTRList > .
   *** loop is an infinite loop
-  rl [loop] : < ((loop Str) IL2 end) IL | ST | NeLocalSTRList >   
+  crl [loop-resultT] : < ((loop ResultTypeList Str) IL2 end) IL | ST | NeLocalSTRList >
               =>
-              < IL2 end | st-push(ST, label(Str, (loop Str) IL2 end)) | NeLocalSTRList > .
+              < IL2 end | st-push(ST, label(Str, (loop ResultTypeList Str) IL2 end)) | NeLocalSTRList >
+              if valid-stack(ST, nil) .
+  crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef Str) IL2 end) IL | ST | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
+              =>
+              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label(Str, (loop TypeRef Str) IL2 end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+              if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
             < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | NeLocalSTRList > .
@@ -1404,21 +1435,21 @@ mod WASMMOD is
               if Int1 == 0 .
 
   *** According to Specification: param init precedes local vars init
-  crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+  crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
               < get-IL-func(FuncStore[Addr]) exit-func end | 
                 label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[Addr])) | 
                 init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
-              > # GlobalAddrs <-> GlobalsStore # FuncStore 
+              > # GlobalInventory # FuncStore 
               if valid-stack(ST, get-paramlistTList-func(FuncStore[Addr])) .
   
-  rl [call-by-name] : {funcIndCtx IndFuncCtxSTR } < (call Str) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+  rl [call-by-name] : {funcIndCtx IndFuncCtxSTR } < (call Str) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
-              {funcIndCtx IndFuncCtxSTR } < (call (IndFuncCtxSTR[Str])) IL | ST | LocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
+              {funcIndCtx IndFuncCtxSTR } < (call (IndFuncCtxSTR[Str])) IL | ST | LocalSTRList > # GlobalInventory # FuncStore .
 
-  rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore
+  rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalInventory # FuncStore
                   =>   
-                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore # FuncStore .
+                  < IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore .
     
 
   *** lookup rule: get value from reference from local store
@@ -1491,9 +1522,9 @@ mod WASMMOD is
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = get-ith-stackandlabel(ST, N - 1, TempST) if N > 0 .
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = TempST $ ST || Label if N == 0 .
 
-  op if-else : ValWrapper List{Inst} List{Inst} List{Inst} -> List{Inst} .
-  ceq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL1") IL1 end) IL if Int1 =/= 0 .
-  eq if-else(val(Int1), IL1, IL2, IL) = ((block "$ifIL2") IL2 end) IL [owise] .
+  op if-else : ValWrapper List{Inst} List{Inst} List{Inst} BlockType -> List{Inst} .
+  ceq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType "$ifIL1") IL1 end) IL if Int1 =/= 0 .
+  eq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType "$ifIL2") IL2 end) IL [owise] .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N FuncTypeDef LocalsRef IL end) = IL .
@@ -1534,6 +1565,10 @@ mod WASMMOD is
 
   op count-paramlist-func : FuncDef -> Nat .
   eq count-paramlist-func(FuncDef) = count-locals-paramlist(get-paramlist-func(FuncDef)) .
+
+  op expand : BlockType Map{String, Addr} Map{Addr, TypeDef} -> ParamResultType .
+  eq expand((type Id), IndTypeCtxSTR, TypeStore) = get-functype-typedef(TypeStore[Id]) .
+  eq expand((type Str), IndTypeCtxSTR, TypeStore) = get-functype-typedef(TypeStore[IndTypeCtxSTR[Str]]) .
 
   *** Inizialize a LocalStore with typed variables
   op init-store : List{TypeToken} Stack Map{ValRef, Value} -> Map{ValRef, Value} .
