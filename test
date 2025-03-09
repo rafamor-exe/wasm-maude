@@ -356,11 +356,21 @@ rew run-module-func(
       (global "gb1" (mut i32) (i32 .const 1)))
     , "start") .
 
+
+***Previous test:
+*** TEST PASSED!!! (computes factorial of number introduced by start function (could be retrieved directly from global var) and stores it in global var "result")
+rewrites: 758 in 340ms cpu (1591ms real) (2229 rewrites/second)
+result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "factorial" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(i32, val(5))}, 1 |-> {type    
+    mut i32, value const(i32, val(120))}) # (1 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end, 2 |-> func "factorial" (type 0) (param    
+    i32) (result i32) (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end) # 0 |-> type 3 func param i32       
+    result i32 #      
+
 *** Factorial (recursive)
 rew run-module-func(
     (module
-      (type 3 (func (param i32) (result i32)))
-      (func "start" (type 0) (param nil) (result i32)
+      (type "type0" (func ((result i32))))
+      (type "type1" (func ((param i32))))
+      (func "start" ((type "type0") (result i32))
        (local i32)
         (
             (i32 .const 5)
@@ -370,7 +380,7 @@ rew run-module-func(
             (global.set "result")
         )
         end)
-      (func "factorial" (type 0) (param i32) (result i32)
+      (func "factorial" ((type "type1"))
        (local i32)
         (
             (i32 .const 0)
@@ -391,9 +401,17 @@ rew run-module-func(
       (global "gb1" (mut i32) (i32 .const 1))
       (global "result" (mut i32) (i32 .const 1)))
     , "start") .
-*** TEST PASSED!!! (computes factorial of number introduced by start function (could be retrieved directly from global var) and stores it in global var "result")
-rewrites: 758 in 340ms cpu (1591ms real) (2229 rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "factorial" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(i32, val(5))}, 1 |-> {type    
-    mut i32, value const(i32, val(120))}) # (1 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end, 2 |-> func "factorial" (type 0) (param    
-    i32) (result i32) (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end) # 0 |-> type 3 func param i32       
-    result i32 #       
+
+
+*** [09/03][NEW] TEST PASSED: Factorial function execution with function type-checking. Possibility to declare type reference or inline type definition
+
+ Maude> rew run-module-func(    (module      (type "type0" (func ((result i32))))      (type "type1" (func ((param i32))))      (func "start" ((type "type0") (result i32))       (local i32)        (            (i32 .const 5)            (global.set "gb1")        
+    (global.get "gb1")            (call "factorial")            (global.set "result")        )        end)      (func "factorial" ((type "type1"))       (local i32)        (            (i32 .const 0)            (local.get 0)            (i32 . eq)            (if                (i32 .const 1)            else                (local.get 0)                (local.get 0)                (i32 .const 1)                (i32 . sub)                (call "factorial")                (i32 . mul)            end)        )        end)  
+    (global "gb1" (mut i32) (i32 .const 1))      (global "result" (mut i32) (i32 .const 1)))    , "start") .
+rewrite in WASMMOD : run-module-func(module (type "type0" func result i32) (type "type1" func param i32) func "start" (type "type0" result i32) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end func
+    "factorial" (type "type1") (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end global "gb1"(mut i32)(i32 .const (1).NzNat) 
+    global "result"(mut i32)(i32 .const (1).NzNat), "start") .
+rewrites: 788 in 0ms cpu (0ms real) (~ rewrites/second)
+result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {typeIndCtx "type0" |-> 0, "type1" |-> 1} {funcIndCtx "factorial" |-> 1, "start" |-> 0} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(    
+    i32, val(5))}, 1 |-> {type mut i32, value const(i32, val(120))}) # (0 |-> func "start" (result i32) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end, 1 |-> func "factorial" (param i32) (local i32) ((   
+    i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end) # (0 |-> type "type0" func result i32, 1 |-> type "type1" func param i32) #
