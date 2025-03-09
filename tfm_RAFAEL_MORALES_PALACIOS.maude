@@ -834,8 +834,8 @@ fmod WASM-INST-MOD is
   op nop : -> Inst [ctor] .
   op unreachable : -> Inst [ctor] .
 
-  op block _ _ : BlockType String -> Inst [ctor] .
-  op loop _ _ : BlockType String -> Inst [ctor] .
+  op block _ : BlockType -> Inst [ctor] .
+  op loop _ : BlockType -> Inst [ctor] .
   op br _ : Nat -> Inst [ctor] .
   op "br_if" _ : Nat -> Inst [ctor] .
   op end : -> Inst [ctor] .
@@ -874,6 +874,8 @@ fmod WASM-FUNCDEF-MOD is
   *** TODO: look for a way of making ParamType, ResultType lists and LocalsRef optional
   op (func _ _ _ _ end) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor] .
   op (func _ _ _ _ end) : String FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor] .
+  op (func _ _ _ end) : Id LocalsRef List{Inst} -> FuncDef [ctor] .
+  op (func _ _ _ end) : String LocalsRef List{Inst} -> FuncDef [ctor] .
 
   var FuncTypeDef : FuncTypeDef .
   var TypeRef : TypeRef .
@@ -882,6 +884,11 @@ fmod WASM-FUNCDEF-MOD is
   var IndTypeCtxSTR : Map{String, Addr} .
   var Id : Id .
   var Str : String .
+  var LocalsRef : LocalsRef .
+  var IL : List{Inst} .
+
+  eq (func Id LocalsRef IL end) = (func Id ((param nil) (result nil)) LocalsRef IL end) .
+  eq (func Str LocalsRef IL end) = (func Str ((param nil) (result nil)) LocalsRef IL end) .
 
   *** TODO: Check whether this should be simplified
   op get-functype : FuncTypeDef Map{Addr, TypeDef} Map{String, Addr} -> ParamResultType .
@@ -1087,7 +1094,7 @@ mod WASMMOD is
   var TypeStore : Map{Addr, TypeDef} .
   var TypeRef : TypeRef .
   var ParamType : ParamType .
-  var ResultTypeList : ResultType .
+  var ResultType : ResultType .
   var LocalsRef : LocalsRef .
   var TypeTokenList TList : List{TypeToken} .
   var NeTList : NeList{TypeToken} .
@@ -1398,26 +1405,26 @@ mod WASMMOD is
   rl [nop] : < nop IL | ST | NeLocalSTRList >   
             =>   
             < IL | ST | NeLocalSTRList > .
-  crl [block-resultT] : < ((block ResultTypeList Str) IL2 end) IL | ST | NeLocalSTRList >
+  crl [block-resultT] : < ((block ResultType) IL2 end) IL | ST | NeLocalSTRList >
                =>
-               < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList >
+               < IL2 end | st-push(ST, label("block", IL)) | NeLocalSTRList >
                if valid-stack(ST, nil) .
-  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef Str) IL2 end) IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
-               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label(Str, IL)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("block", IL)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
                  < if-else(ValW1, IL1, IL2, IL, BlockType) | ST | NeLocalSTRList > .
   *** loop is an infinite loop
-  crl [loop-resultT] : < ((loop ResultTypeList Str) IL2 end) IL | ST | NeLocalSTRList >
+  crl [loop-resultT] : < ((loop ResultType) IL2 end) IL | ST | NeLocalSTRList >
               =>
-              < IL2 end | st-push(ST, label(Str, (loop ResultTypeList Str) IL2 end)) | NeLocalSTRList >
+              < IL2 end | st-push(ST, label("loop", (loop ResultType) IL2 end)) | NeLocalSTRList >
               if valid-stack(ST, nil) .
-  crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef Str) IL2 end) IL | ST | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
+  crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
               =>
-              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label(Str, (loop TypeRef Str) IL2 end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("loop", (loop TypeRef) IL2 end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
               if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
@@ -1437,7 +1444,7 @@ mod WASMMOD is
   *** According to Specification: param init precedes local vars init
   crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
-              < get-IL-func(FuncStore[Addr]) exit-func end | 
+              < get-IL-func(FuncStore[Addr]) exit-func(get-resultlistTList-func(FuncStore[Addr])) end | 
                 label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[Addr])) | 
                 init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
               > # GlobalInventory # FuncStore 
@@ -1447,9 +1454,11 @@ mod WASMMOD is
               =>   
               {funcIndCtx IndFuncCtxSTR } < (call (IndFuncCtxSTR[Str])) IL | ST | LocalSTRList > # GlobalInventory # FuncStore .
 
-  rl [exit-func] : < exit-func IL | ST | LocalSTR NeLocalSTRList > # GlobalInventory # FuncStore
+  *** TODO: validation in this case should be with exact values? Stack shall only have TypeTokenList (n) values?
+  crl [exit-func] : < exit-func(TypeTokenList) IL | ST | LocalSTR NeLocalSTRList > # GlobalInventory # FuncStore
                   =>   
-                  < IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore .
+                  < IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore 
+                  if valid-stack(ST, TypeTokenList) .
     
 
   *** lookup rule: get value from reference from local store
@@ -1523,14 +1532,14 @@ mod WASMMOD is
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = TempST $ ST || Label if N == 0 .
 
   op if-else : ValWrapper List{Inst} List{Inst} List{Inst} BlockType -> List{Inst} .
-  ceq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType "$ifIL1") IL1 end) IL if Int1 =/= 0 .
-  eq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType "$ifIL2") IL2 end) IL [owise] .
+  ceq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType) IL1 end) IL if Int1 =/= 0 .
+  eq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType) IL2 end) IL [owise] .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N FuncTypeDef LocalsRef IL end) = IL .
   eq get-IL-func(func Str FuncTypeDef LocalsRef IL end) = IL .
 
-  op exit-func : -> Inst [ctor] .
+  op exit-func : List{TypeToken} -> Inst [ctor] .
 
   op get-localsref-func : FuncDef -> LocalsRef .
   eq get-localsref-func(func N FuncTypeDef LocalsRef IL end) = LocalsRef .
@@ -1541,19 +1550,32 @@ mod WASMMOD is
   eq get-localsTList-func(func Str FuncTypeDef (local TList) IL end) = TList .
 
   op get-paramlist-func : FuncDef -> ParamType .
-  eq get-paramlist-func(func N (ParamType ResultTypeList) LocalsRef IL end) = ParamType .
-  eq get-paramlist-func(func Str (ParamType ResultTypeList) LocalsRef IL end) = ParamType .
+  eq get-paramlist-func(func N (ParamType ResultType) LocalsRef IL end) = ParamType .
+  eq get-paramlist-func(func Str (ParamType ResultType) LocalsRef IL end) = ParamType .
   eq get-paramlist-func(func N (ParamType) LocalsRef IL end) = ParamType .
   eq get-paramlist-func(func Str (ParamType) LocalsRef IL end) = ParamType .
-  eq get-paramlist-func(func N (ResultTypeList) LocalsRef IL end) = (param nil) .
-  eq get-paramlist-func(func Str (ResultTypeList) LocalsRef IL end) = (param nil) .
+  eq get-paramlist-func(func N (ResultType) LocalsRef IL end) = (param nil) .
+  eq get-paramlist-func(func Str (ResultType) LocalsRef IL end) = (param nil) .
   
+  op get-resultlist-func : FuncDef -> ParamType .
+  eq get-resultlist-func(func N (ParamType ResultType) LocalsRef IL end) = ResultType .
+  eq get-resultlist-func(func Str (ParamType ResultType) LocalsRef IL end) = ResultType .
+  eq get-resultlist-func(func N (ParamType) LocalsRef IL end) = (result nil) .
+  eq get-resultlist-func(func Str (ParamType) LocalsRef IL end) = (result nil) .
+  eq get-resultlist-func(func N (ResultType) LocalsRef IL end) = ResultType .
+  eq get-resultlist-func(func Str (ResultType) LocalsRef IL end) = ResultType .
 
   op aux-get-paramlistTList-func : ParamType -> List{TypeToken} .
   eq aux-get-paramlistTList-func((param TList)) = TList .
 
   op get-paramlistTList-func : FuncDef -> List{TypeToken} .
   eq get-paramlistTList-func(FuncDef) = aux-get-paramlistTList-func(get-paramlist-func(FuncDef)) .
+
+  op aux-get-resultlistTList-func : ResultType -> List{TypeToken} .
+  eq aux-get-resultlistTList-func((result TList)) = TList .
+
+  op get-resultlistTList-func : FuncDef -> List{TypeToken} .
+  eq get-resultlistTList-func(FuncDef) = aux-get-resultlistTList-func(get-resultlist-func(FuncDef)) .
 
   op count-locals-localsref : LocalsRef -> Nat .
   eq count-locals-localsref(local nil) = 0 .
