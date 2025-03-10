@@ -1393,10 +1393,10 @@ mod WASMMOD is
                     < IL |  const(i32, wrap(i64, i32, ValW1)) $ ST | NeLocalSTRList > .
   rl [f32.demote_f64] : < (f32 . "demote_" f64) IL | const(f64, ValW1) $ ST | NeLocalSTRList >   
                     =>   
-                    < IL |  const(i32, demote(f64, f32, ValW1)) $ ST | NeLocalSTRList > .
+                    < IL |  const(f32, demote(f64, f32, ValW1)) $ ST | NeLocalSTRList > .
   rl [f64.promote_f32] : < (f64 . "promote_" f32) IL | const(f32, ValW1) $ ST | NeLocalSTRList >   
                     =>   
-                    < IL |  const(i32, promote(f32, f64, ValW1)) $ ST | NeLocalSTRList > .
+                    < IL |  const(f64, promote(f32, f64, ValW1)) $ ST | NeLocalSTRList > .
   
 
   *** Control instructions
