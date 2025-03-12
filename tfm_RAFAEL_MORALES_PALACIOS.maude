@@ -150,8 +150,8 @@ fmod WASM-FUNCTYPE-MOD is
   sorts ParamType ResultType .
 
   *** NOTE: List{TypeToken} needs to be wrapped on parenthesis for Maude to parse it correctly
-  op (param _) : List{TypeToken} -> ParamType [ctor] .
-  op (result _) : List{TypeToken} -> ResultType [ctor] .
+  op (param _) : List{TypeToken} -> ParamType [ctor prec 50] .
+  op (result _) : List{TypeToken} -> ResultType [ctor prec 50] .
 
   var T : TypeToken .
   var TList1 TList2 : List{TypeToken} .
@@ -211,17 +211,10 @@ fmod WASM-TYPEDEF-MOD is
   sorts TypeDef TypeRef Id FuncType ParamResultFuncType .
   subsorts Nat < Id .
 
-  *** TODO: (for syntax reasons) be able to declare only param or result or none (now nil is required)
-  ***op _ _ : List{ParamType} List{ResultType} -> ParamResultFuncType [ctor] .
-  ***op _ : List{ParamType} -> ParamResultFuncType [ctor] .
-  ***op _ : List{ResultType} -> ParamResultFuncType [ctor] .
-
-  ***op (func _) : ParamResultFuncType -> FuncType [ctor] .
-
   op (type _) : Id -> TypeRef [ctor] .
   op (type _) : String -> TypeRef [ctor] .
 
-  op (func _) : ParamResultType -> FuncType [ctor] .
+  op (func _) : ParamResultType -> FuncType [ctor prec 50] .
 
   op (type _ _) : Id FuncType -> TypeDef [ctor] .
   op (type _ _) : String FuncType -> TypeDef [ctor] .
@@ -816,36 +809,36 @@ fmod WASM-INST-MOD is
   subsorts ConstInst < Inst .
 
   *** Instruction ops declarations
-  op local.get _ : ValRef -> Inst [ctor] .
-  op local.set _ : ValRef -> Inst [ctor] .
-  op local.tee _ : ValRef -> Inst [ctor] .
+  op local.get _ : ValRef -> Inst [ctor prec 24] .
+  op local.set _ : ValRef -> Inst [ctor prec 24] .
+  op local.tee _ : ValRef -> Inst [ctor prec 24] .
 
   *** global insts
-  op global.get _ : String -> Inst [ctor] .
-  op global.set _ : String -> Inst [ctor] .
+  op global.get _ : String -> Inst [ctor prec 24] .
+  op global.set _ : String -> Inst [ctor prec 24] .
 
   ***op _.const _ : TypeToken Value -> Inst [ctor] .
-  op _ .const _ : TypeToken Int -> ConstInst [ctor] .
-  op _ .const _ : FloatTypeToken Float -> ConstInst [ctor] .
+  op _.const_ : TypeToken Int -> ConstInst [ctor prec 24] .
+  op _.const_ : FloatTypeToken Float -> ConstInst [ctor prec 24] .
 
 
   *** binop (Binary Operations)
   *** ibinop (Integer binop) - add | sub | mul | div_sx | rem_sx | and | or | xor | shl | shr_sx | rotl | rotr
   ops add sub mul : -> BinopToken [ctor] .
-  op _._ : TypeToken BinopToken -> Inst [ctor] . *** Valid for ints and floats
+  op _._ : TypeToken BinopToken -> Inst [ctor prec 24] . *** Valid for ints and floats
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   ops "div_u" "div_s" "rem_u" "rem_s" : -> IBinopToken [ctor] .
-  op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
+  op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
 
   *** bitstring representation ops
   ops and or xor : -> IBinopToken [ctor] .
-  op _._ : IntTypeToken IBinopToken -> Inst [ctor] .
+  op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
 
   ops div min max copysign : -> FBinopToken [ctor] .
-  op _._ : FloatTypeToken FBinopToken -> Inst [ctor] .
+  op _._ : FloatTypeToken FBinopToken -> Inst [ctor prec 24] .
   
   ops abs neg sqrt ceil floor : -> FUnopToken [ctor] .
-  op _._ : FloatTypeToken FUnopToken -> Inst [ctor] .
+  op _._ : FloatTypeToken FUnopToken -> Inst [ctor prec 24] .
 
   var T : TypeToken .
   var IntT : IntTypeToken .
@@ -884,13 +877,13 @@ fmod WASM-INST-MOD is
 
   *** relop
   ops eq ne : -> RelopToken [ctor] .
-  op _._ : TypeToken RelopToken -> Inst [ctor] .
+  op _._ : TypeToken RelopToken -> Inst [ctor prec 24] .
   
   ops "lt_s" "lt_u" "gt_s" "gt_u" "le_s" "le_u" "ge_s" "ge_u" : -> IRelopToken [ctor] .
-  op _._ : IntTypeToken IRelopToken -> Inst [ctor] .
+  op _._ : IntTypeToken IRelopToken -> Inst [ctor prec 24] .
 
   ops lt gt le ge : -> FRelopToken [ctor] .
-  op _._ : FloatTypeToken FRelopToken -> Inst [ctor] .
+  op _._ : FloatTypeToken FRelopToken -> Inst [ctor prec 24] .
 
   op relop : TypeToken RelopToken ValWrapper ValWrapper -> ValWrapper .
   eq relop(IntT, eq, ValW1, ValW2) = ieq(ValW1, ValW2) .
@@ -912,11 +905,11 @@ fmod WASM-INST-MOD is
 
   *** testop
   ops eqz : -> TestopToken [ctor] .
-  op _._ : IntTypeToken TestopToken -> Inst [ctor] .
+  op _._ : IntTypeToken TestopToken -> Inst [ctor prec 24] .
 
   *** conversions
   ops "wrap_" "demote_" "promote_" : -> CvtopToken [ctor] .
-  op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor] .
+  op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor prec 24] .
 
   *** Parametric instructions
   ops drop select : -> Inst [ctor] .
@@ -925,14 +918,14 @@ fmod WASM-INST-MOD is
   op nop : -> Inst [ctor] .
   op unreachable : -> Inst [ctor] .
 
-  op block _ : BlockType -> Inst [ctor] .
-  op loop _ : BlockType -> Inst [ctor] .
-  op br _ : Nat -> Inst [ctor] .
-  op "br_if" _ : Nat -> Inst [ctor] .
+  op block _ : BlockType -> Inst [ctor prec 24] .
+  op loop _ : BlockType -> Inst [ctor prec 24] .
+  op br _ : Nat -> Inst [ctor prec 24] .
+  op "br_if" _ : Nat -> Inst [ctor prec 24] .
   op end : -> Inst [ctor] .
 
-  op call _ : Addr -> Inst [ctor] .
-  op call _ : String -> Inst [ctor] .
+  op call _ : Addr -> Inst [ctor prec 24] .
+  op call _ : String -> Inst [ctor prec 24] .
 
 endfm
 
@@ -958,7 +951,7 @@ fmod WASM-FUNCDEF-MOD is
   sorts FuncDef FuncTypeDef LocalsRef .
   subsorts ParamResultType TypeRef < FuncTypeDef .
 
-  op (local _) : List{TypeToken} -> LocalsRef [ctor] .
+  op (local _) : List{TypeToken} -> LocalsRef [ctor prec 50] .
 
   op _ _ : TypeRef ParamResultType -> FuncTypeDef [ctor] .
 

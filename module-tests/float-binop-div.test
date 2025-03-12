@@ -1,27 +1,27 @@
 load ../tfm_RAFAEL_MORALES_PALACIOS.maude .
 rew run-module-func(
     (module
-      (type "type0" (func ((result f32))))
-      (type "type1" (func ((param (f32 f32)) (result f32))))
+      (type "type0" (func (result f32)))
+      (type "type1" (func (param f32 f32) (result f32)))
       (func "start"
        (local i32)
         (
-            (f32 .const 10)
-            (global.set "dividend")
-            (f32 .const 4)
-            (global.set "divisor")
-            (global.get "dividend")
-            (global.get "divisor")
-            (call "floatdiv")
-            (global.set "result")
+            f32 .const 10
+            global.set "dividend"
+            f32 .const 4
+            global.set "divisor"
+            global.get "dividend"
+            global.get "divisor"
+            call "floatdiv"
+            global.set "result"
         )
         end)
-      (func "floatdiv" ((type "type1"))
-       (local (f32 f32))
+      (func "floatdiv" (type "type1")
+       (local f32 f32)
         (
-            (local.get 1)
-            (local.get 0)
-            (f32 . div)
+            local.get 1
+            local.get 0
+            f32 . div
         )
         end)
       (global "dividend" (mut f32) (f32 .const 1))
