@@ -3,6 +3,8 @@ mod WASM-TEST-MOD is
   protecting WASMMOD .
 
   op run-factorial : -> WASMSimTrigger .
+  op run-int-binop-trap : -> WASMSimTrigger .
+  op run-float-unop-sqrt : -> WASMSimTrigger .
   eq run-factorial = run-module-func(
                                     (module
                                       (type "type0" (func ((result i32))))
@@ -39,5 +41,60 @@ mod WASM-TEST-MOD is
                                       (global "result" (mut i32) (i32 .const 1))
                                     )
                                     ,"start") .
+
+  eq run-int-binop-trap = run-module-func(
+                                          (module
+                                            (type "type0" (func ((result i32))))
+                                            (type "type1" (func ((param (i32 i32)) (result i32))))
+                                            (func "start"
+                                            (local i32)
+                                              (
+                                                  (i32 .const 10)
+                                                  (global.set "dividend")
+                                                  (i32 .const 0)
+                                                  (global.set "divisor")
+                                                  (global.get "dividend")
+                                                  (global.get "divisor")
+                                                  (call "floatdiv")
+                                                  (global.set "result")
+                                              )
+                                              end)
+                                            (func "floatdiv" ((type "type1"))
+                                            (local (i32 i32))
+                                              (
+                                                  (local.get 1)
+                                                  (local.get 0)
+                                                  (i32 . "div_s")
+                                              )
+                                              end)
+                                            (global "dividend" (mut i32) (i32 .const 1))
+                                            (global "divisor" (mut i32) (i32 .const 1))
+                                            (global "result" (mut i32) (i32 .const 1)))
+                                          , "start") .
+
+  eq run-float-unop-sqrt = run-module-func(
+                                          (module
+                                            (type "type0" (func ((result f32))))
+                                            (type "type1" (func ((param f32) (result f32))))
+                                            (func "start"
+                                            (local i32)
+                                              (
+                                                  (f32 .const 10)
+                                                  (global.set "operand")
+                                                  (global.get "operand")
+                                                  (call "floatsqrt")
+                                                  (global.set "result")
+                                              )
+                                              end)
+                                            (func "floatsqrt" ((type "type1"))
+                                            (local (f32))
+                                              (
+                                                  (local.get 0)
+                                                  (f32 . sqrt)
+                                              )
+                                              end)
+                                            (global "operand" (mut f32) (f32 .const 1))
+                                            (global "result" (mut f32) (f32 .const 1)))
+                                          , "start") .
 
 endm

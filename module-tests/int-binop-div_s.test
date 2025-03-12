@@ -1,0 +1,31 @@
+*** Divides 10 / -2 signed
+load ../tfm_RAFAEL_MORALES_PALACIOS.maude .
+rew run-module-func(
+    (module
+      (type "type0" (func ((result i32))))
+      (type "type1" (func ((param (i32 i32)) (result i32))))
+      (func "start"
+       (local i32)
+        (
+            (i32 .const 10)
+            (global.set "dividend")
+            (i32 .const 4294967294)
+            (global.set "divisor")
+            (global.get "dividend")
+            (global.get "divisor")
+            (call "floatdiv")
+            (global.set "result")
+        )
+        end)
+      (func "floatdiv" ((type "type1"))
+       (local (i32 i32))
+        (
+            (local.get 1)
+            (local.get 0)
+            (i32 . "div_s")
+        )
+        end)
+      (global "dividend" (mut i32) (i32 .const 1))
+      (global "divisor" (mut i32) (i32 .const 1))
+      (global "result" (mut i32) (i32 .const 1)))
+    , "start") .

@@ -78,9 +78,9 @@ fmod WASM-BITVAL-MOD is
   *** Auxiliary op to convert int to bitstring of certain size
   *** TODO: Manage overflow
   op int-to-bitstring : Int Nat -> List{Bit} [ctor] .
-  ceq int-to-bitstring(0, I2) = 0 if I2 == 1 .
+  eq int-to-bitstring(0, 1) = 0 .
   eq int-to-bitstring(0, I2) = padding(I2) 0 [owise] .
-  ceq int-to-bitstring(1, I2) = 1 if I2 == 1 .
+  eq int-to-bitstring(1, 1) = 1 .
   eq int-to-bitstring(1, I2) = padding(I2) 1 [owise] .
   ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 0 if I rem 2 == 0 and I2 > 1 .
   ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 1 if I rem 2 =/= 0 and I2 > 1 .
@@ -101,10 +101,10 @@ fmod WASM-BITVAL-MOD is
 
   *** Convert bitstring to int
   op bitstring-to-int : List{Bit} Nat -> Int .
-  ceq bitstring-to-int(B BitList, 1) = 0 if B == 0 .
-  ceq bitstring-to-int(B BitList, 1) = 1 if B == 1 .
-  ceq bitstring-to-int(B BitList, I) = bitstring-to-int(BitList, I - 1) if B == 0 and I > 1 .
-  ceq bitstring-to-int(B BitList, I) = ((2 ^ (I - 1)) * 1) + bitstring-to-int(BitList, I - 1) if B == 1 and I > 1 .
+  eq bitstring-to-int(0 BitList, 1) = 0 .
+  eq bitstring-to-int(1 BitList, 1) = 1 .
+  ceq bitstring-to-int(0 BitList, I) = bitstring-to-int(BitList, I - 1) if I > 1 .
+  ceq bitstring-to-int(1 BitList, I) = ((2 ^ (I - 1)) * 1) + bitstring-to-int(BitList, I - 1) if I > 1 .
 
   *** Logic operations
   op not _ : List{Bit} -> List{Bit} [ctor] .
@@ -351,11 +351,14 @@ fmod WASM-VALUE-MOD is
   protecting INT .
   protecting CONVERSION .
 
-  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper .
+  sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper Und .
 
   subsorts IntValue < Value .
   subsorts FloatValue < Value .
+  subsorts Und < Value .
   ***subsorts Int32Value Int64Value < IntValue .
+
+  op und : -> Und [ctor] .
 
   var T : TypeToken .
   var IntT : IntTypeToken .
@@ -463,6 +466,7 @@ fmod WASM-IOPS-MOD is
   var N : Nat .
   var Int1 Int2 : Int .
   var ValW1 ValW2 : ValWrapper .
+  var IntT : IntTypeToken .
 
   *** Auxiliary op for arithmetic instructions
   *** signed op : integer operators can be interpreted as if they had sign by some instructions.
@@ -476,9 +480,37 @@ fmod WASM-IOPS-MOD is
   ceq unsigned(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
   ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
 
+  *** Auxiliary op for ibinop
+  op iadd : Nat ValWrapper ValWrapper -> ValWrapper .
+  eq iadd(N, ValW1, ValW2) = (ValW1 + ValW2) rem 2 ^ (N) .
+
+  op isub : Nat ValWrapper ValWrapper -> ValWrapper .
+  eq isub(N, ValW1, ValW2) = ((ValW1 - ValW2) + (2 ^ (N))) rem (2 ^ (N)) .
+
+  op imul : Nat ValWrapper ValWrapper -> ValWrapper .
+  eq imul(N, ValW1, ValW2) = (ValW1 * ValW2) rem 2 ^ (N) .
+
+  op idivu : IntTypeToken Nat ValWrapper ValWrapper -> Value .
+  eq idivu(IntT, N, val(Int1), val(0)) = und .
+  eq idivu(IntT, N, val(Int1), val(Int2)) = const(IntT, val(Int1 quo Int2)) [owise] .
+
+  op idivs : IntTypeToken Nat ValWrapper ValWrapper -> Value .
+  eq idivs(IntT, N, val(Int1), val(0)) = und .
+  ceq idivs(IntT, N, val(Int1), val(Int2)) = und if (signed(val(Int1), N) quo signed(val(Int2), N)) == val(2 ^ (N - 1)) .
+  eq idivs(IntT, N, ValW1, ValW2) = const(IntT, unsigned(signed(ValW1, N) quo signed(ValW2, N), N)) [owise] .
+
+  op iremu : IntTypeToken Nat ValWrapper ValWrapper -> Value .
+  eq iremu(IntT, N, val(Int1), val(0)) = und .
+  eq iremu(IntT, N, val(Int1), val(Int2)) = const(IntT, val(Int1 rem Int2)) [owise] .
+  
+  *** By specification: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (Int1 quo abs(Int1)))
+  op irems : IntTypeToken Nat ValWrapper ValWrapper -> Value .
+  eq irems(IntT, N, val(Int1), val(0)) = und .
+  eq irems(IntT, N, ValW1, ValW2) = const(IntT, unsigned(signed(ValW1, N) - (signed(ValW2, N) * (signed(ValW1, N) quo signed(ValW2, N))), N)) [owise] .
+
   *** Auxiliary op for logic instructions
   op ieq : ValWrapper ValWrapper -> ValWrapper .
-  ceq ieq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq ieq(ValW1, ValW1) = val(1) .
   eq ieq(ValW1, ValW2) = val(0) [owise] .
   
   op ine : ValWrapper ValWrapper -> ValWrapper .
@@ -672,7 +704,7 @@ fmod WASM-FOPS-MOD is
   ***feq
   op feq : ValWrapper ValWrapper -> ValWrapper .
   ceq feq(val(zero(Sg1)), val(zero(Sg2))) = val(1) if Sg1 =/= Sg2 .
-  ceq feq(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq feq(ValW1, ValW1) = val(1) .
   eq feq(ValW1, ValW2) = val(0) [owise] .
 
   ***fne
@@ -702,7 +734,7 @@ fmod WASM-FOPS-MOD is
   eq fle(val(inf(neg)), val(F2)) = val(1) .
   eq fle(val(F1), val(inf(pos))) = val(1) .
   eq fle(val(ZeroF1), val(ZeroF2)) = val(1) .
-  ceq fle(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq fle(ValW1, ValW1) = val(1) .
   ceq fle(val(F1), val(F2)) = val(1) if F1 < F2 .
   eq fle(ValW1, ValW2) = val(0) [owise] .
 
@@ -711,7 +743,7 @@ fmod WASM-FOPS-MOD is
   eq fge(val(inf(pos)), val(F2)) = val(1) .
   eq fge(val(F1), val(inf(neg))) = val(1) .
   eq fge(val(ZeroF1), val(ZeroF2)) = val(1) .
-  ceq fge(ValW1, ValW2) = val(1) if ValW1 == ValW2 .
+  eq fge(ValW1, ValW1) = val(1) .
   ceq fge(val(F1), val(F2)) = val(1) if F1 > F2 .
   eq fge(ValW1, ValW2) = val(0) [owise] .
 
@@ -767,6 +799,7 @@ endv
 
 fmod WASM-INST-MOD is
 
+  protecting WASM-BITVAL-MOD .
   protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BLOCKTYPE-MOD .
   protecting WASM-FOPS-MOD .
@@ -818,8 +851,22 @@ fmod WASM-INST-MOD is
   var IntT : IntTypeToken .
   var FloatT : FloatTypeToken .
   var ValW1 ValW2 : ValWrapper .
+  var Int1 Int2 : Int .
 
   op binop : TypeToken BinopToken ValWrapper ValWrapper -> Value .
+  *** Int instructions
+  eq binop(IntT, add, ValW1, ValW2) = const(IntT, iadd(bit-width(IntT), ValW1, ValW2)) .
+  eq binop(IntT, sub, ValW1, ValW2) = const(IntT, isub(bit-width(IntT), ValW1, ValW2)) .
+  eq binop(IntT, mul, ValW1, ValW2) = const(IntT, imul(bit-width(IntT), ValW1, ValW2)) .
+  eq binop(IntT, "div_u", ValW1, ValW2) = idivu(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, "div_s", ValW1, ValW2) = idivs(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, "rem_s",ValW1, ValW2) = irems(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, "rem_u", ValW1, ValW2) = iremu(IntT, bit-width(IntT), ValW1, ValW2) .
+  *** instructions with bitstring representation
+  eq binop(IntT, and, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
+  eq binop(IntT, or, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((ior((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
+  eq binop(IntT, xor, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((ixor((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
+  *** Float instructions
   eq binop(FloatT, add, ValW1, ValW2) = correctFloat(const(FloatT, fadd(ValW1, ValW2))) .
   eq binop(FloatT, sub, ValW1, ValW2) = correctFloat(const(FloatT, fsub(ValW1, ValW2))) .
   eq binop(FloatT, mul, ValW1, ValW2) = correctFloat(const(FloatT, fmul(ValW1, ValW2))) .
@@ -1006,7 +1053,7 @@ mod WASMMOD is
   
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Und Trap Arity Label StackAndLabel FuncStore .
+  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Trap Arity Label StackAndLabel FuncStore .
   sorts IndCtx LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx .
   sorts Starter .
 
@@ -1032,8 +1079,6 @@ mod WASMMOD is
   op trap : String -> Trap [ctor] . 
   
   op label : String List{Inst} -> Label [ctor] .
-
-  op und : -> Und [ctor] .
 
   op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor] .
 
@@ -1286,76 +1331,30 @@ mod WASMMOD is
   rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | NeLocalSTRList >   =>   < (FloatT .const float(IntN)) IL | ST | NeLocalSTRList > .
   crl [float-const-nonZ] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(FloatN)))) | NeLocalSTRList > 
                             if FloatN =/= 0.0 .
-  crl [float-const-Z] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList > 
-                          if FloatN == 0.0 .
+  rl [float-const-Z] : < (FloatT .const 0.0) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList > .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
-  rl [int.add] : < (IntT . add) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-                 => 
-                 < IL | st-push(ST, const(IntT, (ValW1 + ValW2) rem 2 ^ (32)))  | NeLocalSTRList > .
-  rl [int.sub] : < (IntT . sub) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >  
-                 => 
-                 < IL | st-push(ST, const(IntT, ((ValW1 - ValW2) + (2 ^ (32))) rem (2 ^ (32)))) | NeLocalSTRList > .
-  rl [int.mul] : < (IntT . mul) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-                 => 
-                 < IL | st-push(ST, const(IntT, (ValW1 * ValW2) rem 2 ^ (32))) | NeLocalSTRList > .
-  
-  *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
-  crl [int.div_u-und] : < (IntT . "div_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                      =>   trap("Binop result undefined")
-                      if Int2 == 0 .
-  crl [int.div_u] : < (IntT . "div_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                      =>   
-                      < IL | st-push(ST, const(IntT, val(abs(Int1 quo Int2)))) | NeLocalSTRList > 
-                      if Int2 =/= 0 .
-  crl [int.div_s-und] : < (IntT . "div_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                        =>   trap("Binop result undefined") 
-                        if signed(val(Int2), bit-width(IntT)) == val(0) or (signed(val(Int1), bit-width(IntT)) quo signed(val(Int2), bit-width(IntT))) == val(2 ^ (bit-width(IntT) - 1)) .
-  crl [int.div_s] : < (IntT . "div_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-                    =>   < IL | st-push(ST, const(IntT, unsigned(signed(ValW1, bit-width(IntT)) quo signed(ValW2, bit-width(IntT)), bit-width(IntT)))) | NeLocalSTRList > 
-                    if signed(ValW2, bit-width(IntT)) =/= val(0) and (signed(ValW1, bit-width(IntT)) quo signed(ValW2, bit-width(IntT))) =/= val(2 ^ (bit-width(IntT) - 1)) .
-  crl [int.rem_u-und] : < (IntT . "rem_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                    =>   trap("Binop result undefined")  
-                    if Int2 == 0 .
-  crl [int.rem_u] : < (IntT . "rem_u") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                    =>   < IL | st-push(ST, const(IntT, val(abs(Int1 rem Int2)))) | NeLocalSTRList > 
-                    if Int2 =/= 0 .
-  crl [int.rem_s-und] : < (IntT . "rem_s") IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                        =>   trap("Binop result undefined") 
-                        if signed(val(Int2), bit-width(IntT)) == val(0) .
-  *** By definition: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (Int1 quo abs(Int1)))
-  crl [int.rem_s] : < (IntT . "rem_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-                      => < IL | st-push(ST, const(IntT, unsigned(signed(ValW1, bit-width(IntT)) - (signed(ValW2, bit-width(IntT)) * (signed(ValW1, bit-width(IntT)) quo signed(ValW2, bit-width(IntT)))), bit-width(IntT)))) | NeLocalSTRList > 
-                      if signed(ValW2, bit-width(IntT)) =/= val(0) .
-
-  *** instructions with bitstring representation
-  rl [int.and] : < (IntT . and) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                =>   
-                < IL | st-push(ST, const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
-  rl [int.or] : < (IntT . or) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                =>   
-                < IL | st-push(ST, const(IntT, val(bitstring-to-int((ior((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
-  rl [int.xor] : < (IntT . xor) IL | const(IntT, val(Int2)) $ const(IntT, val(Int1)) $ ST | NeLocalSTRList >   
-                =>   
-                < IL | st-push(ST, const(IntT, val(bitstring-to-int((ixor((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
-
-  *** Operations with floats
-  rl [float.binop] : < (FloatT . binopT) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+  rl [t.binop] : < (T . binopT) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
                    => 
-                   < IL | st-push(ST, binop(FloatT, binopT, ValW1, ValW2) ) | NeLocalSTRList > .
-  
+                   if binop(T, binopT, ValW1, ValW2) =/= und
+                   then
+                      < IL | st-push(ST, binop(T, binopT, ValW1, ValW2)) | NeLocalSTRList >
+                   else
+                      trap("Binop result undefined")
+                   fi .
+
   *** FUnops
-  rl [float.unop] : < (FloatT . unopT) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+  rl [t.unop] : < (T . unopT) IL | const(T, ValW1) $ ST | NeLocalSTRList >   
                    => 
-                   < IL | st-push(ST, unop(FloatT, unopT, ValW1) ) | NeLocalSTRList > .
+                   < IL | st-push(ST, unop(T, unopT, ValW1) ) | NeLocalSTRList > .
 
   *** relop
-  rl [relop] : < (T . relopT) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
+  rl [t.relop] : < (T . relopT) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(i32, relop(T, relopT, ValW1, ValW2)) $ ST | NeLocalSTRList > .
 
   *** testop
-  rl [eqz] : < (IntT . eqz) IL | const(IntT, ValW1) $ ST | NeLocalSTRList >   
+  rl [t.eqz] : < (IntT . eqz) IL | const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(i32, ieq(ValW1, val(0))) $ ST | NeLocalSTRList > .
 
@@ -1372,8 +1371,6 @@ mod WASMMOD is
   
 
   *** Control instructions
-  *** block:
-  *** TODO: Check what to do with values on stack previous to label. Should label be after some values? How to calculate it?
   rl [nop] : < nop IL | ST | NeLocalSTRList >   
             =>   
             < IL | ST | NeLocalSTRList > .
@@ -1408,10 +1405,9 @@ mod WASMMOD is
                =>   
                < (br N) IL | ST | NeLocalSTRList > 
                if Int1 =/= 0 .
-  crl [br_if-else] : < ("br_if" N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
-              =>   
-              < IL | ST | NeLocalSTRList > 
-              if Int1 == 0 .
+  rl [br_if-else] : < ("br_if" N) IL | const(i32, val(0)) $ ST | NeLocalSTRList >
+                =>   
+                < IL | ST | NeLocalSTRList > .
 
   *** According to Specification: param init precedes local vars init
   crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
@@ -1501,7 +1497,7 @@ mod WASMMOD is
   eq get-ith-stackandlabel(Val $ ST, N, TempST) = get-ith-stackandlabel(ST, N, Val $ TempST) .
   *** TODO: check multiple parses warning
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = get-ith-stackandlabel(ST, N - 1, TempST) if N > 0 .
-  ceq get-ith-stackandlabel(Label $ ST, N, TempST) = TempST $ ST || Label if N == 0 .
+  eq get-ith-stackandlabel(Label $ ST, 0, TempST) = TempST $ ST || Label .
 
   op if-else : ValWrapper List{Inst} List{Inst} List{Inst} BlockType -> List{Inst} .
   ceq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType) IL1 end) IL if Int1 =/= 0 .
