@@ -1,0 +1,25 @@
+load ../tfm_RAFAEL_MORALES_PALACIOS.maude .
+rew run-module-func(
+    (module
+      (type "type0" (func ((result f32))))
+      (type "type1" (func ((param f32) (result f32))))
+      (func "start"
+       (local i32)
+        (
+            (f32 .const 10)
+            (global.set "operand")
+            (global.get "operand")
+            (call "floatsqrt")
+            (global.set "result")
+        )
+        end)
+      (func "floatsqrt" ((type "type1"))
+       (local (f32))
+        (
+            (local.get 0)
+            (f32 . sqrt)
+        )
+        end)
+      (global "operand" (mut f32) (f32 .const 1))
+      (global "result" (mut f32) (f32 .const 1)))
+    , "start") .

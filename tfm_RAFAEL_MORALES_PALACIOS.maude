@@ -769,11 +769,14 @@ fmod WASM-INST-MOD is
 
   protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BLOCKTYPE-MOD .
+  protecting WASM-FOPS-MOD .
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
 
   sorts Inst ConstInst .
-  sorts BinopToken IBinopToken FBinopToken FUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
+  sorts BinopToken IBinopToken FBinopToken UnopToken FUnopToken IUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
+  subsorts IBinopToken FBinopToken < BinopToken .
+  subsorts IUnopToken FUnopToken < UnopToken .
 
   subsorts ConstInst < Inst .
 
@@ -808,6 +811,26 @@ fmod WASM-INST-MOD is
   
   ops abs neg sqrt ceil floor : -> FUnopToken [ctor] .
   op _._ : FloatTypeToken FUnopToken -> Inst [ctor] .
+
+  var IntT : IntTypeToken .
+  var FloatT : FloatTypeToken .
+  var ValW1 ValW2 : ValWrapper .
+
+  op binop : TypeToken BinopToken ValWrapper ValWrapper -> Value .
+  eq binop(FloatT, add, ValW1, ValW2) = correctFloat(const(FloatT, fadd(ValW1, ValW2))) .
+  eq binop(FloatT, sub, ValW1, ValW2) = correctFloat(const(FloatT, fsub(ValW1, ValW2))) .
+  eq binop(FloatT, mul, ValW1, ValW2) = correctFloat(const(FloatT, fmul(ValW1, ValW2))) .
+  eq binop(FloatT, div, ValW1, ValW2) = correctFloat(const(FloatT, fdiv(ValW1, ValW2))) .
+  eq binop(FloatT, min, ValW1, ValW2) = correctFloat(const(FloatT, fmin(ValW1, ValW2))) .
+  eq binop(FloatT, max, ValW1, ValW2) = correctFloat(const(FloatT, fmax(ValW1, ValW2))) .
+  eq binop(FloatT, copysign, ValW1, ValW2) = correctFloat(const(FloatT, fcopysign(ValW1, ValW2))) .
+
+  op unop : TypeToken UnopToken ValWrapper -> Value .
+  eq unop(FloatT, abs, ValW1) = correctFloat(const(FloatT, fabs(ValW1))) .
+  eq unop(FloatT, neg, ValW1) = correctFloat(const(FloatT, fneg(ValW1))) .
+  eq unop(FloatT, sqrt, ValW1) = correctFloat(const(FloatT, fsqrt(ValW1))) .
+  eq unop(FloatT, ceil, ValW1) = correctFloat(const(FloatT, fceil(ValW1))) .
+  eq unop(FloatT, floor, ValW1) = correctFloat(const(FloatT, ffloor(ValW1))) .
 
   *** relop
   ops eq ne : -> RelopToken [ctor] .
@@ -1122,6 +1145,8 @@ mod WASMMOD is
   var FuncTypeDef : FuncTypeDef .
   var BlockType : BlockType .
   var GlobalInventory : GlobalInventory .
+  var binopT : BinopToken .
+  var unopT : UnopToken .
 
 
   *** Run trigger
@@ -1292,45 +1317,15 @@ mod WASMMOD is
                 =>   
                 < IL | st-push(ST, const(IntT, val(bitstring-to-int((ixor((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT))))) | NeLocalSTRList > .
 
-  *** OPerations with floats
-  rl [float.add] : < (FloatT . add) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+  *** Operations with floats
+  rl [float.binop] : < (FloatT . binopT) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
                    => 
-                   < IL | st-push(ST, correctFloat(const(FloatT, fadd(ValW1, ValW2))) ) | NeLocalSTRList > .
-  rl [float.sub] : < (FloatT . sub) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   => 
-                   < IL | st-push(ST, correctFloat(const(FloatT, fsub(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.mul] : < (FloatT . mul) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fmul(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.div] : < (FloatT . div) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fdiv(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.min] : < (FloatT . min) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fmin(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.max] : < (FloatT . max) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fmax(ValW1, ValW2)))) | NeLocalSTRList > .
-  rl [float.copysign] : < (FloatT . copysign) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fcopysign(ValW1, ValW2)))) | NeLocalSTRList > .
+                   < IL | st-push(ST, binop(FloatT, binopT, ValW1, ValW2) ) | NeLocalSTRList > .
   
   *** FUnops
-  rl [float.abs] : < (FloatT . abs) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fabs(ValW1)))) | NeLocalSTRList > .
-  rl [float.neg] : < (FloatT . abs) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fneg(ValW1)))) | NeLocalSTRList > .
-  rl [float.sqrt] : < (FloatT . sqrt) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fsqrt(ValW1)))) | NeLocalSTRList > .
-  rl [float.ceil] : < (FloatT . ceil) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, fceil(ValW1)))) | NeLocalSTRList > .
-  rl [float.floor] : < (FloatT . floor) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-                   =>
-                   < IL | st-push(ST, correctFloat(const(FloatT, ffloor(ValW1)))) | NeLocalSTRList > .
+  rl [float.unop] : < (FloatT . unopT) IL | const(FloatT, ValW1) $ ST | NeLocalSTRList >   
+                   => 
+                   < IL | st-push(ST, unop(FloatT, unopT, ValW1) ) | NeLocalSTRList > .
 
   *** irelop
   rl [ieq] : < (IntT . eq) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
