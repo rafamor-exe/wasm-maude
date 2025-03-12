@@ -770,6 +770,7 @@ fmod WASM-INST-MOD is
   protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BLOCKTYPE-MOD .
   protecting WASM-FOPS-MOD .
+  protecting WASM-IOPS-MOD .
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
 
@@ -777,6 +778,7 @@ fmod WASM-INST-MOD is
   sorts BinopToken IBinopToken FBinopToken UnopToken FUnopToken IUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
   subsorts IBinopToken FBinopToken < BinopToken .
   subsorts IUnopToken FUnopToken < UnopToken .
+  subsorts IRelopToken FRelopToken < RelopToken .
 
   subsorts ConstInst < Inst .
 
@@ -812,6 +814,7 @@ fmod WASM-INST-MOD is
   ops abs neg sqrt ceil floor : -> FUnopToken [ctor] .
   op _._ : FloatTypeToken FUnopToken -> Inst [ctor] .
 
+  var T : TypeToken .
   var IntT : IntTypeToken .
   var FloatT : FloatTypeToken .
   var ValW1 ValW2 : ValWrapper .
@@ -841,6 +844,24 @@ fmod WASM-INST-MOD is
 
   ops lt gt le ge : -> FRelopToken [ctor] .
   op _._ : FloatTypeToken FRelopToken -> Inst [ctor] .
+
+  op relop : TypeToken RelopToken ValWrapper ValWrapper -> ValWrapper .
+  eq relop(IntT, eq, ValW1, ValW2) = ieq(ValW1, ValW2) .
+  eq relop(IntT, ne, ValW1, ValW2) = ine(ValW1, ValW2) .
+  eq relop(IntT, "lt_s", ValW1, ValW2) = "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, "lt_u", ValW1, ValW2) = "ilt_u"(ValW1, ValW2) .
+  eq relop(IntT, "gt_s", ValW1, ValW2) = "igt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, "gt_u", ValW1, ValW2) = "igt_u"(ValW1, ValW2) .
+  eq relop(IntT, "le_s", ValW1, ValW2) = "ile_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, "le_u", ValW1, ValW2) = "ile_u"(ValW1, ValW2) .
+  eq relop(IntT, "ge_s", ValW1, ValW2) = "ige_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, "ge_u", ValW1, ValW2) = "ige_u"(ValW1, ValW2) .
+  eq relop(FloatT, eq, ValW1, ValW2) = feq(ValW1, ValW2) .
+  eq relop(FloatT, ne, ValW1, ValW2) = fne(ValW1, ValW2) .
+  eq relop(FloatT, lt, ValW1, ValW2) = flt(ValW1, ValW2) .
+  eq relop(FloatT, gt, ValW1, ValW2) = fgt(ValW1, ValW2) .
+  eq relop(FloatT, le, ValW1, ValW2) = fle(ValW1, ValW2) .
+  eq relop(FloatT, ge, ValW1, ValW2) = fge(ValW1, ValW2) .
 
   *** testop
   ops eqz : -> TestopToken [ctor] .
@@ -1147,6 +1168,7 @@ mod WASMMOD is
   var GlobalInventory : GlobalInventory .
   var binopT : BinopToken .
   var unopT : UnopToken .
+  var relopT : RelopToken .
 
 
   *** Run trigger
@@ -1327,62 +1349,15 @@ mod WASMMOD is
                    => 
                    < IL | st-push(ST, unop(FloatT, unopT, ValW1) ) | NeLocalSTRList > .
 
-  *** irelop
-  rl [ieq] : < (IntT . eq) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
+  *** relop
+  rl [relop] : < (T . relopT) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
             =>   
-            < IL |  const(i32, ieq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [ine] : < (IntT . ne) IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, ine(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [ilt_s] : < (IntT . "lt_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
-  rl [ilt_u] : < (IntT . "lt_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, "ilt_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [igt_s] : < (IntT . "gt_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, "igt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
-  rl [igt_u] : < (IntT . "gt_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, "igt_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [ile_s] : < (IntT . "le_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, "ile_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
-  rl [ile_u] : < (IntT . "le_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, "ile_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [ige_s] : < (IntT . "ge_s") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(IntT, "ige_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT)))) $ ST | NeLocalSTRList > .
-  rl [ige_u] : < (IntT . "ge_u") IL | const(IntT, ValW2) $ const(IntT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL | const(i32, "ige_u"(ValW1, ValW2)) $ ST | NeLocalSTRList > .
+            < IL |  const(i32, relop(T, relopT, ValW1, ValW2)) $ ST | NeLocalSTRList > .
 
   *** testop
   rl [eqz] : < (IntT . eqz) IL | const(IntT, ValW1) $ ST | NeLocalSTRList >   
             =>   
             < IL |  const(i32, ieq(ValW1, val(0))) $ ST | NeLocalSTRList > .
-
-  ***frelop
-  rl [feq] : < (FloatT . eq) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, feq(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [fne] : < (FloatT . ne) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, fne(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [flt] : < (FloatT . lt) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, flt(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [fgt] : < (FloatT . gt) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, fgt(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [fle] : < (FloatT . le) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, fle(ValW1, ValW2)) $ ST | NeLocalSTRList > .
-  rl [fge] : < (FloatT . ge) IL | const(FloatT, ValW2) $ const(FloatT, ValW1) $ ST | NeLocalSTRList >   
-            =>   
-            < IL |  const(i32, fge(ValW1, ValW2)) $ ST | NeLocalSTRList > .
 
   *** Conversions
   rl [i32.wrap_i64] : < (i32 . "wrap_" i64) IL | const(i64, ValW1) $ ST | NeLocalSTRList >   
