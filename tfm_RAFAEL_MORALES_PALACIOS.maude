@@ -1110,7 +1110,9 @@ mod WASMMOD is
   var FuncDefL : List{FuncDef} .
   var NeFuncDefL : NeList{FuncDef} .
   var TypeDefL : List{TypeDef} .
+  var NeTypeDefL : NeList{TypeDef} .
   var GlobalDefL : List{GlobalDef} .
+  var NeGlobalDefL : NeList{GlobalDef} .
   var Id : Id .
   var IndFuncCtx : FuncIndCtx .
   var IndTypeCtx : TypeIndCtx .
@@ -1145,18 +1147,18 @@ mod WASMMOD is
   *** Rules
   
   *** TODO: Include validation in rules as eqs in preconditions
-
-  rl [parse-typedef] : {StartFunc, indctr Ctr} # (module ((type Id FuncType) TypeDefL) FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  ***TypeDefL should be NeTypeDefL
+  rl [parse-typedef] : {StartFunc, indctr Ctr} # (module ((type Id FuncType) NeTypeDefL) FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {StartFunc, indctr Ctr + 1} # (module TypeDefL FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, (type Id FuncType), TypeStore) # .
+                      {StartFunc, indctr Ctr + 1} # (module NeTypeDefL FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, (type Id FuncType), TypeStore) # .
 
   rl [parse-typedef-last] : {StartFunc, indctr Ctr} # (module ((type Id FuncType)) FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
                       {StartFunc, indctr 0} # (module nil FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, (type Id FuncType), TypeStore) # .
   
-  rl [parse-typedef-str] : {StartFunc, indctr Ctr} # (module ((type Str FuncType) TypeDefL) FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-typedef-str] : {StartFunc, indctr Ctr} # (module ((type Str FuncType) NeTypeDefL) FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {StartFunc, indctr Ctr + 1} # (module TypeDefL FuncDefL GlobalDefL) # insert(Str, Ctr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, (type Str FuncType), TypeStore) # .
+                      {StartFunc, indctr Ctr + 1} # (module NeTypeDefL FuncDefL GlobalDefL) # insert(Str, Ctr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(Ctr, (type Str FuncType), TypeStore) # .
 
   rl [parse-typedef-last-str] : {StartFunc, indctr Ctr} # (module (type Str FuncType) FuncDefL GlobalDefL) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
@@ -1182,9 +1184,9 @@ mod WASMMOD is
                       {StartFunc, indctr 0} # (module nil nil GlobalDefL) # {typeIndCtx IndTypeCtxSTR} insert(Str, Ctr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Ctr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL end), FuncStore) # TypeStore #
                       if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
 
-  rl [parse-globaldef] : {StartFunc, indctr Ctr} # (module nil nil ((global Str (GlobalType) (ConstInst)) GlobalDefL) ) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  rl [parse-globaldef] : {StartFunc, indctr Ctr} # (module nil nil ((global Str (GlobalType) (ConstInst)) NeGlobalDefL) ) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
-                      {StartFunc, indctr Ctr + 1} # (module nil nil GlobalDefL) # IndTypeCtx IndFuncCtx < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
+                      {StartFunc, indctr Ctr + 1} # (module nil nil NeGlobalDefL) # IndTypeCtx IndFuncCtx < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, Ctr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore # .
 
   rl [parse-globaldef-last] : {StartFunc, indctr Ctr} # (module nil nil (global Str (GlobalType) (ConstInst))) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                       =>
@@ -1405,13 +1407,13 @@ mod WASMMOD is
   rl [nop] : < nop IL | ST | NeLocalSTRList >   
             =>   
             < IL | ST | NeLocalSTRList > .
-  crl [block-resultT] : < ((block ResultType) IL2 end) IL | ST | NeLocalSTRList >
+  crl [block-resultT] : < ((block ResultType) IL2 end) IL end | ST | NeLocalSTRList >
                =>
-               < IL2 end | st-push(ST, label("block", IL)) | NeLocalSTRList >
+               < IL2 end | st-push(ST, label("block", IL end)) | NeLocalSTRList >
                if valid-stack(ST, nil) .
-  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL end | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
-               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("block", IL)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("block", IL end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
@@ -1462,8 +1464,8 @@ mod WASMMOD is
     
 
   *** lookup rule: get value from reference from local store
-  rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
-
+  ***rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
+  eq lookup(LocalSTR, ValR) = LocalSTR[ValR] .
 
   *** List{Inst} operations 
   op head : NeList{Inst} -> Inst .
