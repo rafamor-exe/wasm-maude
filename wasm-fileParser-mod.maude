@@ -1,0 +1,36 @@
+mod WASM-FILE-MOD is
+  inc FILE . 
+
+  sort CustomOid NullOid .
+  subsorts NullOid Oid < CustomOid .
+  op nullOid : -> NullOid [ctor] .
+
+  op myClass : -> Cid . 
+  op myObj : -> Oid . 
+  ops in:_ : CustomOid -> Attribute . 
+  ops inFile:_ outText:_ : String -> Attribute . 
+  
+  op run-func-from-file : String -> Configuration . 
+  vars Text Acc WASMModFile Reason : String . 
+  vars FHIn : Oid . 
+  var  Attrs : AttributeSet .
+
+  eq run-func-from-file(WASMModFile) 
+  = <> 
+    < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
+    openFile(fileManager, myObj, WASMModFile, "r") .
+  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+      openedFile(myObj, fileManager, FHIn) 
+  => < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+      getLine(FHIn, myObj) .
+  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+      fileError(myObj, fileManager, Reason) 
+  => < myObj : myClass | in: nullOid, outText: Acc, Attrs > .
+  rl < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+      gotLine(myObj, FHIn, Text) 
+  => < myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > 
+      if Text == "" 
+      then closeFile(FHIn, myObj)
+      else getLine(FHIn, myObj)
+      fi .
+endm
