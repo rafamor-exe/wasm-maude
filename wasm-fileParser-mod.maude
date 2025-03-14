@@ -10,15 +10,21 @@ mod WASM-FILE-MOD is
   ops in:_ : CustomOid -> Attribute . 
   ops inFile:_ outText:_ : String -> Attribute . 
   
-  op run-func-from-file : String -> Configuration . 
   vars Text Acc WASMModFile Reason : String . 
   vars FHIn : Oid . 
   var  Attrs : AttributeSet .
 
-  eq run-func-from-file(WASMModFile) 
-  = <> 
-    < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
-    openFile(fileManager, myObj, WASMModFile, "r") .
+  op gen-config : String -> Configuration [ctor] .
+  eq gen-config(WASMModFile) = <> 
+                               < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
+                               openFile(fileManager, myObj, WASMModFile, "r") .
+
+  op run-func-from-file : String -> String .
+  eq run-func-from-file(WASMModFile) = get-config-text(gen-config(WASMModFile)) .
+  
+  op get-config-text : Configuration -> String .
+  eq get-config-text(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs > ) = Acc .
+
   rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
       openedFile(myObj, fileManager, FHIn) 
   => < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
@@ -33,4 +39,6 @@ mod WASM-FILE-MOD is
       then closeFile(FHIn, myObj)
       else getLine(FHIn, myObj)
       fi .
+
+
 endm

@@ -1041,7 +1041,7 @@ mod WASMMOD is
   protecting WASM-GLOBALDEF-MOD .
   protecting LIST{GlobalDef} .
 
-  ***protecting WASM-FILE-MOD .
+  protecting WASM-FILE-MOD .
 
   ***protecting MAP{Addr, String} .
 
