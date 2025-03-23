@@ -42,3 +42,5 @@ mod WASM-FILE-MOD is
 
 
 endm
+
+***erew run-func-from-file("examples/factorial.wat") .
