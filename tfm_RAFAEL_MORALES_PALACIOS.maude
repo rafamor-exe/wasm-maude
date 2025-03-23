@@ -1,3 +1,49 @@
+
+mod WASM-FILE-MOD is
+  inc FILE . 
+
+  sort CustomOid NullOid .
+  subsorts NullOid Oid < CustomOid .
+  op nullOid : -> NullOid [ctor] .
+
+  op myClass : -> Cid . 
+  op myObj : -> Oid . 
+  ops in:_ : CustomOid -> Attribute . 
+  ops inFile:_ outText:_ : String -> Attribute . 
+  
+  vars Text Acc WASMModFile Reason : String . 
+  vars FHIn : Oid . 
+  var  Attrs : AttributeSet .
+
+  op gen-config : String -> Configuration [ctor] .
+  eq gen-config(WASMModFile) = <> 
+                               < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
+                               openFile(fileManager, myObj, WASMModFile, "r") .
+
+  op run-func-from-file : String -> String .
+  eq run-func-from-file(WASMModFile) = get-config-text(gen-config(WASMModFile)) .
+  
+  op get-config-text : Configuration -> String .
+  eq get-config-text(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs > ) = Acc .
+
+  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+      openedFile(myObj, fileManager, FHIn) 
+  => < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+      getLine(FHIn, myObj) .
+  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+      fileError(myObj, fileManager, Reason) 
+  => < myObj : myClass | in: nullOid, outText: Acc, Attrs > .
+  rl < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+      gotLine(myObj, FHIn, Text) 
+  => < myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > 
+      if Text == "" 
+      then closeFile(FHIn, myObj)
+      else getLine(FHIn, myObj)
+      fi .
+
+
+endm
+
 fmod WASM-TYPETOKEN-MOD is
 
   protecting NAT .
@@ -827,6 +873,7 @@ fmod WASM-INST-MOD is
   ops add sub mul : -> BinopToken [ctor] .
   op _._ : TypeToken BinopToken -> Inst [ctor prec 24] . *** Valid for ints and floats
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
+  *** TODO: Change _ to ~ 
   ops "div_u" "div_s" "rem_u" "rem_s" : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
 
@@ -1042,7 +1089,7 @@ mod WASMMOD is
   protecting LIST{GlobalDef} .
 
   *** File parsing is not fully developed yet
-  ***protecting WASM-FILE-MOD .
+  protecting WASM-FILE-MOD .
 
   ***protecting MAP{Addr, String} .
 
@@ -1584,3 +1631,67 @@ mod WASMMOD is
 
 endm
 
+fmod WASM-TOKENIZER-MOD is
+
+  protecting LEXICAL .
+	protecting STRING-OPS .
+
+	*** Tokenize as WASM program for Maude
+	op tokenize-wasm : String -> QidList .
+	op tokenize-wasm : QidList -> QidList .
+
+	var S C C2 : String .
+	var Q  : Qid .
+	var QL : QidList .
+	var N? : FindResult .
+
+	eq tokenize-wasm(S) = tokenize-wasm(tokenize(S)) .
+
+	eq tokenize-wasm(nil) = nil .
+	eq tokenize-wasm(Q QL) =
+		if startsWith(string(Q), "\"") then
+			Q
+		else
+			splitDot(removeChar(removeChar(string(Q), "_", "~"), "\n", " "))
+		fi
+		tokenize-wasm(QL) .
+
+	*** Replace char by another non-problematic symbol
+	op removeChar : String String String -> String .
+
+	ceq removeChar(S, C, C2) =
+		if N? :: Nat then
+			removeChar(substr(S, 0, N?) + C2 + substr(S, s N?, sd(length(S), N?)), C, C2)
+		else
+			S
+		fi
+	 if N? := find(S, C, 0) .
+
+	*** Split words by a dot
+	op splitDot : String -> QidList .
+
+	ceq splitDot(S) =
+		if (startsWith(S, "i") or startsWith(S, "f")) and N? :: Nat then
+			qid(substr(S, 0, N?))
+      if substr(S, N?, sd(length(S), N?)) =/= ".const" then
+        qid(substr(S, N?, 1))
+        qid(substr(S, s(N?), sd(length(S), N?)))
+      else
+        qid(substr(S, N?, sd(length(S), N?)))
+      fi
+		else
+			qid(S)
+		fi
+	 if N? := find(S, ".", 0) .
+
+endfm
+
+mod WASM-MAUDE is
+  protecting WASM-TOKENIZER-MOD .
+	protecting META-LEVEL .
+  protecting WASM-FILE-MOD .
+
+  ***protecting WASMMOD .
+endm
+
+*** erew metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule) .
