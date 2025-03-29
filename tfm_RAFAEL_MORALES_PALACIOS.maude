@@ -845,6 +845,7 @@ fmod WASM-INST-MOD is
   protecting WASM-IOPS-MOD .
   protecting WASM-VALREF-MOD .
   protecting WASM-VALUE-MOD .
+  protecting LIST{TypeToken} .
 
   sorts Inst ConstInst .
   sorts BinopToken IBinopToken FBinopToken UnopToken FUnopToken IUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
@@ -966,7 +967,9 @@ fmod WASM-INST-MOD is
   op unreachable : -> Inst [ctor] .
 
   op block _ : BlockType -> Inst [ctor prec 24] .
+  op block _ : List{TypeToken} -> Inst [ctor prec 24] .
   op loop _ : BlockType -> Inst [ctor prec 24] .
+  op loop _ : List{TypeToken} -> Inst [ctor prec 24] .
   op br _ : Nat -> Inst [ctor prec 24] .
   op "br_if" _ : Nat -> Inst [ctor prec 24] .
   op end : -> Inst [ctor] .
@@ -1029,14 +1032,13 @@ fmod WASM-FUNCDEF-MOD is
   eq get-functype(ParamResultType, TypeStore, IndTypeCtxSTR) = ParamResultType .
 
   op coherent-typedef : TypeRef ParamResultType Map{Addr, TypeDef} Map{String, Addr} -> Bool .
-  ceq coherent-typedef((type Id), ParamResultType, TypeStore, IndTypeCtxSTR) = true if ParamResultType == get-functype-typedef(TypeStore[Id]) .
-  ceq coherent-typedef((type Str), ParamResultType, TypeStore, IndTypeCtxSTR) = true if ParamResultType == get-functype-typedef(TypeStore[IndTypeCtxSTR[Str]]) .
+  eq coherent-typedef((type Id), ParamResultType, TypeStore, IndTypeCtxSTR) = ParamResultType == get-functype-typedef(TypeStore[Id]) .
+  eq coherent-typedef((type Str), ParamResultType, TypeStore, IndTypeCtxSTR) = ParamResultType == get-functype-typedef(TypeStore[IndTypeCtxSTR[Str]]) .
   eq coherent-typedef(TypeRef, ParamResultType, TypeStore, IndTypeCtxSTR) = false [owise] .
 
   op valid-functype : FuncTypeDef Map{Addr, TypeDef} Map{String, Addr} -> Bool .
-  ceq valid-functype(TypeRef ParamResultType, TypeStore, IndTypeCtxSTR) = false if  not coherent-typedef(TypeRef, ParamResultType, TypeStore, IndTypeCtxSTR) .
+  eq valid-functype(TypeRef ParamResultType, TypeStore, IndTypeCtxSTR) = coherent-typedef(TypeRef, ParamResultType, TypeStore, IndTypeCtxSTR) .
   eq valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) = true [owise] .
-
 
 endfm
 
@@ -1124,6 +1126,7 @@ mod WASMMOD is
   op label : String List{Inst} -> Label [ctor] .
 
   op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor] .
+  op if _ _ else _ : List{TypeToken} List{Inst} List{Inst} -> Inst [ctor] .
 
   *** Indices stores
   *** TODO: Some are left (types, etc.)
@@ -1257,6 +1260,11 @@ mod WASMMOD is
   var binopT : BinopToken .
   var unopT : UnopToken .
   var relopT : RelopToken .
+
+  *** Equivalent instruction definitions
+  eq if TList IL1 else IL2 = if (result TList) IL1 else IL2 .
+  eq block TList = block (result TList) .
+  eq loop TList = loop (result TList) .
 
 
   *** Run trigger
