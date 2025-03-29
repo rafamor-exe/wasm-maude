@@ -96,7 +96,7 @@ fmod WASM-BITVAL-MOD is
   ***subsorts Binf32 Binf64 < Binf < String .
   ***subsort BitStringSize < Int .
 
-  var I I2 : Int .
+  var I I2 Int : Int .
   var N : Nat .
   var B B1 B2 : Bit .
   var TypeToken : TypeToken .
@@ -178,6 +178,21 @@ fmod WASM-BITVAL-MOD is
   eq ixor(1, 1) = 0 .
   eq ixor(BS1 B1, BS2 B2) = ixor(BS1, BS2) ixor(B1, B2) .
 
+  op ishl : List{Bit} Int -> List{Bit} .
+  eq ishl(nil, Int) = nil .
+  eq ishl(B BS, 0) = B BS .
+  eq ishl(B BS, Int) = ishl(BS 0, Int - 1) .
+  
+  op ishru : List{Bit} Int -> List{Bit} .
+  eq ishru(nil, Int) = nil .
+  eq ishru(BS B, 0) = BS B .
+  eq ishru(BS B, Int) = ishl(0 BS, Int - 1) .
+
+  op ishrs : List{Bit} Int -> List{Bit} .
+  eq ishrs(nil, Int) = nil .
+  eq ishrs(B1 BS B, 0) = B1 BS B .
+  eq ishrs(B1 BS B, Int) = ishl(B1 0 BS, Int - 1) .
+
   *** string() conversion allows to modify the base of the representation
   ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
   ***eq int-to-bitstring(I, BitStringSize) = 
@@ -201,14 +216,6 @@ fmod WASM-FUNCTYPE-MOD is
 
   var T : TypeToken .
   var TList1 TList2 : List{TypeToken} .
-
-  *** Reduce param/result lists when parsing
-  ***op _ _ : ParamType ParamType -> ParamType [assoc ctor] .
-  ***eq (param TList1) (param TList2) = (param (TList1 TList2)) .
-***
-  ***op _ _ : ResultType ResultType -> ResultType [assoc ctor] .
-  ***eq (result TList1) (result TList2) = (result (TList1 TList2)) .
-
 
 endfm
 
@@ -503,7 +510,7 @@ fmod WASM-IOPS-MOD is
   protecting WASM-VALUE-MOD .
 
   var N : Nat .
-  var Int1 Int2 : Int .
+  var Int Int1 Int2 : Int .
   var ValW1 ValW2 : ValWrapper .
   var IntT : IntTypeToken .
 
@@ -541,7 +548,7 @@ fmod WASM-IOPS-MOD is
   op iremu : IntTypeToken Nat ValWrapper ValWrapper -> Value .
   eq iremu(IntT, N, val(Int1), val(0)) = und .
   eq iremu(IntT, N, val(Int1), val(Int2)) = const(IntT, val(Int1 rem Int2)) [owise] .
-  
+
   *** By specification: return the rem of dividing the signed representations of j1/j2 w/ the sign of j1 (design decision: compute sign of j1 as (Int1 quo abs(Int1)))
   op irems : IntTypeToken Nat ValWrapper ValWrapper -> Value .
   eq irems(IntT, N, val(Int1), val(0)) = und .
@@ -875,7 +882,7 @@ fmod WASM-INST-MOD is
   op _._ : TypeToken BinopToken -> Inst [ctor prec 24] . *** Valid for ints and floats
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   *** TODO: Change _ to ~ 
-  ops "div_u" "div_s" "rem_u" "rem_s" : -> IBinopToken [ctor] .
+  ops "div_u" "div_s" "rem_u" "rem_s" shl "shr_s" "shr_u" : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
 
   *** bitstring representation ops
@@ -907,6 +914,9 @@ fmod WASM-INST-MOD is
   eq binop(IntT, and, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
   eq binop(IntT, or, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((ior((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
   eq binop(IntT, xor, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((ixor((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
+  eq binop(IntT, shl, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishl((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
+  eq binop(IntT, "shr_u", val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishru((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
+  eq binop(IntT, "shr_s", val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishrs((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
   *** Float instructions
   eq binop(FloatT, add, ValW1, ValW2) = correctFloat(const(FloatT, fadd(ValW1, ValW2))) .
   eq binop(FloatT, sub, ValW1, ValW2) = correctFloat(const(FloatT, fsub(ValW1, ValW2))) .

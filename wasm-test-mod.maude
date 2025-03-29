@@ -5,6 +5,7 @@ mod WASM-TEST-MOD is
   op run-factorial : -> WASMSimTrigger .
   op run-int-binop-trap : -> WASMSimTrigger .
   op run-float-unop-sqrt : -> WASMSimTrigger .
+  op run-shOp : -> WASMSimTrigger .
   eq run-factorial = run-module-func(
                                     (module
                                       (type "type0" (func (result i32)))
@@ -96,5 +97,64 @@ mod WASM-TEST-MOD is
                                             (global "operand" (mut f32) (f32 .const 1))
                                             (global "result" (mut f32) (f32 .const 1)))
                                           , "start") .
+
+  eq run-shOp = run-module-func(
+                                (module
+                                  (type "type0" (func ((result i32))))
+                                  (type "type1" (func ((param i32 i32) (result i32))))
+                                  (func "start"
+                                  (local i32)
+                                    (
+                                        (i32 .const 8)
+                                        (global.set "operand1")
+                                        (i32 .const 1)
+                                        (global.set "operand2")
+
+                                        (global.get "operand2")
+                                        (global.get "operand1")
+                                        (call "shl")
+                                        (global.set "result1")
+                                        
+                                        (global.get "operand2")
+                                        (global.get "operand1")
+                                        (call "shr_u")
+                                        (global.set "result2")
+                                        
+                                        (global.get "operand2")
+                                        (global.get "operand1")
+                                        (call "shr_s")
+                                        (global.set "result3")
+                                    )
+                                    end)
+                                  (func "shl" ((type "type1"))
+                                  (local (i32 i32))
+                                    (
+                                        (local.get 0)
+                                        (local.get 1)
+                                        (i32 . shl)
+                                    )
+                                    end)
+                                  (func "shr_u" ((type "type1"))
+                                  (local (i32 i32))
+                                    (
+                                        (local.get 0)
+                                        (local.get 1)
+                                        (i32 . "shr_u")
+                                    )
+                                    end)
+                                  (func "shr_s" ((type "type1"))
+                                  (local (i32 i32))
+                                    (
+                                        (local.get 0)
+                                        (local.get 1)
+                                        (i32 . "shr_s")
+                                    )
+                                    end)
+                                  (global "operand1" (mut i32) (i32 .const 1))
+                                  (global "operand2" (mut i32) (i32 .const 1))
+                                  (global "result1" (mut i32) (i32 .const 1))
+                                  (global "result2" (mut i32) (i32 .const 1))
+                                  (global "result3" (mut i32) (i32 .const 1)))
+                                , "start") .
 
 endm
