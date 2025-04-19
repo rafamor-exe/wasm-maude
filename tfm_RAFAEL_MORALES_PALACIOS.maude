@@ -52,6 +52,8 @@ fmod WASM-TYPETOKEN-MOD is
   sorts VecTypeToken VecShapeToken IntVecShapeToken FloatVecShapeToken .
   subsorts FloatTypeToken IntTypeToken VecTypeToken < TypeToken .
   subsorts FloatVecShapeToken IntVecShapeToken < VecShapeToken < VecTypeToken .
+  ***subsorts IntVecShapeToken < IntTypeToken .
+  ***subsorts FloatVecShapeToken < FloatTypeToken .
 
   ops i32 i64 : -> IntTypeToken [ctor] .
   ops f32 f64 : -> FloatTypeToken [ctor] .
@@ -107,126 +109,6 @@ endfm
 view Bit from TRIV to WASM-BIT-MOD is
   sort Elt to Bit .
 endv
-
-fmod WASM-BITVAL-MOD is
-
-  protecting WASM-TYPETOKEN-MOD .
-  protecting WASM-BIT-MOD .
-  protecting INT .
-  protecting LIST{Bit} .
-  ***protecting FLOAT .
-  ***protecting CONVERSION .
-
-  sorts Bini Bini32 Bini64 BitStringSize BitVal .
-  ***sorts Binf Binf32 Binf64 ..
-  ***subsorts Binf32 Binf64 < Binf < String .
-  ***subsort BitStringSize < Int .
-
-  var I I2 Int : Int .
-  var N : Nat .
-  var B B1 B2 : Bit .
-  var TypeToken : TypeToken .
-  var BitList BS BS1 BS2 : List{Bit} .
-  ***var F : Float .
-  ***var BitStringSize : BitStringSize .
-
-  *** BitVal representation (valid for int and float): contains typetoken for type-checking and bitstring. 
-  op {valtype _, bitstring _} : TypeToken List{Bit} -> BitVal [ctor] .
-
-  *** Auxliary functions for getting BitVal propperty values
-  op get-type-bitval : BitVal -> TypeToken .
-  eq get-type-bitval({valtype TypeToken, bitstring BitList}) = TypeToken .
-  op get-bitstring-bitval : BitVal -> List{Bit} .
-  eq get-bitstring-bitval({valtype TypeToken, bitstring BitList}) = BitList .
-
-  *** Convert Maude Int to i32 bitstring
-  op int-to-i32 : Int -> BitVal [ctor] .
-  eq int-to-i32(I) = {valtype i32 , bitstring int-to-bitstring(I, 32)} .
-
-  *** Convert Maude Int to i64 bitstring  
-  op int-to-i64 : Int -> BitVal [ctor] .
-  eq int-to-i64(I) = {valtype i64, bitstring int-to-bitstring(I, 64)} .
-
-  *** Auxiliary op to convert int to bitstring of certain size
-  *** TODO: Manage overflow
-  op int-to-bitstring : Int Nat -> List{Bit} [ctor] .
-  eq int-to-bitstring(0, 1) = 0 .
-  eq int-to-bitstring(0, I2) = padding(I2) 0 [owise] .
-  eq int-to-bitstring(1, 1) = 1 .
-  eq int-to-bitstring(1, I2) = padding(I2) 1 [owise] .
-  ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 0 if I rem 2 == 0 and I2 > 1 .
-  ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 1 if I rem 2 =/= 0 and I2 > 1 .
-
-  *** Front padding for bitstrings
-  op padding : Nat -> List{Bit} .
-  eq padding(1) = 0 .
-  eq padding(N) = padding(N - 1) 0 .
-
-
-  *** Convert i32 bitstring to Maude Int
-  op i32-to-int : BitVal -> Int [ctor] .
-  eq i32-to-int({valtype i32 , bitstring BitList}) = bitstring-to-int(BitList, 32) .
-
-  *** Convert i64 bitstring to Maude Int
-  op i64-to-int : BitVal -> Int [ctor] .
-  eq i64-to-int({valtype i64 , bitstring BitList}) = bitstring-to-int(BitList, 64) .
-
-  *** Convert bitstring to int
-  op bitstring-to-int : List{Bit} Nat -> Int .
-  eq bitstring-to-int(0 BitList, 1) = 0 .
-  eq bitstring-to-int(1 BitList, 1) = 1 .
-  ceq bitstring-to-int(0 BitList, I) = bitstring-to-int(BitList, I - 1) if I > 1 .
-  ceq bitstring-to-int(1 BitList, I) = ((2 ^ (I - 1)) * 1) + bitstring-to-int(BitList, I - 1) if I > 1 .
-
-  *** Logic operations
-  op not _ : List{Bit} -> List{Bit} [ctor] .
-  eq not (0) = 1 .
-  eq not (1) = 0 .
-  eq not (BS 0) = not(BS) 1 .
-  eq not (BS 1) = not(BS) 0 .
-
-  op iand : List{Bit} List{Bit} -> List{Bit} [ctor] .
-  eq iand(B, 0) = 0 .
-  eq iand(0, B) = 0 .
-  eq iand(1, 1) = 1 .
-  eq iand(BS1 B1, BS2 B2) = iand(BS1, BS2) iand(B1, B2) .
-
-  op ior : List{Bit} List{Bit} -> List{Bit} [ctor] .
-  eq ior(B, 0) = B .
-  eq ior(0, B) = B .
-  eq ior(1, 1) = 1 .
-  eq ior(BS1 B1, BS2 B2) = ior(BS1, BS2) ior(B1, B2) .
-
-  op ixor : List{Bit} List{Bit} -> List{Bit} [ctor] .
-  eq ixor(0, 0) = 0 .
-  eq ixor(0, 1) = 1 .
-  eq ixor(1, 0) = 1 .
-  eq ixor(1, 1) = 0 .
-  eq ixor(BS1 B1, BS2 B2) = ixor(BS1, BS2) ixor(B1, B2) .
-
-  op ishl : List{Bit} Int -> List{Bit} .
-  eq ishl(nil, Int) = nil .
-  eq ishl(B BS, 0) = B BS .
-  eq ishl(B BS, Int) = ishl(BS 0, Int - 1) .
-  
-  op ishru : List{Bit} Int -> List{Bit} .
-  eq ishru(nil, Int) = nil .
-  eq ishru(BS B, 0) = BS B .
-  eq ishru(BS B, Int) = ishl(0 BS, Int - 1) .
-
-  op ishrs : List{Bit} Int -> List{Bit} .
-  eq ishrs(nil, Int) = nil .
-  eq ishrs(B1 BS B, 0) = B1 BS B .
-  eq ishrs(B1 BS B, Int) = ishl(B1 0 BS, Int - 1) .
-
-  *** string() conversion allows to modify the base of the representation
-  ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
-  ***eq int-to-bitstring(I, BitStringSize) = 
-  
-  ***op float-to-bitstring : Float BitStringSize -> Binf [ctor] .
-  ***eq float-to-bitstring(F, BitStringSize) = string(F) .
-
-endfm
 
 
 fmod WASM-FUNCTYPE-MOD is
@@ -369,6 +251,7 @@ fmod WASM-FLOAT-MOD is
   protecting WASM-TYPETOKEN-MOD .
   protecting WASM-NANS-MOD .
   protecting LIST{NaNFloat} .
+  protecting INT .
 
   sorts NaNs InfF ZeroF .
 
@@ -391,8 +274,12 @@ fmod WASM-FLOAT-MOD is
   ***eq wasmF(F1) rem wasmF(F2) = wasmF(F1 rem F2) .
 
   op get-sign : Float -> Sign .
-  ceq get-sign(F1) = pos if F1 > 0.0 .
-  eq get-sign(F1) = neg [owise] .
+  eq get-sign(F1) = 
+    if F1 > 0.0 then
+      pos
+    else
+      neg
+    fi .
 
   op opposite : Sign -> Sign [ctor] .
   eq opposite(pos) = neg .
@@ -402,17 +289,17 @@ fmod WASM-FLOAT-MOD is
   op inf : Sign -> InfF [ctor] .
   op zero : Sign -> ZeroF [ctor] .
   
-  var FType : FloatTypeToken .
+  var N : Nat .
 
-  op expon : FloatTypeToken -> Nat .
-  eq expon(f32) = 8 .
-  eq expon(f64) = 11 .
-  op signif : FloatTypeToken -> Nat .
-  eq signif(f32) = 23 .
-  eq signif(f64) = 52 .
+  op expon : Nat -> Nat .
+  eq expon(32) = 8 .
+  eq expon(64) = 11 .
+  op signif : Nat -> Nat .
+  eq signif(32) = 23 .
+  eq signif(64) = 52 .
 
-  op limitF : FloatTypeToken -> Nat .
-  eq limitF(FType) = (2 ^ (2 ^ expon(FType))) .
+  op limitF : Nat -> Nat .
+  eq limitF(N) = (2 ^ ((2 ^ expon(N)) - 1)) .
 
 endfm
 
@@ -459,8 +346,8 @@ fmod WASM-VALUE-MOD is
   eq get-valW(const(FloatT, ValW1)) = ValW1 .
 
   op correctFloat : FloatValue -> FloatValue [ctor] .
-  ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(pos))) if F1 >= float(limitF(FType)) .
-  ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(neg))) if F1 <= - float(limitF(FType)) .
+  ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(pos))) if F1 >= float(limitF(bit-width(FType))) .
+  ceq correctFloat(const(FType, val(F1))) = const(FType, val(inf(neg))) if F1 <= - float(limitF(bit-width(FType))) .
   eq correctFloat(const(FType, val(0))) = const(FType, val(zero(pos))) .
   eq correctFloat(FVal) = FVal [owise] .
 
@@ -528,6 +415,221 @@ fmod WASM-VALUE-MOD is
   *** Memberships of different types
   mb const(IntT, ValWrapper) : IntValue . 
   mb const(FloatT, ValWrapper) : FloatValue . 
+
+endfm
+
+fmod WASM-BITVAL-MOD is
+
+  protecting WASM-TYPETOKEN-MOD .
+  protecting WASM-BIT-MOD .
+  protecting WASM-VALUE-MOD .
+  protecting INT .
+  protecting LIST{Bit} .
+  ***protecting FLOAT .
+  protecting CONVERSION .
+  protecting STRING-OPS .
+
+  sorts Bini Bini32 Bini64 BitStringSize BitVal .
+  sorts IEEE754Components IEEE754Type .
+  ***sorts Binf Binf32 Binf64 ..
+  ***subsorts Binf32 Binf64 < Binf < String .
+  ***subsort BitStringSize < Int .
+
+  var I I2 Int : Int .
+  var F F1 F2 : Float . 
+  var N : Nat .
+  var B B1 B2 : Bit .
+  var TypeToken : TypeToken .
+  var BitList BS BS1 BS2 DecRep : List{Bit} .
+  var Sg : Sign .
+  var IEEE754Type : IEEE754Type .
+  var Str char0? : String .
+  ***var F : Float .
+  ***var BitStringSize : BitStringSize .
+
+  *** BitVal representation (valid for int and float): contains typetoken for type-checking and bitstring. 
+  op {valtype _, bitstring _} : TypeToken List{Bit} -> BitVal [ctor] .
+
+  *** Auxliary functions for getting BitVal propperty values
+  op get-type-bitval : BitVal -> TypeToken .
+  eq get-type-bitval({valtype TypeToken, bitstring BitList}) = TypeToken .
+  op get-bitstring-bitval : BitVal -> List{Bit} .
+  eq get-bitstring-bitval({valtype TypeToken, bitstring BitList}) = BitList .
+  
+  op get-bitstring-length : List{Bit} -> Nat .
+  eq get-bitstring-length(nil) = 0 .
+  eq get-bitstring-length(B BS) = 1 + get-bitstring-length(BS) .
+
+  *** Convert Maude Int to i32 bitstring
+  op int-to-i32 : Int -> BitVal [ctor] .
+  eq int-to-i32(I) = {valtype i32 , bitstring int-to-bitstring(I, 32)} .
+
+  *** Convert Maude Int to i64 bitstring  
+  op int-to-i64 : Int -> BitVal [ctor] .
+  eq int-to-i64(I) = {valtype i64, bitstring int-to-bitstring(I, 64)} .
+
+  *** Auxiliary op to convert int to bitstring of certain size (ibits)
+  *** TODO: Manage overflow
+  op int-to-bitstring : Int Nat -> List{Bit} [ctor] .
+  eq int-to-bitstring(0, 1) = 0 .
+  eq int-to-bitstring(0, I2) = padding(I2) 0 [owise] .
+  eq int-to-bitstring(1, 1) = 1 .
+  eq int-to-bitstring(1, I2) = padding(I2) 1 [owise] .
+  ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 0 if I rem 2 == 0 and I2 > 1 .
+  ceq int-to-bitstring(I, I2) = int-to-bitstring(I quo 2, I2 - 1) 1 if I rem 2 =/= 0 and I2 > 1 .
+
+  op int-to-bitstring-nopad : Int -> List{Bit} [ctor] .
+  eq int-to-bitstring-nopad(0) = 0 .
+  eq int-to-bitstring-nopad(1) = 1 .
+  ceq int-to-bitstring-nopad(I) = int-to-bitstring-nopad(I quo 2) 0 if I rem 2 == 0 .
+  ceq int-to-bitstring-nopad(I) = int-to-bitstring-nopad(I quo 2) 1 if I rem 2 =/= 0 .
+
+  ***op float-to-bitstring : ValWrapper Nat -> List{Bit} [ctor] .
+  ***ceq float-to-bitstring(val(F1), N) = fsign(get-sign(F1)) int-to-bitstring(e + fbias(N), expon(N)) int-to-bitstring(m, signif(N))
+  ***  if ((1 + m * 2 ^ (- signif(N))) * 2 ^ (e)) := abs(F1) .
+  ***eq float-to-bitstring(val(inf(Sg)), N) = fsign(Sg) genNbits(1, expon(N)) genNbits(0, signif(N)) .
+
+  *** Front padding for bitstrings
+  op padding : Nat -> List{Bit} .
+  eq padding(0) = nil .
+  eq padding(1) = 0 .
+  eq padding(N) = padding(N - 1) 0 .
+
+  *** Generate a bitstring of length N with bits of value B
+  op genNbits : Bit Nat -> List{Bit} .
+  eq genNbits(B, 1) = B .
+  eq genNbits(B, N) = B genNbits(B, N - 1) .
+
+  *** Bit representation for signs
+  op fsign : Sign -> Bit .
+  eq fsign(pos) = 0 .
+  eq fsign(neg) = 1 .
+
+  *** Float exponent bias
+  op fbias : Nat -> Nat .
+  eq fbias(N) = (2 ^ (expon(N) - 1)) - 1 .
+
+  ***op get-ieeerep : Float Nat -> List{Bit} . *** TODO: Take into account 0 sign and 0 rep as exp 0 and mantissa 0 + FIX numbers like 1.2 (precision is 64bits...)
+  ***ceq get-ieeerep(F1, N) = fsign(get-sign(F1)) int-to-bitstring(fbias(N) + I2, expon(N)) int-to-bitstring(correct-mantissa(Str, I2), signif(N)) *** Re-consider that rat...in the spec of nopad is Int
+  ***  if < I, Str, I2 > := decFloat(F1, signif(N)) . *** <sign(-1,0,1), "<n>", exp>
+  ******ceq get-ieeerep(F1, N) = fsign(get-sign(F1)) BS2 BS1
+  ***  ***if { m: BS1 , e: BS2 } := get-ieeerep-components(get-ieeerep-type(abs(F1)), int-to-bitstring-nopad(rat(floor(abs(F1)))), get-fraction(abs(F1) - floor(abs(F1)), signif(N), nil), 0, N) .
+  ***
+  ***op correct-mantissa : String Int -> Rat .
+  ***ceq correct-mantissa(Str, I) = 
+  ***    if I < length(Str) then
+  ***      correct-mantissa(substr(Str, 0, length(Str) - 1), I)
+  ***    else
+  ***      rat(Str, 10)
+  ***    fi
+  ***  if substr(Str, length(Str) - 1, length(Str) - 1) == "0" . ***rfind(Str, "0", length(Str)) .
+  ***eq correct-mantissa(Str, I) = rat(Str, 10) [owise] .
+
+  ***op get-fraction : Float Nat List{Bit} -> List{Bit} .
+  ***eq get-fraction(F1, N, BS) = 
+  ***  if F1 == 0.0 or N == 0 then 
+  ***    BS
+  ***  else
+  ***    if (F1 * 2.0) >= 1.0 then
+  ***      get-fraction((F1 * 2.0) - 1.0, N - 1, BS 1)
+  ***    else
+  ***      get-fraction((F1 * 2.0), N - 1, BS 0)
+  ***    fi
+  ***  fi .
+  ***
+  ***op { m: _, e: _} : List{Bit} List{Bit} -> IEEE754Components [ctor] .
+  ***ops norm subnorm : -> IEEE754Type [ctor] .
+
+  ***op get-ieeerep-type : Float -> IEEE754Type .
+  ****** NOTE: Wrong definition
+  ***eq get-ieeerep-type(F1) =
+  ***  if F1 >= 1.0 then
+  ***    norm
+  ***  else
+  ***    subnorm
+  ***  fi .
+  ***
+  ***op get-ieeerep-components : IEEE754Type List{Bit} List{Bit} Int Nat -> IEEE754Components .
+  ****** TODO: FIX definition for normalised and subnormal numbers
+  ***eq get-ieeerep-components(norm, 1, BS2, I, N) = { m: BS2 padding(signif(N) - get-bitstring-length(BS2)) , e: int-to-bitstring(fbias(N) + I, expon(N)) } .
+  ***eq get-ieeerep-components(norm, BS1 B, BS2, I, N) = get-ieeerep-components(norm, BS1, B BS2, I + 1, N) .
+  ***eq get-ieeerep-components(subnorm, 1, BS2, I, N) = { m: BS2 padding(signif(N) - get-bitstring-length(BS2)), e: int-to-bitstring(fbias(N) + I, expon(N)) } .
+  ***eq get-ieeerep-components(subnorm, 0, 0 BS2, I, N) = 
+  ***  if fbias(N) + I == 1 then 
+  ***    { m: BS2 padding(signif(N) - get-bitstring-length(BS2)), e: int-to-bitstring(fbias(N) + I, expon(N)) }
+  ***  else
+  ***    get-ieeerep-components(subnorm, 0, BS2, I - 1, N)
+  ***  fi .
+  ***eq get-ieeerep-components(subnorm, 0, 1 BS2, I, N) = get-ieeerep-components(subnorm, 1, BS2, I - 1, N) .
+
+  ***op get-mantissa : IEEE754Components -> List{Bit} .
+  ***eq get-mantissa({ m: BS1 , e: BS2 }) = BS1 .
+  ***
+  ***op get-exp : IEEE754Components -> List{Bit} .
+  ***eq get-exp({ m: BS1 , e: BS2 }) = BS2 .
+
+  *** Convert i32 bitstring to Maude Int
+  op i32-to-int : BitVal -> Int [ctor] .
+  eq i32-to-int({valtype i32 , bitstring BitList}) = bitstring-to-int(BitList, 32) .
+
+  *** Convert i64 bitstring to Maude Int
+  op i64-to-int : BitVal -> Int [ctor] .
+  eq i64-to-int({valtype i64 , bitstring BitList}) = bitstring-to-int(BitList, 64) .
+
+  *** Convert bitstring to int (ibits^(-1))
+  op bitstring-to-int : List{Bit} Nat -> Int .
+  eq bitstring-to-int(0 BitList, 1) = 0 .
+  eq bitstring-to-int(1 BitList, 1) = 1 .
+  ceq bitstring-to-int(0 BitList, I) = bitstring-to-int(BitList, I - 1) if I > 1 .
+  ceq bitstring-to-int(1 BitList, I) = ((2 ^ (I - 1)) * 1) + bitstring-to-int(BitList, I - 1) if I > 1 .
+
+  *** Logic operations
+  op not _ : List{Bit} -> List{Bit} [ctor] .
+  eq not (0) = 1 .
+  eq not (1) = 0 .
+  eq not (BS 0) = not(BS) 1 .
+  eq not (BS 1) = not(BS) 0 .
+
+  op iand : List{Bit} List{Bit} -> List{Bit} [ctor] .
+  eq iand(B, 0) = 0 .
+  eq iand(0, B) = 0 .
+  eq iand(1, 1) = 1 .
+  eq iand(BS1 B1, BS2 B2) = iand(BS1, BS2) iand(B1, B2) .
+
+  op ior : List{Bit} List{Bit} -> List{Bit} [ctor] .
+  eq ior(B, 0) = B .
+  eq ior(0, B) = B .
+  eq ior(1, 1) = 1 .
+  eq ior(BS1 B1, BS2 B2) = ior(BS1, BS2) ior(B1, B2) .
+
+  op ixor : List{Bit} List{Bit} -> List{Bit} [ctor] .
+  eq ixor(0, 0) = 0 .
+  eq ixor(0, 1) = 1 .
+  eq ixor(1, 0) = 1 .
+  eq ixor(1, 1) = 0 .
+  eq ixor(BS1 B1, BS2 B2) = ixor(BS1, BS2) ixor(B1, B2) .
+
+  op ishl : List{Bit} Int -> List{Bit} .
+  eq ishl(nil, Int) = nil .
+  eq ishl(B BS, 0) = B BS .
+  eq ishl(B BS, Int) = ishl(BS 0, Int - 1) .
+  
+  op ishru : List{Bit} Int -> List{Bit} .
+  eq ishru(nil, Int) = nil .
+  eq ishru(BS B, 0) = BS B .
+  eq ishru(BS B, Int) = ishl(0 BS, Int - 1) .
+
+  op ishrs : List{Bit} Int -> List{Bit} .
+  eq ishrs(nil, Int) = nil .
+  eq ishrs(B1 BS B, 0) = B1 BS B .
+  eq ishrs(B1 BS B, Int) = ishl(B1 0 BS, Int - 1) .
+
+  *** string() conversion allows to modify the base of the representation
+  ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
+  ***eq int-to-bitstring(I, BitStringSize) = 
+  
+  ***op float-to-bitstring : Float BitStringSize -> Binf [ctor] .
+  ***eq float-to-bitstring(F, BitStringSize) = string(F) .
 
 endfm
 
@@ -1424,6 +1526,10 @@ mod WASMMOD is
                            else
                             < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList >
                            fi .
+  crl [vec-const] : < (v128 .const IntN) IL | ST | NeLocalSTRList >   
+                    =>   
+                    < IL | st-push(ST, const(v128, val(IntN))) | NeLocalSTRList > 
+                    if 0 <= IntN and IntN < (2 ^ (bit-width(v128))) .
   ***rl [float-const-Z] : < (FloatT .const 0.0) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList > .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
