@@ -1144,8 +1144,8 @@ fmod WASM-FUNCDEF-MOD is
   op _ _ : TypeRef ParamResultType -> FuncTypeDef [ctor] .
 
   *** TODO: look for a way of making ParamType, ResultType lists and LocalsRef optional
-  op (func _ _ _ _ end) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor] .
-  op (func _ _ _ _ end) : String FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor] .
+  op (func _ _ _ _ end) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d d n++i n--i ni)] .
+  op (func _ _ _ _ end) : String FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d d n++i n--i ni)] .
   op (func _ _ _ end) : Id LocalsRef List{Inst} -> FuncDef [ctor] .
   op (func _ _ _ end) : String LocalsRef List{Inst} -> FuncDef [ctor] .
 
@@ -1275,37 +1275,37 @@ mod WASMMOD is
 
   *** Local environment
   *** < InstList(List{Inst}) | Stack | LocalStore(Map{ValRef, Value}) >
-  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMLocalSim [ctor] .
+  op <_|_|_> : List{Inst} Stack Map{ValRef, Value} -> WASMLocalSim [ctor format (ni d d d d d d d)] .
 
   op _ _ : LocalIndCtx WASMLocalSim -> WASMLocalIndSim [ctor] .
 
   *** Global environment
   *** WASMLocalSim # GlobalAddrs(Map{ValRef, Nat} <-> GlobalStore(Map{ValRef, Value})
   op _ <-> _ : Map{String, Addr} Map{Addr, GlobalInstance} -> GlobalInventory [ctor] .
-  op _ # _ : WASMLocalSim GlobalInventory -> WASMGlobalSim [ctor] .
+  op _ # _ : WASMLocalSim GlobalInventory -> WASMGlobalSim [ctor format (d ni ni d)] .
 
   op _ _ : GlobalIndCtx WASMGlobalSim -> WASMGlobalIndSim [ctor] .
 
   *** Functions + Global enviroment
-  op _ # _ : WASMGlobalSim Map{Addr, FuncDef} -> WASMFuncGlobalSim [ctor] .
+  op _ # _ : WASMGlobalSim Map{Addr, FuncDef} -> WASMFuncGlobalSim [ctor format (d ni ni d)] .
 
   op _ _ : FuncIndCtx WASMFuncGlobalSim -> WASMFuncGlobalIndSim [ctor] .
 
   *** Types + Functions + Global enviroment
-  op _ # _ : WASMFuncGlobalIndSim Map{Addr, TypeDef} -> WASMTypeFuncGlobalSim [ctor] .
+  op _ # _ : WASMFuncGlobalIndSim Map{Addr, TypeDef} -> WASMTypeFuncGlobalSim [ctor format (d ni ni d)] .
 
   op _ _ : TypeIndCtx WASMTypeFuncGlobalSim -> WASMTypeFuncGlobalIndSim [ctor] .
 
   *** WASM Simulator
   *** # WASMModule # WASMGlobalSim # FuncStore #
-  op # _ # _ # : WASMModule WASMTypeFuncGlobalIndSim -> WASMSim [ctor] .
+  op # _ # _ # : WASMModule WASMTypeFuncGlobalIndSim -> WASMSim [ctor format (ni ni ni ni ni ni)] .
 
   op start _ : Nat -> Starter [ctor] .
   op start _ : String -> Starter [ctor] .
 
   op {_, indctr _} : Starter Nat -> WasmTrigger [ctor] .
 
-  op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor] .
+  op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor format (ni ni ni)] .
   
 
   *** Empty Map{ValRef, Value} definition
