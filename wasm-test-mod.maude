@@ -7,7 +7,7 @@ mod WASM-TEST-MOD is
   op run-float-unop-sqrt : -> WASMSimTrigger .
   op run-shOp : -> WASMSimTrigger .
   eq run-factorial = run-module-func(
-                                    (module
+                                    (module 
                                       (type "type0" (func (result i32)))
                                       (type "type1" (func (param i32) (result i32)))
                                       (func "start"
@@ -44,7 +44,7 @@ mod WASM-TEST-MOD is
                                     ,"start") .
 
   eq run-int-binop-trap = run-module-func(
-                                          (module
+                                          (module 
                                             (type "type0" (func ((result i32))))
                                             (type "type1" (func ((param (i32 i32)) (result i32))))
                                             (func "start"
@@ -74,7 +74,7 @@ mod WASM-TEST-MOD is
                                           , "start") .
 
   eq run-float-unop-sqrt = run-module-func(
-                                          (module
+                                          (module 
                                             (type "type0" (func ((result f32))))
                                             (type "type1" (func ((param f32) (result f32))))
                                             (func "start"
@@ -99,7 +99,7 @@ mod WASM-TEST-MOD is
                                           , "start") .
 
   eq run-shOp = run-module-func(
-                                (module
+                                (module 
                                   (type "type0" (func ((result i32))))
                                   (type "type1" (func ((param i32 i32) (result i32))))
                                   (func "start"
