@@ -1463,8 +1463,9 @@ mod WASMMOD is
   op run-module-func : WASMModule String -> WASMSimTrigger .
   eq run-module-func(WASMModule, Str) = read-module({start Str, indctr [0, 0, 0]} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
 
-  *** Allocation and Instantiation of module
+  *** Allocation of module -> Instantiation of module
   *** Read module component definitions
+  *** Done as eq logic to avoid non-determinism on component parsing (due to multiset reading possibilities)
   op read-module : WASMSimTrigger -> WASMSimTrigger .
   eq read-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
