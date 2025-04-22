@@ -140,8 +140,9 @@ fmod WASM-PARAMRESULTTYPE-MOD is
   ***protecting LIST{ParamType} .
   ***protecting LIST{ResultType} .
 
-  sorts ParamResultType .
+  sorts ParamResultType ResultTypeList EmptyResultTypeList .
   subsorts ParamType ResultType < ParamResultType .
+  subsorts EmptyResultTypeList ResultType < ResultTypeList .
 
   var ParamType : ParamType .
   var ResultType : ResultType .
@@ -153,13 +154,19 @@ fmod WASM-PARAMRESULTTYPE-MOD is
 
   op getParamType : ParamResultType -> ParamType .
   eq getParamType((param TList1) (result TList2)) = (param TList1) .
+  eq getParamType((param TList1)) = (param TList1) .
   eq getParamType((result TList2)) = (param nil) .
 
   op getResultType : ParamResultType -> ResultType .
   eq getResultType((param TList1) (result TList2)) = (result TList2) .
+  eq getResultType((result TList2)) = (result TList2) .
+  eq getResultType((param TList1)) = (result nil) .
 
   mb (param (TList1 TList2)) : ParamType .
   mb (result (TList1 TList2)) : ResultType .
+
+  op EmptyResultTypeList : -> EmptyResultTypeList [ctor] .
+  op _,_ : ResultTypeList ResultTypeList -> ResultTypeList [ctor assoc id: EmptyResultTypeList] .
 
 endfm
 
@@ -1198,7 +1205,7 @@ fmod WASM-MODULECONTENT-MOD is
   op EmptyMod : -> EmptyMod [ctor] .  
   op _ _ : ModuleContent ModuleContent -> ModuleContent [ctor assoc comm prec 19 id: EmptyMod] .
   op EmptyFuncDefL : -> EmptyFuncDefL [ctor] .
-  op _,_ : FuncDef FuncDef -> FuncDefList [ctor assoc prec 19 id: EmptyFuncDefL] .
+  op _,_ : FuncDefList FuncDefList -> FuncDefList [ctor assoc prec 19 id: EmptyFuncDefL] .
 
 endfm
 
@@ -1409,7 +1416,8 @@ mod WASMMOD is
   var ParamType : ParamType .
   var ResultType : ResultType .
   var LocalsRef : LocalsRef .
-  var TypeTokenList TList TList1 TListRes : List{TypeToken} .
+  var TypeTokenList TList TList' TList1 TListRes TListLabel : List{TypeToken} .
+  var LabelsResultTypeList : ResultTypeList .
   var NeTList : NeList{TypeToken} .
   var IntN : Int .
   var FloatN F1 F2 : Float .
@@ -1472,8 +1480,18 @@ mod WASMMOD is
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Str FuncTypeDef LocalsRef IL end) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL end), FuncStore) # TypeStore #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (ConstInst)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < ConstInst (global.set Str) uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> GlobalsStore # FuncStore # TypeStore #) .
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
+                 if 0 <= IntN and IntN < (2 ^ (bit-width(IntT))) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const float(IntN))) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const 0.0)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value correctFloat(const(FloatT, val(zero(pos))))}, GlobalsStore) # FuncStore # TypeStore #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const FloatN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value correctFloat(const(FloatT, val(FloatN)))}, GlobalsStore) # FuncStore # TypeStore #) .
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (v128 .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(v128, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
+                 if 0 <= IntN and IntN < (2 ^ (bit-width(v128))) .
 
 
   op simulate-wasm : WASMTypeFuncGlobalIndSim -> WASMTypeFuncGlobalIndSim .
@@ -1486,12 +1504,12 @@ mod WASMMOD is
   *** Rules
   
   *** Start module function invocation
-  rl [start-sim] : {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
-                   =>
-                   {start N, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm(IndTypeCtx IndFuncCtx < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
-  rl [start-sim-str] : {start Str, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR } < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
-                        =>
-                        {start Str, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
+  ***rl [start-sim] : {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  ***                 =>
+  ***                 {start N, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm(IndTypeCtx IndFuncCtx < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
+  ***rl [start-sim-str] : {start Str, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR } < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  ***                      =>
+  ***                      {start Str, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
 
   *** local.get rule: push to stack the value from ValR from the local store
   rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
@@ -1525,21 +1543,21 @@ mod WASMMOD is
 
 
   *** t.const rule: push Val of type T to stack
-  crl [int-const] : < (IntT .const IntN) IL | ST | NeLocalSTRList >   
+  crl [int-const] : < (IntT .const IntN) IL | ST | LocalSTRList >   
                     =>   
-                    < IL | st-push(ST, const(IntT, val(IntN))) | NeLocalSTRList > 
+                    < IL | st-push(ST, const(IntT, val(IntN))) | LocalSTRList > 
                     if 0 <= IntN and IntN < (2 ^ (bit-width(IntT))) .
-  rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | NeLocalSTRList >   =>   < (FloatT .const float(IntN)) IL | ST | NeLocalSTRList > .
-  rl [float-const] : < (FloatT .const FloatN) IL | ST | NeLocalSTRList >
+  rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | LocalSTRList >   =>   < (FloatT .const float(IntN)) IL | ST | LocalSTRList > .
+  rl [float-const] : < (FloatT .const FloatN) IL | ST | LocalSTRList >
                            =>
                            if FloatN =/= 0.0 then
-                            < IL | st-push(ST, correctFloat(const(FloatT, val(FloatN)))) | NeLocalSTRList >
+                            < IL | st-push(ST, correctFloat(const(FloatT, val(FloatN)))) | LocalSTRList >
                            else
-                            < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList >
+                            < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | LocalSTRList >
                            fi .
-  crl [vec-const] : < (v128 .const IntN) IL | ST | NeLocalSTRList >   
+  crl [vec-const] : < (v128 .const IntN) IL | ST | LocalSTRList >   
                     =>   
-                    < IL | st-push(ST, const(v128, val(IntN))) | NeLocalSTRList > 
+                    < IL | st-push(ST, const(v128, val(IntN))) | LocalSTRList > 
                     if 0 <= IntN and IntN < (2 ^ (bit-width(v128))) .
   ***rl [float-const-Z] : < (FloatT .const 0.0) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList > .
 
@@ -1591,7 +1609,7 @@ mod WASMMOD is
   crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL end | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
                {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("block", IL end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
-               if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
+               if valid-stack(ST, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
@@ -1604,7 +1622,7 @@ mod WASMMOD is
   crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
               =>
               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("loop", (loop TypeRef) IL2 end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
-              if valid-stack(ST, aux-get-paramlistTList-func(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
+              if valid-stack(ST, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
   rl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
             < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | NeLocalSTRList > .
@@ -1738,7 +1756,7 @@ mod WASMMOD is
   eq get-paramlist-func(func N (ResultType) LocalsRef IL end) = (param nil) .
   eq get-paramlist-func(func Str (ResultType) LocalsRef IL end) = (param nil) .
   
-  op get-resultlist-func : FuncDef -> ParamType .
+  op get-resultlist-func : FuncDef -> ResultType .
   eq get-resultlist-func(func N (ParamType ResultType) LocalsRef IL end) = ResultType .
   eq get-resultlist-func(func Str (ParamType ResultType) LocalsRef IL end) = ResultType .
   eq get-resultlist-func(func N (ParamType) LocalsRef IL end) = (result nil) .
@@ -1746,17 +1764,17 @@ mod WASMMOD is
   eq get-resultlist-func(func N (ResultType) LocalsRef IL end) = ResultType .
   eq get-resultlist-func(func Str (ResultType) LocalsRef IL end) = ResultType .
 
-  op aux-get-paramlistTList-func : ParamType -> List{TypeToken} .
-  eq aux-get-paramlistTList-func((param TList)) = TList .
+  op aux-get-paramlistTList : ParamType -> List{TypeToken} .
+  eq aux-get-paramlistTList((param TList)) = TList .
 
   op get-paramlistTList-func : FuncDef -> List{TypeToken} .
-  eq get-paramlistTList-func(FuncDef) = aux-get-paramlistTList-func(get-paramlist-func(FuncDef)) .
+  eq get-paramlistTList-func(FuncDef) = aux-get-paramlistTList(get-paramlist-func(FuncDef)) .
 
-  op aux-get-resultlistTList-func : ResultType -> List{TypeToken} .
-  eq aux-get-resultlistTList-func((result TList)) = TList .
+  op aux-get-resultlistTList : ResultType -> List{TypeToken} .
+  eq aux-get-resultlistTList((result TList)) = TList .
 
   op get-resultlistTList-func : FuncDef -> List{TypeToken} .
-  eq get-resultlistTList-func(FuncDef) = aux-get-resultlistTList-func(get-resultlist-func(FuncDef)) .
+  eq get-resultlistTList-func(FuncDef) = aux-get-resultlistTList(get-resultlist-func(FuncDef)) .
 
   op count-locals-localsref : LocalsRef -> Nat .
   eq count-locals-localsref(local nil) = 0 .
@@ -1801,15 +1819,15 @@ mod WASMMOD is
 
   *** Validate all functions in module context. If any function is not valid, the module is not valid and instantiation fails.
   op validate-funcs-module : WASMSimTrigger -> WASMSimTrigger .
-  eq validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-      = if verify-funcList(get-funcList(FuncStore), GlobalsStore, GlobalAddrs) then
-           {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  eq validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+      = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) then
+           {start N, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR}  < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
         else 
           Fail("Invalid module")
         fi .
-  eq validate-funcs-module({start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-      = if verify-funcList(get-funcList(FuncStore), GlobalsStore, GlobalAddrs) then
-           {start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+  eq validate-funcs-module({start Str, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+      = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore,  GlobalsStore, GlobalAddrs) then
+           {start Str, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
         else 
           Fail("Invalid module")
         fi .
@@ -1821,39 +1839,69 @@ mod WASMMOD is
 
   *** Auxiliary function to 
   *** TODO: validate function bodies
-  op verify-funcList : FuncDefList Map{Addr, GlobalInstance} Map{String, Addr} -> Bool .
-  eq verify-funcList((func Id FuncTypeDef LocalsRef IL end) FuncDefL) = true .
-  eq verify-funcList((func Str FuncTypeDef LocalsRef IL end) FuncDefL) = true .
-  ***eq verify-funcList((func Id FuncTypeDef LocalsRef IL end) FuncDefL, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL end) get-localsTList(LocalsRef), get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL end), GlobalsStore, GlobalAddrs) and verify-funcList(FuncDefL, GlobalsStore, GlobalAddrs) .
-  ***eq verify-funcList((func Str FuncTypeDef LocalsRef IL end) FuncDefL, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL end)) get-localsTList(LocalsRef), get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL end), GlobalsStore, GlobalAddrs) and verify-funcList(FuncDefL, GlobalsStore, GlobalAddrs) .
-  eq verify-funcList(FuncDefL, GlobalsStore, GlobalAddrs) = false [owise] .
+  op verify-funcList : FuncDefList Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} -> Bool .
+  ***eq verify-funcList((func Id FuncTypeDef LocalsRef IL end) FuncDefL) = true .
+  ***eq verify-funcList((func Str FuncTypeDef LocalsRef IL end) FuncDefL) = true .
+  eq verify-funcList(EmptyFuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = true .
+  eq verify-funcList((func Id FuncTypeDef LocalsRef IL end, FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL end) get-localsTList(LocalsRef), get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL end), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Id FuncTypeDef LocalsRef IL end)) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
+  eq verify-funcList((func Str FuncTypeDef LocalsRef IL end, FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL end)) get-localsTList(LocalsRef), get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL end), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Str FuncTypeDef LocalsRef IL end)) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
+  eq verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = false [owise] .
 
-  *** Verify func body (expr) with a temp TypeToken stack, the original TList, the params-local TList and the result TList
-  op verify-funcBody : List{Inst} List{TypeToken} List{TypeToken} List{TypeToken} Map{Addr, GlobalInstance} Map{String, Addr} -> Bool .
-  eq verify-funcBody(nil, TList, TList1, TList, GlobalsStore, GlobalAddrs) = true .
-  ***eq verify-funcBody(return, TList1, TList1) = true .
-  eq verify-funcBody((local.get ValR) IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, nthT(TList1, ValR) TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((local.set ValR) IL, nthT(TList1, ValR) TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((local.tee ValR) IL, nthT(TList1, ValR) TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, nthT(TList1, ValR) TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((global.get Str) IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, get-GlobalTypeToken(global-type(GlobalsStore[GlobalAddrs[Str]])) TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  ceq verify-funcBody((global.set Str) IL, T TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs)
+  *** Verify func body (expr) with Context C' containing a temp TypeToken stack, the original TList, the params-local TList and the result TList (last TList is labels)
+  op verify-IL : List{Inst} List{TypeToken} List{TypeToken} List{TypeToken} Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} ResultTypeList -> Bool .
+  eq verify-IL(nil, TListRes, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
+  ***eq verify-IL(return, TList1, TList1) = true .
+  eq verify-IL((local.get ValR) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((local.set ValR) IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((local.tee ValR) IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((global.get Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-GlobalTypeToken(global-type(GlobalsStore[GlobalAddrs[Str]])) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  ceq verify-IL((global.set Str) IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
       if (MutGlobalTypeIndicator T) := (global-type(GlobalsStore[GlobalAddrs[Str]])) .
-  eq verify-funcBody((IntT .const IntN) IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, IntT TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((FloatT .const IntN) IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, FloatT TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((FloatT .const FloatN) IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, FloatT TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((v128 .const IntN) IL, TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, v128 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((T . binopT) IL, T T TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, T TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((T . unopT) IL, T TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, T TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((T . relopT) IL, T T TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, i32 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((IntT . eqz) IL, IntT TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, i32 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((i32 . "wrap_" i64) IL, i64 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, i32 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((f32 . "demote_" f64) IL, f64 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, f32 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
-  eq verify-funcBody((f64 . "promote_" f64) IL, f32 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) = verify-funcBody(IL, f64 TList, TList1, TListRes, GlobalsStore, GlobalAddrs) .
+  eq verify-IL((select) IL, i32 T T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((drop) IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((IntT .const IntN) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, IntT TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((FloatT .const IntN) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, FloatT TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((FloatT .const FloatN) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, FloatT TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((v128 .const IntN) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, v128 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((T . binopT) IL, T T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((T . unopT) IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((T . relopT) IL, T T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((IntT . eqz) IL, IntT TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((i32 . "wrap_" i64) IL, i64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((f32 . "demote_" f64) IL, f64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, f32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((f64 . "promote_" f64) IL, f32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, f64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((nop) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  ceq verify-IL(((block ResultType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(ResultType) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if verify-IL(IL2, nil, TList1, aux-get-resultlistTList(ResultType), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ResultType LabelsResultTypeList) .
+  ceq verify-IL(((block TypeRef) IL2 end) IL, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if verify-IL(IL2, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))),
+                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList) .
+  eq verify-IL((if BlockType IL1 else IL2 end) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = 
+    verify-IL(((block BlockType) IL1 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(BlockType) LabelsResultTypeList)
+      and verify-IL(((block BlockType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(BlockType) LabelsResultTypeList) .
+  ceq verify-IL(((loop ResultType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(ResultType) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if verify-IL(IL2, nil, TList1, aux-get-resultlistTList(ResultType), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ResultType LabelsResultTypeList) .
+  ceq verify-IL(((loop TypeRef) IL2 end) IL, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if verify-IL(IL2, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))),
+                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList) .
+  ceq verify-IL((br N) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
+  ceq verify-IL(("br_if" N) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
+  ***eq verify-IL((call Addr) IL, get-paramlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((call Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL((call (IndFuncCtxSTR[Str])) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  ceq verify-IL((call Addr) IL, TList' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if TList' := get-paramlistTList-func(FuncStore[Addr]) .
+  eq verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = false [owise] .
 
   *** TODO: This should extend List{X :: TRIV}
   op nthT : List{TypeToken} Nat -> TypeToken .
   eq nthT(T TList, 0) = T .
   eq nthT(T TList, N) = nthT(TList, N - 1) .
+
+  op nthResultT : ResultTypeList Nat -> ResultType .
+  eq nthResultT(ResultType LabelsResultTypeList, 0) = ResultType .
+  eq nthResultT(ResultType LabelsResultTypeList, N) = nthResultT(LabelsResultTypeList, N - 1) .
 
 endm
 
