@@ -1838,17 +1838,14 @@ mod WASMMOD is
   eq get-funcList((Addr |-> FuncDef, FuncStore)) = FuncDef, get-funcList(FuncStore) .
   eq get-funcList(empty) = EmptyFuncDefL .
 
-  *** Auxiliary function to 
-  *** TODO: validate function bodies
+  *** Auxiliary function to validate all functions in a list
   op verify-funcList : FuncDefList Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} -> Bool .
-  ***eq verify-funcList((func Id FuncTypeDef LocalsRef IL end) FuncDefL) = true .
-  ***eq verify-funcList((func Str FuncTypeDef LocalsRef IL end) FuncDefL) = true .
   eq verify-funcList(EmptyFuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = true .
   eq verify-funcList((func Id FuncTypeDef LocalsRef IL end, FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL end) get-localsTList(LocalsRef), get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL end), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Id FuncTypeDef LocalsRef IL end)) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
   eq verify-funcList((func Str FuncTypeDef LocalsRef IL end, FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL end)) get-localsTList(LocalsRef), get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL end), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Str FuncTypeDef LocalsRef IL end)) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
   eq verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = false [owise] .
 
-  *** Verify func body (expr) with Context C' containing a temp TypeToken stack, the original TList, the params-local TList and the result TList (last TList is labels)
+  *** Verify func body (expr) with Context C' containing a temp TypeToken stack, the original TList, the params-local TList, the result TList (last TList is labels), etc.
   op verify-IL : List{Inst} List{TypeToken} List{TypeToken} List{TypeToken} Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} ResultTypeList -> Bool .
   eq verify-IL(nil, TListRes, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
   ***eq verify-IL(return, TList1, TList1) = true .
