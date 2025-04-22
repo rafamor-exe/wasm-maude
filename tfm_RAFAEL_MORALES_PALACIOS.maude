@@ -1184,11 +1184,14 @@ fmod WASM-MODULECONTENT-MOD is
   protecting WASM-FUNCDEF-MOD .
   protecting WASM-GLOBALDEF-MOD .
 
-  sort ModuleContent EmptyMod .
+  sort ModuleContent EmptyMod FuncDefList EmptyFuncDefL .
   subsort TypeDef FuncDef GlobalDef EmptyMod < ModuleContent .
+  subsort EmptyFuncDefL FuncDef < FuncDefList .
 
   op EmptyMod : -> EmptyMod [ctor] .  
   op _ _ : ModuleContent ModuleContent -> ModuleContent [ctor assoc comm prec 19 id: EmptyMod] .
+  op EmptyFuncDefL : -> EmptyFuncDefL [ctor] .
+  op _,_ : FuncDef FuncDef -> FuncDefList [ctor assoc prec 19 id: EmptyFuncDefL] .
 
 endfm
 
@@ -1329,6 +1332,7 @@ mod WASMMOD is
   op {_, indctr _} : Starter ComponentCtr -> WasmTrigger [ctor] .
 
   op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor format (ni ni ni)] .
+  op Fail : String -> WASMSimTrigger [ctor] .
   
 
   *** Empty Map{ValRef, Value} definition
@@ -1363,6 +1367,7 @@ mod WASMMOD is
   var WASMModule : WASMModule .
   var WASMTypeFuncGlobalSim : WASMTypeFuncGlobalSim .
   var WASMTypeFuncGlobalIndSim : WASMTypeFuncGlobalIndSim .
+  var WASMSimTrigger : WASMSimTrigger .
   vars I1 S1 : Inst .
   var ConstInst : ConstInst .
   vars ValR ValR2 : ValRef .
@@ -1407,12 +1412,7 @@ mod WASMMOD is
   var NaN : NaN .
   var FuncDef : FuncDef .
   var TypeDef : TypeDef .
-  ***var FuncDefL : List{FuncDef} .
-  ***var NeFuncDefL : NeList{FuncDef} .
-  ***var TypeDefL : List{TypeDef} .
-  ***var NeTypeDefL : NeList{TypeDef} .
-  ***var GlobalDefL : List{GlobalDef} .
-  ***var NeGlobalDefL : NeList{GlobalDef} .
+  var FuncDefL : FuncDefList .
   var ModuleContent : ModuleContent .
   var ComponentCtr : ComponentCtr .
   vars TCtr FCtr GCtr : Nat .
@@ -1447,12 +1447,13 @@ mod WASMMOD is
   op run-module-func : WASMModule String -> WASMSimTrigger .
   eq run-module-func(WASMModule, Str) = read-module({start Str, indctr [0, 0, 0]} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
 
+  *** Allocation and Instantiation of module
   *** Read module component definitions
   op read-module : WASMSimTrigger -> WASMSimTrigger .
   eq read-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore # .
+                 = validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
   eq read-module({start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = {start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore # .
+                 = validate-funcs-module({start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
   eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((type Id FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Id FuncType), TypeStore) #) .
   eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((type Str FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
@@ -1476,6 +1477,7 @@ mod WASMMOD is
 
   *** Rules
   
+  *** Start module function invocation
   rl [start-sim] : {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
                    =>
                    {start N, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm(IndTypeCtx IndFuncCtx < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
@@ -1785,6 +1787,32 @@ mod WASMMOD is
   eq valid-stack(ST, nil) = true .
   eq valid-stack(const(T, ValW1) $ ST, T TList) = valid-stack(ST, TList) .
   eq valid-stack(ST, TList) = false [owise] .
+
+  *** Validate all functions in module context. If any function is not valid, the module is not valid and instantiation fails.
+  op validate-funcs-module : WASMSimTrigger -> WASMSimTrigger .
+  eq validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+      = if verify-funcList(get-funcList(FuncStore)) then
+           {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+        else 
+          Fail("Invalid module")
+        fi .
+  eq validate-funcs-module({start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+      = if verify-funcList(get-funcList(FuncStore)) then
+           {start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
+        else 
+          Fail("Invalid module")
+        fi .
+
+  *** Auxiliary function to get list of functions in a FuncStore
+  op get-funcList : Map{Addr, ModuleContent} -> FuncDefList .
+  eq get-funcList((Addr |-> FuncDef, FuncStore)) = FuncDef, get-funcList(FuncStore) .
+  eq get-funcList(empty) = EmptyFuncDefL .
+
+  *** Auxiliary function to 
+  *** TODO: validate function bodies
+  op verify-funcList : FuncDefList -> Bool .
+  eq verify-funcList(FuncDefL) = true .
+  eq verify-funcList(FuncDefL) = false [owise] .
 
 endm
 
