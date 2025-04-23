@@ -41,6 +41,20 @@ mod WASM-FILE-MOD is
       else getLine(FHIn, myObj)
       fi .
 
+  ***op parse : Configuration -> Configuration .
+  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+  ***          openedFile(myObj, fileManager, FHIn))
+  ***      = parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs >)
+  ***    getLine(FHIn, myObj) .
+  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+  ***          fileError(myObj, fileManager, Reason))
+  ***      = parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs >) .
+  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+  ***          gotLine(myObj, FHIn, ""))
+  ***      = < myObj : myClass | in: FHIn, outText: (Acc + ""), Attrs > closeFile(FHIn, myObj) .
+  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+  ***          gotLine(myObj, FHIn, Text))
+  ***      = parse(< myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > getLine(FHIn, myObj)) .
 
 endm
 
@@ -217,7 +231,7 @@ fmod WASM-VALREF-MOD is
 
   sorts ValRef Addr .
 
-  subsorts Nat Qid < ValRef .
+  subsorts Nat < ValRef .
   subsorts Nat < Addr .
 
 endfm
@@ -1963,7 +1977,17 @@ mod WASM-MAUDE is
 	protecting META-LEVEL .
   protecting WASM-FILE-MOD .
 
-  ***protecting WASMMOD .
+  protecting WASMMOD .
+
+  op error : -> [WASMModule] . 
+
+  var WASMModule : WASMModule .
+
+  ***op get-module : ResultPair -> WASMModule .
+  ***eq get-module({WASMModule, 'WASMModule}) = WASMModule .
+
 endm
 
-*** erew metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule) .
+*** erew getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)) .
+*** erew run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)), error), "start") .
+*** Problem: file reader uses rewrite, downTerm uses eq
