@@ -2,7 +2,13 @@
 mod WASM-FILE-MOD is
   inc FILE . 
 
-  sort CustomOid NullOid .
+  protecting META-LEVEL .
+  protecting WASMMOD .
+  protecting WASM-TOKENIZER-MOD .
+
+  sorts CustomOid NullOid FormatedSearchResult .
+  sorts CustomSubstitution CustomAssignment .
+  subsorts CustomAssignment < CustomSubstitution .
   subsorts NullOid Oid < CustomOid .
   op nullOid : -> NullOid [ctor] .
 
@@ -10,21 +16,66 @@ mod WASM-FILE-MOD is
   op myObj : -> Oid . 
   ops in:_ : CustomOid -> Attribute . 
   ops inFile:_ outText:_ : String -> Attribute . 
+
+  op _<==_ : Variable WASMSimTrigger -> CustomAssignment [ctor] .
+  op noCustomSubstitution : -> CustomSubstitution [ctor] .
+  op _&&_ : CustomSubstitution CustomSubstitution -> CustomSubstitution [ctor assoc comm id: noCustomSubstitution prec 65 ] .
+  op [_/_/_] : WASMSimTrigger Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
+  op NoResult : -> FormatedSearchResult [ctor] .
+
   
-  vars Text Acc WASMModFile Reason : String . 
+  op errorMod : -> [WASMModule] . 
+  op errorWASMSimTrigger : -> [WASMSimTrigger] . 
+  ***op errorResultTriple : -> [ResultTriple?] .
+  
+  vars Text Acc WASMModFile Reason Func : String . 
   vars FHIn : Oid . 
   var  Attrs : AttributeSet .
+  var Condition : Condition .
+  var SearchType : Qid .
+  var maxDepth : Bound .
+  var solNumber : Nat .
+  var OgTerm ResTerm : Term .
+  var WASMSimTrigger : WASMSimTrigger .
+  var Module : Module .
+  var Config : Configuration .
+  var Type : Type .
+  var ResSubstitution : Substitution .
+  var ResAssignment : Assignment .
+  var ResVar : Variable .
 
   op gen-config : String -> Configuration [ctor] .
   eq gen-config(WASMModFile) = <> 
                                < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
                                openFile(fileManager, myObj, WASMModFile, "r") .
 
-  op run-func-from-file : String -> String .
-  eq run-func-from-file(WASMModFile) = get-config-text(gen-config(WASMModFile)) .
+  op run-func-from-file : String String -> WASMSimTrigger .
+  eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
+
+  *** TODO: Use metaSearch 
+  op search-with-func-from-file : String String Term Condition Qid Bound Nat -> FormatedSearchResult .
+  eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
+      getFormattedRes(aux-metaSearch(upModule('WASMMOD, false),
+                                gen-config(WASMModFile), Func,
+                                ResTerm,
+                                Condition, SearchType, maxDepth, solNumber)) .
   
-  op get-config-text : Configuration -> String .
-  eq get-config-text(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs > ) = Acc .
+  op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple? .
+  eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
+    metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func)), ResTerm, Condition, SearchType, maxDepth, solNumber) .
+
+  op getFormattedRes : ResultTriple? -> FormatedSearchResult .
+  eq getFormattedRes(failure) = NoResult .
+  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [downTerm(OgTerm, errorWASMSimTrigger) / Type / formatSubs(ResSubstitution)] .
+
+  op formatSubs : Substitution -> CustomSubstitution .
+  eq formatSubs(none) = noCustomSubstitution .
+  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== downTerm(ResTerm, errorWASMSimTrigger)) && formatSubs(ResSubstitution) .
+  ***eq getFormattedRes() .
+  
+  *** TODO: Adapt to erewriteTerm? No?
+  op get-config-sim : Configuration String -> WASMSimTrigger .
+  eq get-config-sim(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func) . ***Acc .
 
   rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
       openedFile(myObj, fileManager, FHIn) 
@@ -1284,7 +1335,7 @@ mod WASMMOD is
   protecting MAP{Addr, ModuleContent} .
 
   *** File parsing is not fully developed yet
-  protecting WASM-FILE-MOD .
+  ***protecting WASM-FILE-MOD .
   
   *** Declare sorts to be used and hierarchy between them.
   sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Trap Arity Label StackAndLabel FuncStore .
@@ -1973,18 +2024,23 @@ fmod WASM-TOKENIZER-MOD is
 endfm
 
 mod WASM-MAUDE is
-  protecting WASM-TOKENIZER-MOD .
-	protecting META-LEVEL .
+  ***protecting WASM-TOKENIZER-MOD .
+	***protecting META-LEVEL .
   protecting WASM-FILE-MOD .
 
-  protecting WASMMOD .
+  ***protecting WASMMOD .
 
-  op error : -> [WASMModule] . 
+  ***op error : -> [WASMModule] . 
 
   var WASMModule : WASMModule .
+  var File Func StrModule : String .
 
   ***op get-module : ResultPair -> WASMModule .
   ***eq get-module({WASMModule, 'WASMModule}) = WASMModule .
+
+  ***op invoke : String String -> WASMSimTrigger .
+  ***ceq invoke(File, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(StrModule), 'WASMModule)), error), Func)
+  ***  if StrModule := run-func-from-file(File) .
 
 endm
 
