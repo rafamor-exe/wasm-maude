@@ -1,114 +1,3 @@
-
-mod WASM-FILE-MOD is
-  inc FILE . 
-
-  protecting META-LEVEL .
-  protecting WASMMOD .
-  protecting WASM-TOKENIZER-MOD .
-
-  sorts CustomOid NullOid FormatedSearchResult .
-  sorts CustomSubstitution CustomAssignment .
-  subsorts CustomAssignment < CustomSubstitution .
-  subsorts NullOid Oid < CustomOid .
-  op nullOid : -> NullOid [ctor] .
-
-  op myClass : -> Cid . 
-  op myObj : -> Oid . 
-  ops in:_ : CustomOid -> Attribute . 
-  ops inFile:_ outText:_ : String -> Attribute . 
-
-  op _<==_ : Variable WASMSimTrigger -> CustomAssignment [ctor] .
-  op noCustomSubstitution : -> CustomSubstitution [ctor] .
-  op _&&_ : CustomSubstitution CustomSubstitution -> CustomSubstitution [ctor assoc comm id: noCustomSubstitution prec 65 ] .
-  op [_/_/_] : WASMSimTrigger Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
-  op NoResult : -> FormatedSearchResult [ctor] .
-
-  
-  op errorMod : -> [WASMModule] . 
-  op errorWASMSimTrigger : -> [WASMSimTrigger] . 
-  ***op errorResultTriple : -> [ResultTriple?] .
-  
-  vars Text Acc WASMModFile Reason Func : String . 
-  vars FHIn : Oid . 
-  var  Attrs : AttributeSet .
-  var Condition : Condition .
-  var SearchType : Qid .
-  var maxDepth : Bound .
-  var solNumber : Nat .
-  var OgTerm ResTerm : Term .
-  var WASMSimTrigger : WASMSimTrigger .
-  var Module : Module .
-  var Config : Configuration .
-  var Type : Type .
-  var ResSubstitution : Substitution .
-  var ResAssignment : Assignment .
-  var ResVar : Variable .
-
-  op gen-config : String -> Configuration [ctor] .
-  eq gen-config(WASMModFile) = <> 
-                               < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
-                               openFile(fileManager, myObj, WASMModFile, "r") .
-
-  op run-func-from-file : String String -> WASMSimTrigger .
-  eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
-
-  *** TODO: Use metaSearch 
-  op search-with-func-from-file : String String Term Condition Qid Bound Nat -> FormatedSearchResult .
-  eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
-      getFormattedRes(aux-metaSearch(upModule('WASMMOD, false),
-                                gen-config(WASMModFile), Func,
-                                ResTerm,
-                                Condition, SearchType, maxDepth, solNumber)) .
-  
-  op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple? .
-  eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
-    metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func)), ResTerm, Condition, SearchType, maxDepth, solNumber) .
-
-  op getFormattedRes : ResultTriple? -> FormatedSearchResult .
-  eq getFormattedRes(failure) = NoResult .
-  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [downTerm(OgTerm, errorWASMSimTrigger) / Type / formatSubs(ResSubstitution)] .
-
-  op formatSubs : Substitution -> CustomSubstitution .
-  eq formatSubs(none) = noCustomSubstitution .
-  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== downTerm(ResTerm, errorWASMSimTrigger)) && formatSubs(ResSubstitution) .
-  ***eq getFormattedRes() .
-  
-  *** TODO: Adapt to erewriteTerm? No?
-  op get-config-sim : Configuration String -> WASMSimTrigger .
-  eq get-config-sim(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func) . ***Acc .
-
-  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
-      openedFile(myObj, fileManager, FHIn) 
-  => < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
-      getLine(FHIn, myObj) .
-  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
-      fileError(myObj, fileManager, Reason) 
-  => < myObj : myClass | in: nullOid, outText: Acc, Attrs > .
-  rl < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
-      gotLine(myObj, FHIn, Text) 
-  => < myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > 
-      if Text == "" 
-      then closeFile(FHIn, myObj)
-      else getLine(FHIn, myObj)
-      fi .
-
-  ***op parse : Configuration -> Configuration .
-  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
-  ***          openedFile(myObj, fileManager, FHIn))
-  ***      = parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs >)
-  ***    getLine(FHIn, myObj) .
-  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
-  ***          fileError(myObj, fileManager, Reason))
-  ***      = parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs >) .
-  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
-  ***          gotLine(myObj, FHIn, ""))
-  ***      = < myObj : myClass | in: FHIn, outText: (Acc + ""), Attrs > closeFile(FHIn, myObj) .
-  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
-  ***          gotLine(myObj, FHIn, Text))
-  ***      = parse(< myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > getLine(FHIn, myObj)) .
-
-endm
-
 fmod WASM-TYPETOKEN-MOD is
 
   protecting NAT .
@@ -162,10 +51,7 @@ endv
 
 fmod WASM-BIT-MOD is
 
-  protecting INT .
-
   sorts Bit .
-  ***subsorts Bit < Int .
 
   ops 0 1 : -> Bit [ctor] .
 
@@ -237,7 +123,6 @@ endfm
 
 fmod WASM-TYPEDEF-MOD is
 
-  protecting NAT .
   protecting STRING .
   protecting WASM-PARAMRESULTTYPE-MOD .
 
@@ -378,8 +263,6 @@ endfm
 fmod WASM-VALUE-MOD is
 
   protecting WASM-FLOAT-MOD .
-  protecting FLOAT .
-  protecting INT .
   protecting CONVERSION .
 
   sorts Value IntValue Int32Value Int64Value UInt SInt FloatValue ValWrapper Und .
@@ -495,7 +378,6 @@ fmod WASM-BITVAL-MOD is
   protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BIT-MOD .
   protecting WASM-VALUE-MOD .
-  protecting INT .
   protecting LIST{Bit} .
   ***protecting FLOAT .
   protecting CONVERSION .
@@ -763,37 +645,37 @@ fmod WASM-IOPS-MOD is
   ceq ine(ValW1, ValW2) = val(1) if ValW1 =/= ValW2 .
   eq ine(ValW1, ValW2) = val(0) [owise] .
   
-  op "ilt_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ilt_u"(ValW1, ValW2) = val(1) if abs(ValW1) < abs(ValW2) .
-  eq "ilt_u"(ValW1, ValW2) = val(0) [owise] .
+  op ilt~u : ValWrapper ValWrapper -> ValWrapper .
+  ceq ilt~u(ValW1, ValW2) = val(1) if abs(ValW1) < abs(ValW2) .
+  eq ilt~u(ValW1, ValW2) = val(0) [owise] .
   
-  op "ilt_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ilt_s"(ValW1, ValW2) = val(1) if ValW1 < ValW2 .
-  eq "ilt_s"(ValW1, ValW2) = val(0) [owise] .
+  op ilt~s : ValWrapper ValWrapper -> ValWrapper .
+  ceq ilt~s(ValW1, ValW2) = val(1) if ValW1 < ValW2 .
+  eq ilt~s(ValW1, ValW2) = val(0) [owise] .
   
-  op "igt_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "igt_u"(ValW1, ValW2) = val(1) if abs(ValW1) > abs(ValW2) .
-  eq "igt_u"(ValW1, ValW2) = val(0) [owise] .
+  op igt~u : ValWrapper ValWrapper -> ValWrapper .
+  ceq igt~u(ValW1, ValW2) = val(1) if abs(ValW1) > abs(ValW2) .
+  eq igt~u(ValW1, ValW2) = val(0) [owise] .
   
-  op "igt_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "igt_s"(ValW1, ValW2) = val(1) if ValW1 > ValW2 .
-  eq "igt_s"(ValW1, ValW2) = val(0) [owise] .
+  op igt~s : ValWrapper ValWrapper -> ValWrapper .
+  ceq igt~s(ValW1, ValW2) = val(1) if ValW1 > ValW2 .
+  eq igt~s(ValW1, ValW2) = val(0) [owise] .
 
-  op "ile_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ile_u"(ValW1, ValW2) = val(1) if abs(ValW1) <= abs(ValW2) .
-  eq "ile_u"(ValW1, ValW2) = val(0) [owise] .
+  op ile~u : ValWrapper ValWrapper -> ValWrapper .
+  ceq ile~u(ValW1, ValW2) = val(1) if abs(ValW1) <= abs(ValW2) .
+  eq ile~u(ValW1, ValW2) = val(0) [owise] .
   
-  op "ile_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ile_s"(ValW1, ValW2) = val(1) if ValW1 <= ValW2 .
-  eq "ile_s"(ValW1, ValW2) = val(0) [owise] .
+  op ile~s : ValWrapper ValWrapper -> ValWrapper .
+  ceq ile~s(ValW1, ValW2) = val(1) if ValW1 <= ValW2 .
+  eq ile~s(ValW1, ValW2) = val(0) [owise] .
   
-  op "ige_u" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ige_u"(ValW1, ValW2) = val(1) if abs(ValW1) >= abs(ValW2) .
-  eq "ige_u"(ValW1, ValW2) = val(0) [owise] .
+  op ige~u : ValWrapper ValWrapper -> ValWrapper .
+  ceq ige~u(ValW1, ValW2) = val(1) if abs(ValW1) >= abs(ValW2) .
+  eq ige~u(ValW1, ValW2) = val(0) [owise] .
   
-  op "ige_s" : ValWrapper ValWrapper -> ValWrapper .
-  ceq "ige_s"(ValW1, ValW2) = val(1) if ValW1 >= ValW2 .
-  eq "ige_s"(ValW1, ValW2) = val(0) [owise] .
+  op ige~s : ValWrapper ValWrapper -> ValWrapper .
+  ceq ige~s(ValW1, ValW2) = val(1) if ValW1 >= ValW2 .
+  eq ige~s(ValW1, ValW2) = val(0) [owise] .
 
 endfm
 
@@ -1089,7 +971,7 @@ fmod WASM-INST-MOD is
   op _._ : TypeToken BinopToken -> Inst [ctor prec 24] . *** Valid for ints and floats
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
   *** TODO: Change _ to ~ 
-  ops "div_u" "div_s" "rem_u" "rem_s" shl "shr_s" "shr_u" : -> IBinopToken [ctor] .
+  ops div~u div~s rem~u rem~s shl shr~s shr~u : -> IBinopToken [ctor] .
   op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
 
   *** bitstring representation ops
@@ -1113,17 +995,17 @@ fmod WASM-INST-MOD is
   eq binop(IntT, add, ValW1, ValW2) = const(IntT, iadd(bit-width(IntT), ValW1, ValW2)) .
   eq binop(IntT, sub, ValW1, ValW2) = const(IntT, isub(bit-width(IntT), ValW1, ValW2)) .
   eq binop(IntT, mul, ValW1, ValW2) = const(IntT, imul(bit-width(IntT), ValW1, ValW2)) .
-  eq binop(IntT, "div_u", ValW1, ValW2) = idivu(IntT, bit-width(IntT), ValW1, ValW2) .
-  eq binop(IntT, "div_s", ValW1, ValW2) = idivs(IntT, bit-width(IntT), ValW1, ValW2) .
-  eq binop(IntT, "rem_s",ValW1, ValW2) = irems(IntT, bit-width(IntT), ValW1, ValW2) .
-  eq binop(IntT, "rem_u", ValW1, ValW2) = iremu(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, div~u, ValW1, ValW2) = idivu(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, div~s, ValW1, ValW2) = idivs(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, rem~s,ValW1, ValW2) = irems(IntT, bit-width(IntT), ValW1, ValW2) .
+  eq binop(IntT, rem~u, ValW1, ValW2) = iremu(IntT, bit-width(IntT), ValW1, ValW2) .
   *** instructions with bitstring representation
   eq binop(IntT, and, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((iand((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
   eq binop(IntT, or, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((ior((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
   eq binop(IntT, xor, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int((ixor((int-to-bitstring(Int1, bit-width(IntT))), (int-to-bitstring(Int2, bit-width(IntT))))), bit-width(IntT)))) .
   eq binop(IntT, shl, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishl((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
-  eq binop(IntT, "shr_u", val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishru((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
-  eq binop(IntT, "shr_s", val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishrs((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
+  eq binop(IntT, shr~u, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishru((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
+  eq binop(IntT, shr~s, val(Int1), val(Int2)) = const(IntT, val(bitstring-to-int(ishrs((int-to-bitstring(Int1, bit-width(IntT))), Int2 rem bit-width(IntT)), bit-width(IntT)))) .
   *** Float instructions
   eq binop(FloatT, add, ValW1, ValW2) = correctFloat(const(FloatT, fadd(ValW1, ValW2))) .
   eq binop(FloatT, sub, ValW1, ValW2) = correctFloat(const(FloatT, fsub(ValW1, ValW2))) .
@@ -1144,7 +1026,7 @@ fmod WASM-INST-MOD is
   ops eq ne : -> RelopToken [ctor] .
   op _._ : TypeToken RelopToken -> Inst [ctor prec 24] .
   
-  ops "lt_s" "lt_u" "gt_s" "gt_u" "le_s" "le_u" "ge_s" "ge_u" : -> IRelopToken [ctor] .
+  ops lt~s lt~u gt~s gt~u le~s le~u ge~s ge~u : -> IRelopToken [ctor] .
   op _._ : IntTypeToken IRelopToken -> Inst [ctor prec 24] .
 
   ops lt gt le ge : -> FRelopToken [ctor] .
@@ -1153,14 +1035,14 @@ fmod WASM-INST-MOD is
   op relop : TypeToken RelopToken ValWrapper ValWrapper -> ValWrapper .
   eq relop(IntT, eq, ValW1, ValW2) = ieq(ValW1, ValW2) .
   eq relop(IntT, ne, ValW1, ValW2) = ine(ValW1, ValW2) .
-  eq relop(IntT, "lt_s", ValW1, ValW2) = "ilt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
-  eq relop(IntT, "lt_u", ValW1, ValW2) = "ilt_u"(ValW1, ValW2) .
-  eq relop(IntT, "gt_s", ValW1, ValW2) = "igt_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
-  eq relop(IntT, "gt_u", ValW1, ValW2) = "igt_u"(ValW1, ValW2) .
-  eq relop(IntT, "le_s", ValW1, ValW2) = "ile_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
-  eq relop(IntT, "le_u", ValW1, ValW2) = "ile_u"(ValW1, ValW2) .
-  eq relop(IntT, "ge_s", ValW1, ValW2) = "ige_s"(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
-  eq relop(IntT, "ge_u", ValW1, ValW2) = "ige_u"(ValW1, ValW2) .
+  eq relop(IntT, lt~s, ValW1, ValW2) = ilt~s(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, lt~u, ValW1, ValW2) = ilt~u(ValW1, ValW2) .
+  eq relop(IntT, gt~s, ValW1, ValW2) = igt~s(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, gt~u, ValW1, ValW2) = igt~u(ValW1, ValW2) .
+  eq relop(IntT, le~s, ValW1, ValW2) = ile~s(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, le~u, ValW1, ValW2) = ile~u(ValW1, ValW2) .
+  eq relop(IntT, ge~s, ValW1, ValW2) = ige~s(signed(ValW1, bit-width(IntT)), signed(ValW2, bit-width(IntT))) .
+  eq relop(IntT, ge~u, ValW1, ValW2) = ige~u(ValW1, ValW2) .
   eq relop(FloatT, eq, ValW1, ValW2) = feq(ValW1, ValW2) .
   eq relop(FloatT, ne, ValW1, ValW2) = fne(ValW1, ValW2) .
   eq relop(FloatT, lt, ValW1, ValW2) = flt(ValW1, ValW2) .
@@ -1173,7 +1055,7 @@ fmod WASM-INST-MOD is
   op _._ : IntTypeToken TestopToken -> Inst [ctor prec 24] .
 
   *** conversions
-  ops "wrap_" "demote_" "promote_" : -> CvtopToken [ctor] .
+  ops wrap~ demote~ promote~ : -> CvtopToken [ctor] .
   op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor prec 24] .
 
   *** Parametric instructions
@@ -1188,7 +1070,7 @@ fmod WASM-INST-MOD is
   op loop _ : BlockType -> Inst [ctor prec 24] .
   op loop _ : List{TypeToken} -> Inst [ctor prec 24] .
   op br _ : Nat -> Inst [ctor prec 24] .
-  op "br_if" _ : Nat -> Inst [ctor prec 24] .
+  op br~if _ : Nat -> Inst [ctor prec 24] .
   op end : -> Inst [ctor] .
 
   op call _ : Addr -> Inst [ctor prec 24] .
@@ -1316,10 +1198,6 @@ mod WASMMOD is
   *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
   *** IMPORT DATATYPE MODULES TO BE USED
-  ***protecting NAT .
-  ***protecting INT .
-  ***protecting STRING .
-  ***protecting QID .
   protecting WASM-BITVAL-MOD .
   protecting WASM-INST-MOD .
   protecting WASM-IOPS-MOD .
@@ -1333,9 +1211,6 @@ mod WASMMOD is
   protecting MAP{String, Addr} .
   protecting MAP{Addr, GlobalInstance} .
   protecting MAP{Addr, ModuleContent} .
-
-  *** File parsing is not fully developed yet
-  ***protecting WASM-FILE-MOD .
   
   *** Declare sorts to be used and hierarchy between them.
   sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Trap Arity Label StackAndLabel FuncStore .
@@ -1351,13 +1226,8 @@ mod WASMMOD is
 
   *** Instruction lists sorts
   subsorts Trap < Inst .
-  *** TODO: Include variable references as ValRef 
-  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
-  ***subsorts Nat Qid < ValRef < NeValRefList < ValRefList .
-  *** TODO: Include support for Labels and Activations as Stack values. Problem: collision of operator definition on Nat and String
-  *** Temporal solution: Use Qid, forces to use ' before the token...check to use $ instead
-  subsorts Value < StackElem < NeStack . ***subsorts Int Und < IntValue < Value < StackElem < NeStack .
-  subsorts Und < Label < StackElem . ***subsorts Qid < Label < StackElem .
+  subsorts Value < StackElem < NeStack .
+  subsorts Und < Label < StackElem .
   subsorts Nat < Arity .
 
   subsorts LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx < IndCtx .
@@ -1370,7 +1240,7 @@ mod WASMMOD is
   op if _ _ else _ : List{TypeToken} List{Inst} List{Inst} -> Inst [ctor] .
 
   *** Indices stores
-  *** TODO: Some are left (types, etc.)
+  *** TODO: Some are left
   op {localIndCtx _} : Map{String, Addr} -> LocalIndCtx [ctor] .
   op {globalIndCtx _} : Map{String, Addr} -> GlobalIndCtx [ctor] .
   op {funcIndCtx _} : Map{String, Addr} -> FuncIndCtx [ctor] .
@@ -1419,16 +1289,8 @@ mod WASMMOD is
   eq EmptyLocalStore = empty .
 
   *** Module sections
-  *** TODO: complete module parts (global, exports, etc.)
-  *** TODO: These components should probably be a multiset
-  ***op (module _ _ _) : List{TypeDef} List{FuncDef} List{GlobalDef} -> WASMModule [ctor] .
 
   op (module _) : ModuleContent -> WASMModule [ctor prec 20] .
-
-  ***op __ : ExportDef ExportVec -> NeExportVec [assoc ctor id: EmptyList] .
-
-  ***op (export _ _) : Id FuncExport -> ExportDef [ctor] .
-
 
   *** Stack definition
   op EmptyStack : -> EmptyStack [ctor] .
@@ -1437,9 +1299,10 @@ mod WASMMOD is
 
   *** lookup: auxiliar op to lookup values from store
   op lookup : Map{ValRef, Value} ValRef -> Value .
-  *** TODO: error otherwise or leave undefined??
   op jump-to-L : StackAndLabel -> Inst [ctor] .
 
+  op errorMod : -> [WASMModule] . 
+  op errorWASMSimTrigger : -> [WASMSimTrigger] .
 
   *** Variable definition
 
@@ -1625,7 +1488,6 @@ mod WASMMOD is
                     =>   
                     < IL | st-push(ST, const(v128, val(IntN))) | LocalSTRList > 
                     if 0 <= IntN and IntN < (2 ^ (bit-width(v128))) .
-  ***rl [float-const-Z] : < (FloatT .const 0.0) IL | ST | NeLocalSTRList >   =>   < IL | st-push(ST, correctFloat(const(FloatT, val(zero(pos))))) | NeLocalSTRList > .
 
   *** ibinop: pop two int values from stack, operate and push the result to stack
   rl [t.binop] : < (T . binopT) IL | const(T, ValW2) $ const(T, ValW1) $ ST | NeLocalSTRList >   
@@ -1653,13 +1515,13 @@ mod WASMMOD is
             < IL |  const(i32, ieq(ValW1, val(0))) $ ST | NeLocalSTRList > .
 
   *** Conversions
-  rl [i32.wrap_i64] : < (i32 . "wrap_" i64) IL | const(i64, ValW1) $ ST | NeLocalSTRList >   
+  rl [i32.wrap_i64] : < (i32 . wrap~ i64) IL | const(i64, ValW1) $ ST | NeLocalSTRList >   
                     =>   
                     < IL |  const(i32, wrap(i64, i32, ValW1)) $ ST | NeLocalSTRList > .
-  rl [f32.demote_f64] : < (f32 . "demote_" f64) IL | const(f64, ValW1) $ ST | NeLocalSTRList >   
+  rl [f32.demote_f64] : < (f32 . demote~ f64) IL | const(f64, ValW1) $ ST | NeLocalSTRList >   
                     =>   
                     < IL |  const(f32, demote(f64, f32, ValW1)) $ ST | NeLocalSTRList > .
-  rl [f64.promote_f32] : < (f64 . "promote_" f32) IL | const(f32, ValW1) $ ST | NeLocalSTRList >   
+  rl [f64.promote_f32] : < (f64 . promote~ f32) IL | const(f32, ValW1) $ ST | NeLocalSTRList >   
                     =>   
                     < IL |  const(f64, promote(f32, f64, ValW1)) $ ST | NeLocalSTRList > .
   
@@ -1695,11 +1557,11 @@ mod WASMMOD is
   rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | NeLocalSTRList > 
                   =>
                   < IL1 | ST1 | NeLocalSTRList > .
-  crl [br_if] : < ("br_if" N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
+  crl [br_if] : < (br~if N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
                =>   
                < (br N) IL | ST | NeLocalSTRList > 
                if Int1 =/= 0 .
-  rl [br_if-else] : < ("br_if" N) IL | const(i32, val(0)) $ ST | NeLocalSTRList >
+  rl [br_if-else] : < (br~if N) IL | const(i32, val(0)) $ ST | NeLocalSTRList >
                 =>   
                 < IL | ST | NeLocalSTRList > .
 
@@ -1723,8 +1585,6 @@ mod WASMMOD is
                   if valid-stack(ST, TypeTokenList) .
     
 
-  *** lookup rule: get value from reference from local store
-  ***rl [lookup] : lookup(LocalSTR, ValR) => LocalSTR[ValR] .
   eq lookup(LocalSTR, ValR) = LocalSTR[ValR] .
 
   *** List{Inst} operations 
@@ -1930,9 +1790,9 @@ mod WASMMOD is
   eq verify-IL((T . unopT) IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((T . relopT) IL, T T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((IntT . eqz) IL, IntT TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
-  eq verify-IL((i32 . "wrap_" i64) IL, i64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
-  eq verify-IL((f32 . "demote_" f64) IL, f64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, f32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
-  eq verify-IL((f64 . "promote_" f64) IL, f32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, f64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((i32 . wrap~ i64) IL, i64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((f32 . demote~ f64) IL, f64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, f32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((f64 . promote~ f64) IL, f32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, f64 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((nop) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   ceq verify-IL(((block ResultType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(ResultType) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if verify-IL(IL2, nil, TList1, aux-get-resultlistTList(ResultType), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ResultType LabelsResultTypeList) .
@@ -1949,7 +1809,7 @@ mod WASMMOD is
                   TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList) .
   ceq verify-IL((br N) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
-  ceq verify-IL(("br_if" N) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+  ceq verify-IL((br~if N) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
   ***eq verify-IL((call Addr) IL, get-paramlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((call Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL((call (IndFuncCtxSTR[Str])) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
@@ -1972,6 +1832,7 @@ fmod WASM-TOKENIZER-MOD is
 
   protecting LEXICAL .
 	protecting STRING-OPS .
+  protecting INT .
 
 	*** Tokenize as WASM program for Maude
 	op tokenize-wasm : String -> QidList .
@@ -1981,6 +1842,7 @@ fmod WASM-TOKENIZER-MOD is
 	var Q  : Qid .
 	var QL : QidList .
 	var N? : FindResult .
+  var N : Nat .
 
 	eq tokenize-wasm(S) = tokenize-wasm(tokenize(S)) .
 
@@ -1989,7 +1851,11 @@ fmod WASM-TOKENIZER-MOD is
 		if startsWith(string(Q), "\"") then
 			Q
 		else
-			splitDot(removeChar(removeChar(string(Q), "_", "~"), "\n", " "))
+      if startsWith(string(Q), "$") then
+        qid("\"" + string(Q) + "\"")
+      else
+			  splitDot(removeChar(removeChar(string(Q), "_", "~"), "\n", " "))
+      fi
 		fi
 		tokenize-wasm(QL) .
 
@@ -2012,7 +1878,11 @@ fmod WASM-TOKENIZER-MOD is
 			qid(substr(S, 0, N?))
       if substr(S, N?, sd(length(S), N?)) =/= ".const" then
         qid(substr(S, N?, 1))
-        qid(substr(S, s(N?), sd(length(S), N?)))
+        if startsWith(substr(S, N?, sd(length(S), N?)), ".wrap") or startsWith(substr(S, N?, sd(length(S), N?)), ".demote") or startsWith(substr(S, N?, sd(length(S), N?)), ".promote") then
+          splitConversion(substr(S, s(N?), sd(length(S), N?)))
+        else 
+          qid(substr(S, s(N?), sd(length(S), N?)))
+        fi
       else
         qid(substr(S, N?, sd(length(S), N?)))
       fi
@@ -2020,30 +1890,114 @@ fmod WASM-TOKENIZER-MOD is
 			qid(S)
 		fi
 	 if N? := find(S, ".", 0) .
+  
+  op splitConversion : String -> QidList .
+  ceq splitConversion(S) =
+    qid(substr(S, 0, N))
+    qid(substr(S, N, 3))
+  if N := length(S) - 3 . *** Conversion TypeTokens have length 3. Example: i32, f64
 
 endfm
 
-mod WASM-MAUDE is
-  ***protecting WASM-TOKENIZER-MOD .
-	***protecting META-LEVEL .
-  protecting WASM-FILE-MOD .
+mod WASM-FILE-MOD is
+  inc FILE . 
 
-  ***protecting WASMMOD .
+  protecting META-LEVEL .
+  protecting WASMMOD .
+  protecting WASM-TOKENIZER-MOD .
 
-  ***op error : -> [WASMModule] . 
+  sorts CustomOid NullOid FormatedSearchResult .
+  sorts CustomSubstitution CustomAssignment .
+  subsorts CustomAssignment < CustomSubstitution .
+  subsorts NullOid Oid < CustomOid .
+  op nullOid : -> NullOid [ctor] .
 
-  var WASMModule : WASMModule .
-  var File Func StrModule : String .
+  op myClass : -> Cid . 
+  op myObj : -> Oid . 
+  ops in:_ : CustomOid -> Attribute . 
+  ops inFile:_ outText:_ : String -> Attribute . 
 
-  ***op get-module : ResultPair -> WASMModule .
-  ***eq get-module({WASMModule, 'WASMModule}) = WASMModule .
+  op _<==_ : Variable WASMSimTrigger -> CustomAssignment [ctor] .
+  op noCustomSubstitution : -> CustomSubstitution [ctor] .
+  op _&&_ : CustomSubstitution CustomSubstitution -> CustomSubstitution [ctor assoc comm id: noCustomSubstitution prec 65 ] .
+  op [_/_/_] : WASMSimTrigger Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
+  op NoResult : -> FormatedSearchResult [ctor] .
+  
+  vars Text Acc WASMModFile Reason Func : String . 
+  vars FHIn : Oid . 
+  var  Attrs : AttributeSet .
+  var Condition : Condition .
+  var SearchType : Qid .
+  var maxDepth : Bound .
+  var solNumber : Nat .
+  var OgTerm ResTerm : Term .
+  var WASMSimTrigger : WASMSimTrigger .
+  var Module : Module .
+  var Config : Configuration .
+  var Type : Type .
+  var ResSubstitution : Substitution .
+  var ResAssignment : Assignment .
+  var ResVar : Variable .
 
-  ***op invoke : String String -> WASMSimTrigger .
-  ***ceq invoke(File, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(StrModule), 'WASMModule)), error), Func)
-  ***  if StrModule := run-func-from-file(File) .
+  op gen-config : String -> Configuration [ctor] .
+  eq gen-config(WASMModFile) = <> 
+                               < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
+                               openFile(fileManager, myObj, WASMModFile, "r") .
+
+  op run-func-from-file : String String -> WASMSimTrigger .
+  eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
+
+  *** TODO: Use metaSearch 
+  op search-with-func-from-file : String String Term Condition Qid Bound Nat -> FormatedSearchResult .
+  eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
+      getFormattedRes(aux-metaSearch(upModule('WASMMOD, false),
+                                gen-config(WASMModFile), Func,
+                                ResTerm,
+                                Condition, SearchType, maxDepth, solNumber)) .
+  
+  op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple? .
+  eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
+    metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func)), ResTerm, Condition, SearchType, maxDepth, solNumber) .
+
+  op getFormattedRes : ResultTriple? -> FormatedSearchResult .
+  eq getFormattedRes(failure) = NoResult .
+  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [downTerm(OgTerm, errorWASMSimTrigger) / Type / formatSubs(ResSubstitution)] .
+
+  op formatSubs : Substitution -> CustomSubstitution .
+  eq formatSubs(none) = noCustomSubstitution .
+  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== downTerm(ResTerm, errorWASMSimTrigger)) && formatSubs(ResSubstitution) .
+
+  op get-config-sim : Configuration String -> WASMSimTrigger .
+  eq get-config-sim(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func) . ***Acc .
+
+  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+      openedFile(myObj, fileManager, FHIn) 
+  => < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+      getLine(FHIn, myObj) .
+  rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+      fileError(myObj, fileManager, Reason) 
+  => < myObj : myClass | in: nullOid, outText: Acc, Attrs > .
+  rl < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+      gotLine(myObj, FHIn, Text) 
+  => < myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > 
+      if Text == "" 
+      then closeFile(FHIn, myObj)
+      else getLine(FHIn, myObj)
+      fi .
+
+  ***op parse : Configuration -> Configuration .
+  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+  ***          openedFile(myObj, fileManager, FHIn))
+  ***      = parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs >)
+  ***    getLine(FHIn, myObj) .
+  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
+  ***          fileError(myObj, fileManager, Reason))
+  ***      = parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs >) .
+  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+  ***          gotLine(myObj, FHIn, ""))
+  ***      = < myObj : myClass | in: FHIn, outText: (Acc + ""), Attrs > closeFile(FHIn, myObj) .
+  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
+  ***          gotLine(myObj, FHIn, Text))
+  ***      = parse(< myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > getLine(FHIn, myObj)) .
 
 endm
-
-*** erew getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)) .
-*** erew run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)), error), "start") .
-*** Problem: file reader uses rewrite, downTerm uses eq
