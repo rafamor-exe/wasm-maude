@@ -163,7 +163,6 @@ endfm
 fmod WASM-VALREF-MOD is
 
   protecting NAT .
-  protecting QID .
 
   sorts ValRef Addr .
 
@@ -375,13 +374,10 @@ endfm
 
 fmod WASM-BITVAL-MOD is
 
-  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BIT-MOD .
   protecting WASM-VALUE-MOD .
   protecting LIST{Bit} .
-  ***protecting FLOAT .
-  protecting CONVERSION .
-  protecting STRING-OPS .
+  ***protecting STRING-OPS .
 
   sorts Bini Bini32 Bini64 BitStringSize BitVal .
   sorts IEEE754Components IEEE754Type .
@@ -906,8 +902,6 @@ fmod WASM-CONVERSIONOPS-MOD is
 endfm
 
 fmod WASM-GLOBALINSTANCE-MOD is
-  
-  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-VALUE-MOD .
 
   sorts GlobalInstance GlobalType MutGlobalType MutGlobalTypeIndicator .
@@ -935,13 +929,10 @@ endv
 fmod WASM-INST-MOD is
 
   protecting WASM-BITVAL-MOD .
-  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-BLOCKTYPE-MOD .
   protecting WASM-FOPS-MOD .
   protecting WASM-IOPS-MOD .
   protecting WASM-VALREF-MOD .
-  protecting WASM-VALUE-MOD .
-  protecting LIST{TypeToken} .
 
   sorts Inst ConstInst .
   sorts BinopToken IBinopToken FBinopToken UnopToken FUnopToken IUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
@@ -1125,7 +1116,6 @@ endv
 
 fmod WASM-GLOBALDEF-MOD is
 
-  protecting WASM-TYPEDEF-MOD .
   protecting WASM-GLOBALINSTANCE-MOD .
   protecting WASM-INST-MOD .
 
@@ -1141,7 +1131,6 @@ endv
 
 fmod WASM-MODULECONTENT-MOD is
 
-  protecting WASM-TYPEDEF-MOD .
   protecting WASM-FUNCDEF-MOD .
   protecting WASM-GLOBALDEF-MOD .
 
@@ -1198,19 +1187,13 @@ mod WASMMOD is
   *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
   *** IMPORT DATATYPE MODULES TO BE USED
-  protecting WASM-BITVAL-MOD .
-  protecting WASM-INST-MOD .
-  protecting WASM-IOPS-MOD .
-  protecting WASM-FOPS-MOD .
   protecting WASM-CONVERSIONOPS-MOD .
   protecting WASM-MODULECONTENT-MOD .
   protecting WASM-VERIFYFUNCDEF-MOD .
-  protecting LIST{Inst} .
   protecting MAP{ValRef, Value} .
   protecting LIST{Map{ValRef, Value}} .
   protecting MAP{String, Addr} .
   protecting MAP{Addr, GlobalInstance} .
-  protecting MAP{Addr, ModuleContent} .
   
   *** Declare sorts to be used and hierarchy between them.
   sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Trap Arity Label StackAndLabel FuncStore .
