@@ -85,7 +85,7 @@ view ResultType from TRIV to WASM-FUNCTYPE-MOD is
   sort Elt to ResultType .
 endv
 
-fmod WASM-PARAMRESULTTYPE-MOD is
+fmod WASM-PARRESTYPE-MOD is
 
   protecting WASM-FUNCTYPE-MOD .
   ***protecting LIST{ParamType} .
@@ -124,7 +124,7 @@ endfm
 fmod WASM-TYPEDEF-MOD is
 
   protecting STRING .
-  protecting WASM-PARAMRESULTTYPE-MOD .
+  protecting WASM-PARRESTYPE-MOD .
 
   sorts TypeDef TypeRef Id FuncType ParamResultFuncType .
   subsorts Nat < Id .
@@ -873,7 +873,7 @@ fmod WASM-FOPS-MOD is
 
 endfm
 
-fmod WASM-CONVERSIONOPS-MOD is
+fmod WASM-CVOPS-MOD is
 
   protecting WASM-VALUE-MOD .
 
@@ -901,7 +901,7 @@ fmod WASM-CONVERSIONOPS-MOD is
 
 endfm
 
-fmod WASM-GLOBALINSTANCE-MOD is
+fmod WASM-GBINSTANCE-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts GlobalInstance GlobalType MutGlobalType MutGlobalTypeIndicator .
@@ -922,7 +922,7 @@ fmod WASM-GLOBALINSTANCE-MOD is
   eq get-GlobalTypeToken(MutGlobalTypeIndicator T) = T .
 endfm
 
-view GlobalInstance from TRIV to WASM-GLOBALINSTANCE-MOD is
+view GlobalInstance from TRIV to WASM-GBINSTANCE-MOD is
   sort Elt to GlobalInstance .
 endv
 
@@ -1116,7 +1116,7 @@ endv
 
 fmod WASM-GLOBALDEF-MOD is
 
-  protecting WASM-GLOBALINSTANCE-MOD .
+  protecting WASM-GBINSTANCE-MOD .
   protecting WASM-INST-MOD .
 
   sorts GlobalDef .
@@ -1187,7 +1187,7 @@ mod WASMMOD is
   *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
   *** IMPORT DATATYPE MODULES TO BE USED
-  protecting WASM-CONVERSIONOPS-MOD .
+  protecting WASM-CVOPS-MOD .
   protecting WASM-MODULECONTENT-MOD .
   protecting WASM-VERIFYFUNCDEF-MOD .
   protecting MAP{ValRef, Value} .
