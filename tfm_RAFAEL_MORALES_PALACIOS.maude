@@ -204,7 +204,6 @@ endv
 
 fmod WASM-FLOAT-MOD is
 
-  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-NANS-MOD .
   protecting LIST{NaNFloat} .
   protecting INT .
@@ -261,6 +260,7 @@ endfm
 
 fmod WASM-VALUE-MOD is
 
+  protecting WASM-TYPETOKEN-MOD .
   protecting WASM-FLOAT-MOD .
   protecting CONVERSION .
 
