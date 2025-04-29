@@ -883,6 +883,7 @@ fmod WASM-CVOPS-MOD is
   var InfF : InfF .
   var ZeroF : ZeroF .
   var ValW : ValWrapper .
+  var T1 T2 : TypeToken .
 
   op wrap : IntTypeToken IntTypeToken ValWrapper -> ValWrapper .
   eq wrap(i64, i32, val(Int1)) = val(Int1 rem (2 ^ (bit-width(i32)))) .
@@ -932,6 +933,7 @@ fmod WASM-INST-MOD is
   protecting WASM-BLOCKTYPE-MOD .
   protecting WASM-FOPS-MOD .
   protecting WASM-IOPS-MOD .
+  protecting WASM-CVOPS-MOD .
   protecting WASM-VALREF-MOD .
 
   sorts Inst ConstInst .
@@ -975,11 +977,12 @@ fmod WASM-INST-MOD is
   ops abs neg sqrt ceil floor : -> FUnopToken [ctor] .
   op _._ : FloatTypeToken FUnopToken -> Inst [ctor prec 24] .
 
-  var T : TypeToken .
-  var IntT : IntTypeToken .
-  var FloatT : FloatTypeToken .
+  var T T1 T2 : TypeToken .
+  var IntT IntT2 : IntTypeToken .
+  var FloatT FloatT2 : FloatTypeToken .
   var ValW1 ValW2 : ValWrapper .
   var Int1 Int2 : Int .
+  var cvtopT : CvtopToken .
 
   op binop : TypeToken BinopToken ValWrapper ValWrapper -> Value .
   *** Int instructions
@@ -1048,6 +1051,12 @@ fmod WASM-INST-MOD is
   *** conversions
   ops wrap~ demote~ promote~ : -> CvtopToken [ctor] .
   op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor prec 24] .
+
+  op cvtop : TypeToken TypeToken CvtopToken ValWrapper -> Value .
+  eq cvtop(i64, i32, wrap~, ValW1) = const(i32, wrap(i64, i32, ValW1)) .
+  eq cvtop(f64, f32, demote~, ValW1) = const(f32, demote(f64, f32, ValW1)) .
+  eq cvtop(f32, f64, promote~, ValW1) = const(f64, promote(f32, f64, ValW1)) .
+  eq cvtop(T1, T2, cvtopT, ValW1) = und [owise] .
 
   *** Parametric instructions
   ops drop select : -> Inst [ctor] .
@@ -1187,7 +1196,6 @@ mod WASMMOD is
   *** RAFAEL MORALES PALACIOS - TFM - SEMANTICS OF WEBASSEMBLY IN MAUDE
   
   *** IMPORT DATATYPE MODULES TO BE USED
-  protecting WASM-CVOPS-MOD .
   protecting WASM-MODULECONTENT-MOD .
   protecting WASM-VERIFYFUNCDEF-MOD .
   protecting MAP{ValRef, Value} .
@@ -1303,7 +1311,7 @@ mod WASMMOD is
   var LocalSTRList : List{Map{ValRef, Value}} .
   var NeLocalSTRList : NeList{Map{ValRef, Value}} .
   var LocalSTR : Map{ValRef, Value} .
-  var T : TypeToken .
+  var T T1 T2 : TypeToken .
   var FloatT : FloatTypeToken .
   var IntT : IntTypeToken .
   var VecT : VecTypeToken .
@@ -1355,6 +1363,7 @@ mod WASMMOD is
   var binopT : BinopToken .
   var unopT : UnopToken .
   var relopT : RelopToken .
+  var cvtopT : CvtopToken .
 
   *** Equivalent instruction definitions
   eq if TList IL1 else IL2 = if (result TList) IL1 else IL2 .
@@ -1498,16 +1507,14 @@ mod WASMMOD is
             < IL |  const(i32, ieq(ValW1, val(0))) $ ST | NeLocalSTRList > .
 
   *** Conversions
-  rl [i32.wrap_i64] : < (i32 . wrap~ i64) IL | const(i64, ValW1) $ ST | NeLocalSTRList >   
-                    =>   
-                    < IL |  const(i32, wrap(i64, i32, ValW1)) $ ST | NeLocalSTRList > .
-  rl [f32.demote_f64] : < (f32 . demote~ f64) IL | const(f64, ValW1) $ ST | NeLocalSTRList >   
-                    =>   
-                    < IL |  const(f32, demote(f64, f32, ValW1)) $ ST | NeLocalSTRList > .
-  rl [f64.promote_f32] : < (f64 . promote~ f32) IL | const(f32, ValW1) $ ST | NeLocalSTRList >   
-                    =>   
-                    < IL |  const(f64, promote(f32, f64, ValW1)) $ ST | NeLocalSTRList > .
-  
+  rl [t1.cvtop_t2] : < (T2 . cvtopT T1) IL | const(T1, ValW1) $ ST | NeLocalSTRList >
+                    =>
+                    if cvtop(T1, T2, cvtopT, ValW1) =/= und
+                    then
+                      < IL |  st-push(ST, cvtop(T1, T2, cvtopT, ValW1)) | NeLocalSTRList >
+                    else
+                      trap("Cvtop result undefined")
+                    fi .  
 
   *** Control instructions
   rl [nop] : < nop IL | ST | NeLocalSTRList >   
