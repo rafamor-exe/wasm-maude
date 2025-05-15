@@ -2,7 +2,7 @@
       (type $type0 (func (result i64)))
       (type $type1 (func (param i64) (result i64)))
       (func $start
-       (local i64)
+        (local i32)
         (
             i64.const 5
             global.set $gb1
@@ -13,7 +13,6 @@
         )
         end)
       (func $factorial (type $type1)
-       (local i64)
         (
             i64.const 0
             local.get 0

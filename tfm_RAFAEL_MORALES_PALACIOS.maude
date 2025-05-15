@@ -937,45 +937,47 @@ fmod WASM-INST-MOD is
   protecting WASM-VALREF-MOD .
 
   sorts Inst ConstInst .
-  sorts BinopToken IBinopToken FBinopToken UnopToken FUnopToken IUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken .
+  sorts BinopToken IBinopToken FBinopToken UnopToken FUnopToken IUnopToken RelopToken IRelopToken FRelopToken TestopToken CvtopToken Trap .
   subsorts IBinopToken FBinopToken < BinopToken .
   subsorts IUnopToken FUnopToken < UnopToken .
   subsorts IRelopToken FRelopToken < RelopToken .
 
   subsorts ConstInst < Inst .
+  subsorts Trap < Inst .
+
+  op trap : String -> Trap [ctor] . 
 
   *** Instruction ops declarations
-  op local.get _ : ValRef -> Inst [ctor prec 24] .
-  op local.set _ : ValRef -> Inst [ctor prec 24] .
-  op local.tee _ : ValRef -> Inst [ctor prec 24] .
+  op local.get _ : ValRef -> Inst [ctor prec 24 format (d d ni)] .
+  op local.set _ : ValRef -> Inst [ctor prec 24 format (d d ni)] .
+  op local.tee _ : ValRef -> Inst [ctor prec 24 format (d d ni)] .
 
   *** global insts
-  op global.get _ : String -> Inst [ctor prec 24] .
-  op global.set _ : String -> Inst [ctor prec 24] .
+  op global.get _ : String -> Inst [ctor prec 24 format (d d ni)] .
+  op global.set _ : String -> Inst [ctor prec 24 format (d d ni)] .
 
   ***op _.const _ : TypeToken Value -> Inst [ctor] .
-  op _.const_ : TypeToken Int -> ConstInst [ctor prec 24] .
-  op _.const_ : FloatTypeToken Float -> ConstInst [ctor prec 24] .
+  op _.const_ : TypeToken Int -> ConstInst [ctor prec 24 format (d d d ni)] .
+  op _.const_ : FloatTypeToken Float -> ConstInst [ctor prec 24 format (d d d ni)] .
 
 
   *** binop (Binary Operations)
   *** ibinop (Integer binop) - add | sub | mul | div_sx | rem_sx | and | or | xor | shl | shr_sx | rotl | rotr
   ops add sub mul : -> BinopToken [ctor] .
-  op _._ : TypeToken BinopToken -> Inst [ctor prec 24] . *** Valid for ints and floats
+  op _._ : TypeToken BinopToken -> Inst [ctor prec 24 format (d d d ni)] . *** Valid for ints and floats
   *** Insts with underscores (_) need to be preprocessed so that Maude does not misinterpret the _ symbol
-  *** TODO: Change _ to ~ 
   ops div~u div~s rem~u rem~s shl shr~s shr~u : -> IBinopToken [ctor] .
-  op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
+  op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24 format (d d d ni)] .
 
   *** bitstring representation ops
   ops and or xor : -> IBinopToken [ctor] .
-  op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24] .
+  op _._ : IntTypeToken IBinopToken -> Inst [ctor prec 24 format (d d d ni)] .
 
   ops div min max copysign : -> FBinopToken [ctor] .
-  op _._ : FloatTypeToken FBinopToken -> Inst [ctor prec 24] .
+  op _._ : FloatTypeToken FBinopToken -> Inst [ctor prec 24 format (d d d ni)] .
   
   ops abs neg sqrt ceil floor : -> FUnopToken [ctor] .
-  op _._ : FloatTypeToken FUnopToken -> Inst [ctor prec 24] .
+  op _._ : FloatTypeToken FUnopToken -> Inst [ctor prec 24 format (d d d ni)] .
 
   var T T1 T2 : TypeToken .
   var IntT IntT2 : IntTypeToken .
@@ -1018,13 +1020,13 @@ fmod WASM-INST-MOD is
 
   *** relop
   ops eq ne : -> RelopToken [ctor] .
-  op _._ : TypeToken RelopToken -> Inst [ctor prec 24] .
+  op _._ : TypeToken RelopToken -> Inst [ctor prec 24 format (d d d ni)] .
   
   ops lt~s lt~u gt~s gt~u le~s le~u ge~s ge~u : -> IRelopToken [ctor] .
-  op _._ : IntTypeToken IRelopToken -> Inst [ctor prec 24] .
+  op _._ : IntTypeToken IRelopToken -> Inst [ctor prec 24 format (d d d ni)] .
 
   ops lt gt le ge : -> FRelopToken [ctor] .
-  op _._ : FloatTypeToken FRelopToken -> Inst [ctor prec 24] .
+  op _._ : FloatTypeToken FRelopToken -> Inst [ctor prec 24 format (d d d ni)] .
 
   op relop : TypeToken RelopToken ValWrapper ValWrapper -> ValWrapper .
   eq relop(IntT, eq, ValW1, ValW2) = ieq(ValW1, ValW2) .
@@ -1046,11 +1048,11 @@ fmod WASM-INST-MOD is
 
   *** testop
   ops eqz : -> TestopToken [ctor] .
-  op _._ : IntTypeToken TestopToken -> Inst [ctor prec 24] .
+  op _._ : IntTypeToken TestopToken -> Inst [ctor prec 24 format (d d d ni)] .
 
   *** conversions
   ops wrap~ demote~ promote~ : -> CvtopToken [ctor] .
-  op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor prec 24] .
+  op _._ _ : TypeToken CvtopToken TypeToken -> Inst [ctor prec 24 format (d d d d ni)] .
 
   op cvtop : TypeToken TypeToken CvtopToken ValWrapper -> Value .
   eq cvtop(i64, i32, wrap~, ValW1) = const(i32, wrap(i64, i32, ValW1)) .
@@ -1059,22 +1061,22 @@ fmod WASM-INST-MOD is
   eq cvtop(T1, T2, cvtopT, ValW1) = und [owise] .
 
   *** Parametric instructions
-  ops drop select : -> Inst [ctor] .
+  ops drop select : -> Inst [ctor format (d ni)] .
 
   *** Control Instructions
-  op nop : -> Inst [ctor] .
-  op unreachable : -> Inst [ctor] .
+  op nop : -> Inst [ctor format (d ni)] .
+  op unreachable : -> Inst [ctor format (d ni)] .
 
-  op block _ : BlockType -> Inst [ctor prec 24] .
-  op block _ : List{TypeToken} -> Inst [ctor prec 24] .
-  op loop _ : BlockType -> Inst [ctor prec 24] .
-  op loop _ : List{TypeToken} -> Inst [ctor prec 24] .
-  op br _ : Nat -> Inst [ctor prec 24] .
-  op br~if _ : Nat -> Inst [ctor prec 24] .
+  op block _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
+  op block _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op loop _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
+  op loop _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op br _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
+  op br~if _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
   op end : -> Inst [ctor] .
 
-  op call _ : Addr -> Inst [ctor prec 24] .
-  op call _ : String -> Inst [ctor prec 24] .
+  op call _ : Addr -> Inst [ctor prec 24 format (d d ni)] .
+  op call _ : String -> Inst [ctor prec 24 format (d d ni)] .
 
 endfm
 
@@ -1094,7 +1096,6 @@ fmod WASM-FUNCDEF-MOD is
 
   protecting WASM-TYPEDEF-MOD .
   protecting LIST{Inst} .
-  protecting MAP{String, Addr} .
 
   sorts FuncDef FuncTypeDef LocalsRef .
   subsorts ParamResultType TypeRef < FuncTypeDef .
@@ -1103,19 +1104,27 @@ fmod WASM-FUNCDEF-MOD is
 
   op _ _ : TypeRef ParamResultType -> FuncTypeDef [ctor] .
 
-  *** TODO: look for a way of making ParamType, ResultType lists and LocalsRef optional
   op (func _ _ _ _ end) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d d n++i n--i ni)] .
   op (func _ _ _ _ end) : String FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d d n++i n--i ni)] .
-  op (func _ _ _ end) : Id LocalsRef List{Inst} -> FuncDef [ctor] .
-  op (func _ _ _ end) : String LocalsRef List{Inst} -> FuncDef [ctor] .
+  op (func _ _ _ end) : Id LocalsRef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
+  op (func _ _ _ end) : String LocalsRef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
+  op (func _ _ _ end) : Id FuncTypeDef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
+  op (func _ _ _ end) : String FuncTypeDef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
+  op (func _ _ end) : Id List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
+  op (func _ _ end) : String List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
 
   var Id : Id .
   var Str : String .
   var LocalsRef : LocalsRef .
+  var FuncTypeDef : FuncTypeDef .
   var IL : List{Inst} .
 
   eq (func Id LocalsRef IL end) = (func Id ((param nil) (result nil)) LocalsRef IL end) .
   eq (func Str LocalsRef IL end) = (func Str ((param nil) (result nil)) LocalsRef IL end) .
+  eq (func Id FuncTypeDef IL end) = (func Id FuncTypeDef (local nil) IL end) .
+  eq (func Str FuncTypeDef IL end) = (func Str FuncTypeDef (local nil) IL end) .
+  eq (func Id IL end) = (func Id ((param nil) (result nil)) (local nil) IL end) .
+  eq (func Str IL end) = (func Str ((param nil) (result nil)) (local nil) IL end) .
 
 endfm
 
@@ -1161,7 +1170,8 @@ endv
 fmod WASM-VERIFYFUNCDEF-MOD is
 
   protecting WASM-FUNCDEF-MOD .
-  protecting MAP{Addr, ModuleContent} . 
+  protecting MAP{Addr, ModuleContent} .
+  protecting MAP{String, Addr} .
 
   var FuncTypeDef : FuncTypeDef .
   var TypeRef : TypeRef .
@@ -1204,7 +1214,7 @@ mod WASMMOD is
   protecting MAP{Addr, GlobalInstance} .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem EmptyLocalStore NeLocalStore Assign Trap Arity Label StackAndLabel FuncStore .
+  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem Label StackAndLabel FuncStore .
   sorts IndCtx LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx .
   sorts Starter .
   sorts ComponentCtr .
@@ -1212,28 +1222,22 @@ mod WASMMOD is
   *** Simulator components
   subsorts Stack List{Inst} < WASMLocalSim .
   subsorts EmptyStack NeStack < Stack .
-  subsorts EmptyLocalStore NeLocalStore < Map{ValRef, Value} .
-  subsorts Assign < NeLocalStore .
 
-  *** Instruction lists sorts
-  subsorts Trap < Inst .
+
   subsorts Value < StackElem < NeStack .
   subsorts Und < Label < StackElem .
-  subsorts Nat < Arity .
 
   subsorts LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx < IndCtx .
-
-  op trap : String -> Trap [ctor] . 
   
   op label : String List{Inst} -> Label [ctor] .
 
-  op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor] .
-  op if _ _ else _ : List{TypeToken} List{Inst} List{Inst} -> Inst [ctor] .
+  op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor format (d d ni d ni ni)] .
+  op if _ _ else _ : List{TypeToken} List{Inst} List{Inst} -> Inst [ctor format (d d ni d ni ni)] .
 
   *** Indices stores
   *** TODO: Some are left
   op {localIndCtx _} : Map{String, Addr} -> LocalIndCtx [ctor] .
-  op {globalIndCtx _} : Map{String, Addr} -> GlobalIndCtx [ctor] .
+  ***op {globalIndCtx _} : Map{String, Addr} -> GlobalIndCtx [ctor] .
   op {funcIndCtx _} : Map{String, Addr} -> FuncIndCtx [ctor] .
   op {typeIndCtx _} : Map{String, Addr} -> TypeIndCtx [ctor] .
 
@@ -1248,7 +1252,7 @@ mod WASMMOD is
   op _ <-> _ : Map{String, Addr} Map{Addr, GlobalInstance} -> GlobalInventory [ctor] .
   op _ # _ : WASMLocalSim GlobalInventory -> WASMGlobalSim [ctor format (d ni ni d)] .
 
-  op _ _ : GlobalIndCtx WASMGlobalSim -> WASMGlobalIndSim [ctor] .
+  ***op _ _ : GlobalIndCtx WASMGlobalSim -> WASMGlobalIndSim [ctor] .
 
   *** Functions + Global enviroment
   op _ # _ : WASMGlobalSim Map{Addr, ModuleContent} -> WASMFuncGlobalSim [ctor format (d ni ni d)] .
@@ -1274,11 +1278,6 @@ mod WASMMOD is
   op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor format (ni ni ni)] .
   op Fail : String -> WASMSimTrigger [ctor] .
   
-
-  *** Empty Map{ValRef, Value} definition
-  op EmptyLocalStore : -> Map{ValRef, Value} [ctor] .
-  eq EmptyLocalStore = empty .
-
   *** Module sections
 
   op (module _) : ModuleContent -> WASMModule [ctor prec 20] .
@@ -1311,7 +1310,7 @@ mod WASMMOD is
   var LocalSTRList : List{Map{ValRef, Value}} .
   var NeLocalSTRList : NeList{Map{ValRef, Value}} .
   var LocalSTR : Map{ValRef, Value} .
-  var T T1 T2 : TypeToken .
+  var T T1 T2 T' : TypeToken .
   var FloatT : FloatTypeToken .
   var IntT : IntTypeToken .
   var VecT : VecTypeToken .
@@ -1383,7 +1382,7 @@ mod WASMMOD is
   op run-module-func : WASMModule String -> WASMSimTrigger .
   eq run-module-func(WASMModule, Str) = read-module({start Str, indctr [0, 0, 0]} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
 
-  *** Allocation of module -> Instantiation of module
+  *** Module decoding -> Module validation -> Module instantiation
   *** Read module component definitions
   *** Done as eq logic to avoid non-determinism on component parsing (due to multiset reading possibilities)
   op read-module : WASMSimTrigger -> WASMSimTrigger .
@@ -1439,7 +1438,6 @@ mod WASMMOD is
   rl [local.set] : < (local.set ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) LocalSTRList > .
 
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
-  *** TODO: leave the double push like that or use a different op to double push with only one lookup ??
   rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR LocalSTRList >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
 
   *** global variable rules
@@ -1568,7 +1566,6 @@ mod WASMMOD is
               =>   
               {funcIndCtx IndFuncCtxSTR } < (call (IndFuncCtxSTR[Str])) IL | ST | LocalSTRList > # GlobalInventory # FuncStore .
 
-  *** TODO: validation in this case should be with exact values? Stack shall only have TypeTokenList (n) values?
   crl [exit-func] : < exit-func(TypeTokenList) IL | ST | LocalSTR NeLocalSTRList > # GlobalInventory # FuncStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore 
@@ -1639,7 +1636,6 @@ mod WASMMOD is
 
   op get-ith-stackandlabel : Stack Nat Stack -> StackAndLabel .
   eq get-ith-stackandlabel(Val $ ST, N, TempST) = get-ith-stackandlabel(ST, N, Val $ TempST) .
-  *** TODO: check multiple parses warning
   ceq get-ith-stackandlabel(Label $ ST, N, TempST) = get-ith-stackandlabel(ST, N - 1, TempST) if N > 0 .
   eq get-ith-stackandlabel(Label $ ST, 0, TempST) = TempST $ ST || Label .
 
@@ -1734,6 +1730,7 @@ mod WASMMOD is
   eq valid-stack(ST, TList) = false [owise] .
 
   *** Validate all functions in module context. If any function is not valid, the module is not valid and instantiation fails.
+  *** Module validation -> Module instantiation
   op validate-funcs-module : WASMSimTrigger -> WASMSimTrigger .
   eq validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
       = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) then
@@ -1765,8 +1762,10 @@ mod WASMMOD is
   eq verify-IL(nil, TListRes, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
   ***eq verify-IL(return, TList1, TList1) = true .
   eq verify-IL((local.get ValR) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
-  eq verify-IL((local.set ValR) IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
-  eq verify-IL((local.tee ValR) IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  ceq verify-IL((local.set ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if T' == nthT(TList1, ValR) .
+  ceq verify-IL((local.tee ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if T' == nthT(TList1, ValR) .
   eq verify-IL((global.get Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-GlobalTypeToken(global-type(GlobalsStore[GlobalAddrs[Str]])) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   ceq verify-IL((global.set Str) IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
       if (MutGlobalTypeIndicator T) := (global-type(GlobalsStore[GlobalAddrs[Str]])) .
@@ -1804,7 +1803,7 @@ mod WASMMOD is
   ***eq verify-IL((call Addr) IL, get-paramlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((call Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL((call (IndFuncCtxSTR[Str])) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   ceq verify-IL((call Addr) IL, TList' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if TList' := get-paramlistTList-func(FuncStore[Addr]) .
+    if TList' == get-paramlistTList-func(FuncStore[Addr]) .
   eq verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = false [owise] .
 
   *** TODO: This should extend List{X :: TRIV}
@@ -1937,7 +1936,6 @@ mod WASM-FILE-MOD is
   op run-func-from-file : String String -> WASMSimTrigger .
   eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
 
-  *** TODO: Use metaSearch 
   op search-with-func-from-file : String String Term Condition Qid Bound Nat -> FormatedSearchResult .
   eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
       getFormattedRes(aux-metaSearch(upModule('WASMMOD, false),
