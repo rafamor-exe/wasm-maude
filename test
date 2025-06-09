@@ -450,3 +450,137 @@ red downTerm('__['`{_`,indctr_`}['start_['"start".String], '`[_`,_`,_`]['s_^2['0
 
 *** Loads from file and searches with =>!
 erew search-with-func-from-file("examples/factorial_adapt.wat", "$start", 'w:WASMSimTrigger, nil, '!, unbounded, 0) . 
+
+
+[NOTE] Get partial result from search over test with custom syntax:
+search [,45] run-factorial =>* w:[WASMSimTrigger] .
+
+[Individual parses]
+Maude> red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(global $gb1 (mut i64) (i64.const 1))"), 'GlobalDef)), err:GlobalDef) .
+reduce in WASM-FILE-MOD : downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(global $gb1 (mut i64) (i64.const 1))"), 'GlobalDef)), err:GlobalDef) .
+rewrites: 310 in 0ms cpu (0ms real) (~ rewrites/second)
+result GlobalDef: global "$gb1"(mut i64)(i64 .const (1).NzNat
+)
+Maude> match (global Id:String (GbType:GlobalType) (ConstInst:ConstInst)) <=? global "$gb1"(mut i64)(i64 .const (1).NzNat) .
+match in WASM-FILE-MOD : global Id:String(GbType:GlobalType)(ConstInst:ConstInst) <=? global "$gb1"(mut i64)(i64 .const (1).NzNat
+) .
+Decision time: 0ms cpu (0ms real)
+
+Matcher 1
+Id:String --> "$gb1"
+GbType:GlobalType --> mut i64
+ConstInst:ConstInst --> i64 .const (1).NzNat
+
+
+(func $factorial (type $type1)
+    (local i32)
+    (
+        i32.const 0
+        local.get 0
+        i32.eq
+        (if (i32)
+            i32.const 1
+        else
+            local.get 0
+            local.get 0
+            i32.const 1
+            i32. sub
+            call $factorial
+            i32. mul
+        end)
+    )
+end)
+
+red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(
+"(func $factorial (type $type1)
+    (local i32)
+    (
+        i32.const 0
+        local.get 0
+        i32.eq
+        (if (i32)
+            i32.const 1
+        else
+            local.get 0
+            local.get 0
+            i32.const 1
+            i32.sub
+            call $factorial
+            i32.mul
+        end)
+    )
+end)"), 'FuncDef)), err:FuncDef) .
+
+Maude> red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(func $factorial (type $type1)    (local i32)   
+ (        i32.const 0        local.get 0        i32.eq        (if (i32)            i32.const 1        else       
+     local.get 0            local.get 0            i32.const 1            i32.sub            call $factorial     
+       i32.mul        end)    )end)"), 'FuncDef)), err:FuncDef) .
+reduce in WASM-FILE-MOD : downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(func $factorial (type $type1)   
+ (local i32)    (        i32.const 0        local.get 0        i32.eq        (if (i32)            i32.const 1    
+    else            local.get 0            local.get 0            i32.const 1            i32.sub            call 
+$factorial            i32.mul        end)    )end)"), 'FuncDef)), err:FuncDef) .
+rewrites: 1085 in 10ms cpu (9ms real) (108500 rewrites/second)
+result FuncDef:
+func "$factorial" (type "$type1") (local i32)
+  (i32 .const (0).Zero
+   local.get 0
+   i32 . eq
+   (if (result i32)
+  i32 .const (1).NzNat
+   else
+  local.get 0
+   local.get 0
+   i32 .const (1).NzNat
+   i32 . sub
+   call "$factorial"
+   i32 . mul
+   (end).Inst
+  ))
+end
+
+match (func Id:String Type:FuncTypeDef Locals:LocalsRef InstList:List{Inst} end) <=? 
+func "$factorial" (type "$type1") (local i32)
+  (i32 .const (0).Zero
+   local.get 0
+   i32 . eq
+   (if (result i32)
+  i32 .const (1).NzNat
+   else
+  local.get 0
+   local.get 0
+   i32 .const (1).NzNat
+   i32 . sub
+   call "$factorial"
+   i32 . mul
+   (end).Inst
+  ))
+end .
+
+red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(
+"(func $mult (type $type1)
+    (local i32)
+    (
+        local.get 0
+        local.get 1
+        i32.mul
+    )
+end)"), 'FuncDef)), err:FuncDef) .
+
+Maude> red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(func $mult (type $type1)    (local i32)    (        local.get 0        local.get 1        i32.mul    )end)"), 'FuncDef)), err:FuncDef) .
+reduce in WASM-FILE-MOD : downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(func $mult (type $type1)    (local i32)    (        local.get 0        local.get 1        i32.mul    )end)"), 'FuncDef)), err:FuncDef) .
+rewrites: 516 in 10ms cpu (0ms real) (51600 rewrites/second)
+result FuncDef:
+func "$mult" (type "$type1") (local i32)
+  (local.get 0
+   local.get 1
+   i32 . mul
+  )
+end
+
+match (func Id:String Type:FuncTypeDef Locals:LocalsRef InstList:List{Inst} end) <=? 
+func "$mult" (type "$type1") (local i32)
+  (local.get 0
+   local.get 1
+   i32 . mul
+  )
+end .

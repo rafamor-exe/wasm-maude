@@ -65,7 +65,7 @@ mod WASM-TEST-MOD is
                                               (
                                                   (local.get 1)
                                                   (local.get 0)
-                                                  (i32 . "div_s")
+                                                  (i32 . div~s)
                                               )
                                               end)
                                             (global "dividend" (mut i32) (i32 .const 1))
@@ -139,7 +139,7 @@ mod WASM-TEST-MOD is
                                     (
                                         (local.get 0)
                                         (local.get 1)
-                                        (i32 . "shr_u")
+                                        (i32 . shr~u)
                                     )
                                     end)
                                   (func "shr_s" ((type "type1"))
@@ -147,7 +147,7 @@ mod WASM-TEST-MOD is
                                     (
                                         (local.get 0)
                                         (local.get 1)
-                                        (i32 . "shr_s")
+                                        (i32 . shr~s)
                                     )
                                     end)
                                   (global "operand1" (mut i32) (i32 .const 1))
