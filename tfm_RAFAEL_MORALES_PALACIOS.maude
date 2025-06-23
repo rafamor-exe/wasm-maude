@@ -1765,7 +1765,7 @@ mod WASMMOD is
     if T := nthT(TList1, ValR) .
   ceq verify-IL((local.set ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if T' == nthT(TList1, ValR) .
-  ceq verify-IL((local.tee ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+  ceq verify-IL((local.tee ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if T' == nthT(TList1, ValR) .
   eq verify-IL((global.get Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-GlobalTypeToken(global-type(GlobalsStore[GlobalAddrs[Str]])) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   ceq verify-IL((global.set Str) IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
@@ -1929,6 +1929,7 @@ mod WASM-FILE-MOD is
   var ResAssignment : Assignment .
   var ResVar : Variable .
 
+  *** Get Maude External API config from parsed module 
   op gen-config : String -> Configuration [ctor] .
   eq gen-config(WASMModFile) = <> 
                                < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
@@ -1937,6 +1938,7 @@ mod WASM-FILE-MOD is
   op run-func-from-file : String String -> WASMSimTrigger .
   eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
 
+  *** Function to meta-search using erew
   op search-with-func-from-file : String String Term Condition Qid Bound Nat -> FormatedSearchResult .
   eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
       getFormattedRes(aux-metaSearch(upModule('WASMMOD, false),
@@ -1944,14 +1946,17 @@ mod WASM-FILE-MOD is
                                 ResTerm,
                                 Condition, SearchType, maxDepth, solNumber)) .
   
+  *** Auxiliary function to trigger meta-search only when the file is read entirely
   op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple? .
   eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
     metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func)), ResTerm, Condition, SearchType, maxDepth, solNumber) .
 
+  *** Format ResultTriple from meta-search
   op getFormattedRes : ResultTriple? -> FormatedSearchResult .
   eq getFormattedRes(failure) = NoResult .
   eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [downTerm(OgTerm, errorWASMSimTrigger) / Type / formatSubs(ResSubstitution)] .
 
+  *** Format substitutions
   op formatSubs : Substitution -> CustomSubstitution .
   eq formatSubs(none) = noCustomSubstitution .
   eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== downTerm(ResTerm, errorWASMSimTrigger)) && formatSubs(ResSubstitution) .
@@ -1959,6 +1964,9 @@ mod WASM-FILE-MOD is
   op get-config-sim : Configuration String -> WASMSimTrigger .
   eq get-config-sim(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func) . ***Acc .
 
+
+  *** Maude API for external objects
+  *** Read file line-by-line to a String until the end of the file 
   rl < myObj : myClass | in: nullOid, outText: Acc, Attrs > 
       openedFile(myObj, fileManager, FHIn) 
   => < myObj : myClass | in: FHIn, outText: Acc, Attrs > 
