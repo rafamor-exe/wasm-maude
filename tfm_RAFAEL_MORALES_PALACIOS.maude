@@ -1761,7 +1761,8 @@ mod WASMMOD is
   op verify-IL : List{Inst} List{TypeToken} List{TypeToken} List{TypeToken} Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} ResultTypeList -> Bool .
   eq verify-IL(nil, TListRes, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
   ***eq verify-IL(return, TList1, TList1) = true .
-  eq verify-IL((local.get ValR) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  ceq verify-IL((local.get ValR) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if T := nthT(TList1, ValR) .
   ceq verify-IL((local.set ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if T' == nthT(TList1, ValR) .
   ceq verify-IL((local.tee ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, nthT(TList1, ValR) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
