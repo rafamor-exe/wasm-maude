@@ -1307,7 +1307,8 @@ mod WASMMOD is
   vars ValR ValR2 : ValRef .
   vars Val Val1 Val2 : Value .
   vars IL IL1 IL2 : List{Inst} .
-  vars ST TempST ST1 : Stack .
+  var NeIL : NeList{Inst} .
+  vars ST TempST ST1 ST' : Stack .
   var NeST : NeStack .
   var LocalSTRList : List{Map{ValRef, Value}} .
   var NeLocalSTRList : NeList{Map{ValRef, Value}} .
@@ -1322,6 +1323,7 @@ mod WASMMOD is
   var Str : String .
   var Label : Label .
   var N N1 N2 Ctr : Nat .
+  var NzN : NzNat .
   var GlobalAddrs : Map{String, Addr} .
   var GlobalsStore : Map{Addr, GlobalInstance} .
   var GlobalType : GlobalType .
@@ -1524,10 +1526,11 @@ mod WASMMOD is
                =>
                < IL2 end | st-push(ST, label("block", IL end)) | NeLocalSTRList >
                if valid-stack(ST, nil) .
-  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL end | ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL end | ST1 | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
-               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("block", IL end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
-               if valid-stack(ST, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
+               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("block", IL end) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
+                  /\ ST' $ ST := ST1 .
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
@@ -1537,10 +1540,11 @@ mod WASMMOD is
               =>
               < IL2 end | st-push(ST, label("loop", (loop ResultType) IL2 end)) | NeLocalSTRList >
               if valid-stack(ST, nil) .
-  crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
+  crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST1 | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
               =>
-              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | st-push(ST, label("loop", (loop TypeRef) IL2 end)) | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
-              if valid-stack(ST, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))) .
+              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("loop", (loop TypeRef) IL2 end) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+              if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
+                  /\ ST' $ ST := ST1 .
   rl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
             < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | NeLocalSTRList > .
@@ -1604,7 +1608,7 @@ mod WASMMOD is
   ceq st-popN(STElem $ ST, N) = st-popN(ST, N - 1) if N > 0 .
 
   op st-getTopVals : Stack List{TypeToken} -> Stack .
-  eq st-getTopVals(ST, nil) = ST .
+  eq st-getTopVals(ST, nil) = EmptyStack .
   eq st-getTopVals(const(T, ValW1) $ ST, T TList) = const(T, ValW1) $ st-getTopVals(ST, TList) .
 
   *** Globals auxiliary ops
@@ -1788,9 +1792,10 @@ mod WASMMOD is
   eq verify-IL((nop) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   ceq verify-IL(((block ResultType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(ResultType) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if verify-IL(IL2, nil, TList1, aux-get-resultlistTList(ResultType), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ResultType LabelsResultTypeList) .
-  ceq verify-IL(((block TypeRef) IL2 end) IL, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if verify-IL(IL2, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))),
-                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList) .
+  ceq verify-IL(((block TypeRef) IL2 end) IL, TList' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+    if verify-IL(IL2, TList',
+                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList)
+       and TList' == aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
   eq verify-IL((if BlockType IL1 else IL2 end) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = 
     verify-IL(((block BlockType) IL1 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(BlockType) LabelsResultTypeList)
       and verify-IL(((block BlockType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(BlockType) LabelsResultTypeList) .
@@ -1800,15 +1805,16 @@ mod WASMMOD is
     if verify-IL(IL2, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))),
                   TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList) .
   ceq verify-IL((br N) IL, TListLabel TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if (result TListLabel) == nthResultT(LabelsResultTypeList, N) .
+    if TListLabel == nthResultT(LabelsResultTypeList, N) .
   ceq verify-IL((br~if N) IL, i32 TListLabel, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TListLabel, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if (result TListLabel) == nthResultT(LabelsResultTypeList, N) .
+    if TListLabel == nthResultT(LabelsResultTypeList, N) .
   ***eq verify-IL((call Addr) IL, get-paramlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((call Str) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL((call (IndFuncCtxSTR[Str])) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   ceq verify-IL((call Addr) IL, TList' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if TList' == get-paramlistTList-func(FuncStore[Addr]) .
 
   *** Stack-polymorphic derivations. Used after unreachable, br, etc.
+  eq verify-IL(nil, TList Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
 
   eq verify-IL((local.set ValR) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     .
@@ -1856,27 +1862,28 @@ mod WASMMOD is
                   TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)) LabelsResultTypeList) .
   
   ceq verify-IL((br N) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
+    if TListLabel := nthResultT(LabelsResultTypeList, N) .
   
   ceq verify-IL((br~if N) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TListLabel, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
+    if TListLabel := nthResultT(LabelsResultTypeList, N) .
   ceq verify-IL((br~if N) IL, i32 Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TListLabel, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if (result TListLabel) := nthResultT(LabelsResultTypeList, N) .
+    if TListLabel := nthResultT(LabelsResultTypeList, N) .
   
   ceq verify-IL((call Addr) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, get-resultlistTList-func(FuncStore[Addr]) Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if TList' := get-paramlistTList-func(FuncStore[Addr]) .
   ***
 
-  eq verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = false [owise] .
+  eq verify-IL(NeIL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = false [owise] .
 
   *** TODO: This should extend List{X :: TRIV}
   op nthT : List{TypeToken} Nat -> TypeToken .
   eq nthT(T TList, 0) = T .
   eq nthT(T TList, N) = nthT(TList, N - 1) .
 
-  op nthResultT : ResultTypeList Nat -> ResultType .
-  eq nthResultT(ResultType LabelsResultTypeList, 0) = ResultType .
-  eq nthResultT(ResultType LabelsResultTypeList, N) = nthResultT(LabelsResultTypeList, N - 1) .
+  op nthResultT : ResultTypeList Nat -> List{TypeToken} .
+  eq nthResultT((result TList), 0) = TList .
+  eq nthResultT((result TList) LabelsResultTypeList, 0) = TList .
+  eq nthResultT((result TList) LabelsResultTypeList, NzN) = nthResultT(LabelsResultTypeList, NzN - 1) .
 
 endm
 
