@@ -1815,15 +1815,13 @@ mod WASMMOD is
     if TList' == get-paramlistTList-func(FuncStore[Addr]) .
 
   *** Stack-polymorphic derivations. Used after unreachable, br, etc.
-  eq verify-IL(nil, TList Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
+  ceq verify-IL(nil, TList Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true 
+    if TList TList' := TListRes .
 
-  eq verify-IL((local.set ValR) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    .
-  eq verify-IL((local.tee ValR) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    .
+  eq verify-IL((local.set ValR) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
+  eq verify-IL((local.tee ValR) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
 
-  eq verify-IL((global.set Str) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    .
+  eq verify-IL((global.set Str) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   
   eq verify-IL((select) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((select) IL, i32 T Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
