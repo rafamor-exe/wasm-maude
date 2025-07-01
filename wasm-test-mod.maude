@@ -6,6 +6,7 @@ mod WASM-TEST-MOD is
   op run-int-binop-trap : -> WASMSimTrigger .
   op run-float-unop-sqrt : -> WASMSimTrigger .
   op run-shOp : -> WASMSimTrigger .
+  op run-br-test : -> WASMSimTrigger .
   eq run-factorial = run-module-func(
                                     (module 
                                       (type "type0" (func (result i32)))
