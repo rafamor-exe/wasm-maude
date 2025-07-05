@@ -1454,7 +1454,7 @@ mod WASMMOD is
   crl [global.set] : < (global.set Str) IL | const(T, ValW1) $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert(GlobalAddrs[Str], {type (mut T), value const(T, ValW1)}, GlobalsStore) 
-                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)) or GlobalsStore[GlobalAddrs[Str]] == undefined .
+                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)).
 
   *** Parametric Instructions
   rl [drop] : < (drop) IL | Val $ ST | NeLocalSTRList > 
