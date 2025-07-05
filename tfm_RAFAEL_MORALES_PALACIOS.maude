@@ -1436,13 +1436,13 @@ mod WASMMOD is
   ***                      {start Str, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
 
   *** local.get rule: push to stack the value from ValR from the local store
-  rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
+  rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, LocalSTR[ValR]) | LocalSTR LocalSTRList > .
 
   *** local.set rule: pop value from stack and store it in ValR in the local store
-  rl [local.set] : < (local.set ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-pop(ST) | insert(ValR, st-head(ST), LocalSTR) LocalSTRList > .
+  rl [local.set] : < (local.set ValR) IL | Val $ ST | LocalSTR LocalSTRList >   =>   < IL | ST | insert(ValR, Val, LocalSTR) LocalSTRList > .
 
   *** local.tee rule: pop from stack, push value from ValR two times to stack, then execute local.set ValR
-  rl [local.tee] : < (local.tee ValR) IL | ST | LocalSTR LocalSTRList >   =>   < (local.set ValR) IL | st-push(st-push(st-pop(ST), lookup(LocalSTR, ValR)), lookup(LocalSTR, ValR)) | LocalSTR LocalSTRList > .
+  rl [local.tee] : < (local.tee ValR) IL | Val $ ST | NeLocalSTRList >   =>   < (local.set ValR) IL | st-push(st-push(ST, Val), Val) | NeLocalSTRList > .
 
   *** global variable rules
 
