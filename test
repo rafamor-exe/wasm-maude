@@ -455,6 +455,8 @@ erew search-with-func-from-file("examples/factorial_adapt.wat", "$start", 'w:WAS
 [NOTE] Get partial result from search over test with custom syntax:
 search [,45] run-factorial =>* w:[WASMSimTrigger] .
 
+search run-br-test =>! w:WASMSimTrigger .
+
 [Individual parses]
 Maude> red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(global $gb1 (mut i64) (i64.const 1))"), 'GlobalDef)), err:GlobalDef) .
 reduce in WASM-FILE-MOD : downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(global $gb1 (mut i64) (i64.const 1))"), 'GlobalDef)), err:GlobalDef) .
