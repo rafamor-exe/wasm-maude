@@ -1545,19 +1545,18 @@ mod WASMMOD is
               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("loop", (loop TypeRef) IL2 end) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
               if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
                   /\ ST' $ ST := ST1 .
-  rl [br] : < (br N) IL | ST | NeLocalSTRList >   
+  crl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
-            < jump-to-L(get-ith-stackandlabel(ST, N, EmptyStack)) IL end | ST | NeLocalSTRList > .
-  rl [jump-to-L] : < jump-to-L(ST1 || label(Str, IL1)) IL | ST | NeLocalSTRList > 
-                  =>
-                  < IL1 | ST1 | NeLocalSTRList > .
-  crl [br_if] : < (br~if N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
-               =>   
-               < (br N) IL | ST | NeLocalSTRList > 
-               if Int1 =/= 0 .
-  rl [br_if-else] : < (br~if N) IL | const(i32, val(0)) $ ST | NeLocalSTRList >
-                =>   
-                < IL | ST | NeLocalSTRList > .
+            < IL1 | ST1 | NeLocalSTRList >
+            if (ST1 || label(Str, IL1)) := get-ith-stackandlabel(ST, N, EmptyStack) .
+
+  rl [br_if] : < (br~if N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
+              =>   
+              if Int1 =/= 0 then
+                < (br N) IL | ST | NeLocalSTRList > 
+              else
+                < IL | ST | NeLocalSTRList >
+              fi .
 
   *** According to Specification: param init precedes local vars init
   crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
