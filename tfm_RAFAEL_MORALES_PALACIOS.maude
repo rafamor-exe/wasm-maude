@@ -1231,7 +1231,7 @@ mod WASMMOD is
 
   subsorts LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx < IndCtx .
   
-  op label : String List{Inst} -> Label [ctor] .
+  op label : String List{Inst} Nat -> Label [ctor] .
 
   op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor format (d d ni d ni ni)] .
   op if _ _ else _ : List{TypeToken} List{Inst} List{Inst} -> Inst [ctor format (d d ni d ni ni)] .
@@ -1318,7 +1318,7 @@ mod WASMMOD is
   var IntT : IntTypeToken .
   var VecT : VecTypeToken .
   vars IntVal IntVal1 IntVal2 : IntValue .
-  vars Int1 Int2 : Int .
+  vars Int1 Int2 IntN : Int .
   var STElem : StackElem .
   var Str : String .
   var Label : Label .
@@ -1341,7 +1341,7 @@ mod WASMMOD is
   var TypeTokenList TList TList' TList1 TListRes TListLabel : List{TypeToken} .
   var LabelsResultTypeList : ResultTypeList .
   var NeTList : NeList{TypeToken} .
-  var IntN : Int .
+  var NzIntN : NzInt .
   var FloatN F1 F2 : Float .
   var ValW1 ValW2 : ValWrapper .
   var Sg1 Sg2 : Sign .
@@ -1525,13 +1525,14 @@ mod WASMMOD is
 
   rl [block-resultT] : < ((block ResultType) IL2 end) IL end | ST | NeLocalSTRList >
                =>
-               < IL2 end | st-push(ST, label("block", IL end)) | NeLocalSTRList > .
+               < IL2 end | st-push(ST, label("block", IL end, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
 
   crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL end | ST1 | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
-               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("block", IL end) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("block", IL end, size(TListRes)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
-                  /\ ST' $ ST := ST1 .
+                  /\ ST' $ ST := ST1
+                  /\ TListRes := aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
 
   rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
 
@@ -1542,18 +1543,19 @@ mod WASMMOD is
   *** loop is an infinite loop
   rl [loop-resultT] : < ((loop ResultType) IL2 end) IL | ST | NeLocalSTRList >
               =>
-              < IL2 end | st-push(ST, label("loop", (loop ResultType) IL2 end)) | NeLocalSTRList > .
+              < IL2 end | st-push(ST, label("loop", (loop ResultType) IL2 end, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
 
   crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST1 | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
               =>
-              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("loop", (loop TypeRef) IL2 end) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("loop", (loop TypeRef) IL2 end, size(TListRes)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
               if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
-                  /\ ST' $ ST := ST1 .
+                  /\ ST' $ ST := ST1
+                  /\ TListRes := aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
                   
   crl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
             < IL1 | ST1 | NeLocalSTRList >
-            if (ST1 || label(Str, IL1)) := get-ith-stackandlabel(ST, N, EmptyStack) .
+            if (ST1 || label(Str, IL1, N1)) := get-ith-stackandlabel(ST, N, EmptyStack) .
 
   rl [br_if] : < (br~if N) IL | const(i32, val(Int1)) $ ST | NeLocalSTRList >
               =>   
@@ -1567,7 +1569,7 @@ mod WASMMOD is
   crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
               < get-IL-func(FuncStore[Addr]) exit-func(get-resultlistTList-func(FuncStore[Addr])) end | 
-                label("func", IL) $ st-popN(ST, count-paramlist-func(FuncStore[Addr])) | 
+                label("func", IL, size(get-resultlistTList-func(FuncStore[Addr]))) $ st-popN(ST, count-paramlist-func(FuncStore[Addr])) | 
                 init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
               > # GlobalInventory # FuncStore 
               if valid-stack(ST, get-paramlistTList-func(FuncStore[Addr])) .
@@ -1626,15 +1628,21 @@ mod WASMMOD is
   ***op insert-gb-val : Addr Value Map{Addr, GlobalInstance} -> Map{Addr, GlobalInstance} .
   ***eq insert-gb-val(Addr, Val2, (Addr |-> {type MutGlobalType, value Val1}, GlobalsStore)) = (Addr |-> {type MutGlobalType, value Val2}, GlobalsStore) .
 
-  *** reset stack to eliminate label
+  *** Exit block. Reset stack to eliminate label
   op _||_ : Stack Label -> StackAndLabel .
   op reset-st : Stack -> StackAndLabel .
   eq reset-st(Val $ ST) = Val $ get-st(reset-st(ST)) || get-label(reset-st(ST)) .
   eq reset-st(Label $ ST) = ST || Label .
   eq reset-st(EmptyStack) = EmptyStack || und .
 
+  *** Reset stack keeping only arity number of values (result). For functions and br.
+  op reset-st-res : Stack Nat -> Stack .
+  eq reset-st-res(Val $ ST, 0) = EmptyStack .
+  eq reset-st-res(Val $ ST, NzN) = Val $ reset-st-res(ST, NzN - 1) .
+  eq reset-st-res(EmptyStack, N) = EmptyStack .
+
   op get-inst-list-label : StackAndLabel -> List{Inst} .
-  eq get-inst-list-label(ST || label(Str, IL)) = IL .
+  eq get-inst-list-label(ST || label(Str, IL, N)) = IL .
 
   op get-st : StackAndLabel -> Stack .
   eq get-st(ST || Label) = ST .
@@ -1644,14 +1652,19 @@ mod WASMMOD is
   eq get-label(ST || Label) = Label .
   eq get-label(ST || und) = und .
 
-  op get-ith-stackandlabel : Stack Nat Stack -> StackAndLabel .
-  eq get-ith-stackandlabel(Val $ ST, N, TempST) = get-ith-stackandlabel(ST, N, Val $ TempST) .
-  ceq get-ith-stackandlabel(Label $ ST, N, TempST) = get-ith-stackandlabel(ST, N - 1, TempST) if N > 0 .
-  eq get-ith-stackandlabel(Label $ ST, 0, TempST) = TempST $ ST || Label .
+  op get-lth-label : Stack Nat -> Label .
+  eq get-lth-label(Val $ ST, N) = get-lth-label(ST, N) .
+  eq get-lth-label(Label $ ST, 0) = Label .
+  eq get-lth-label(Label $ ST, NzN) = get-lth-label(ST, NzN - 1) .
 
+  op get-ith-stackandlabel : Stack Nat Stack -> StackAndLabel .
+  eq get-ith-stackandlabel(Val $ ST, N, TempST) = get-ith-stackandlabel(ST, N, TempST $ Val) .
+  eq get-ith-stackandlabel(label(Str, IL, N) $ ST, 0, TempST) = reset-st-res(TempST, N) $ ST || label(Str, IL, N) .
+  eq get-ith-stackandlabel(Label $ ST, NzN, TempST) = get-ith-stackandlabel(ST, NzN - 1, TempST) .
+  
   op if-else : ValWrapper List{Inst} List{Inst} List{Inst} BlockType -> List{Inst} .
-  ceq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType) IL1 end) IL if Int1 =/= 0 .
-  eq if-else(val(Int1), IL1, IL2, IL, BlockType) = ((block BlockType) IL2 end) IL [owise] .
+  eq if-else(val(NzIntN), IL1, IL2, IL, BlockType) = ((block BlockType) IL1 end) IL .
+  eq if-else(val(0), IL1, IL2, IL, BlockType) = ((block BlockType) IL2 end) IL [owise] .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N FuncTypeDef LocalsRef IL end) = IL .
