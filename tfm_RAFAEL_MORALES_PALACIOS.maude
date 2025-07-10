@@ -1538,7 +1538,7 @@ mod WASMMOD is
 
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
-                 < if-else(ValW1, IL1, IL2, IL, BlockType) | ST | NeLocalSTRList > .
+                 < if-else(ValW1, IL1, IL2, BlockType) IL | ST | NeLocalSTRList > .
 
   *** loop is an infinite loop
   rl [loop-resultT] : < ((loop ResultType) IL2 end) IL | ST | NeLocalSTRList >
@@ -1662,9 +1662,9 @@ mod WASMMOD is
   eq get-ith-stackandlabel(label(Str, IL, N) $ ST, 0, TempST) = reset-st-res(TempST, N) $ ST || label(Str, IL, N) .
   eq get-ith-stackandlabel(Label $ ST, NzN, TempST) = get-ith-stackandlabel(ST, NzN - 1, TempST) .
   
-  op if-else : ValWrapper List{Inst} List{Inst} List{Inst} BlockType -> List{Inst} .
-  eq if-else(val(NzIntN), IL1, IL2, IL, BlockType) = ((block BlockType) IL1 end) IL .
-  eq if-else(val(0), IL1, IL2, IL, BlockType) = ((block BlockType) IL2 end) IL [owise] .
+  op if-else : ValWrapper List{Inst} List{Inst} BlockType -> List{Inst} .
+  eq if-else(val(NzIntN), IL1, IL2, BlockType) = ((block BlockType) IL1 end) .
+  eq if-else(val(0), IL1, IL2, BlockType) = ((block BlockType) IL2 end) [owise] .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N FuncTypeDef LocalsRef IL end) = IL .
