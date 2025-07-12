@@ -1566,13 +1566,12 @@ mod WASMMOD is
               fi .
 
   *** According to Specification: param init precedes local vars init
-  crl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
+  rl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
               < get-IL-func(FuncStore[Addr]) exit-func(get-resultlistTList-func(FuncStore[Addr])) end | 
-                label("func", IL, size(get-resultlistTList-func(FuncStore[Addr]))) $ st-popN(ST, count-paramlist-func(FuncStore[Addr])) | 
+                label("func", IL, size(get-resultlistTList-func(FuncStore[Addr]))) $ st-popN(ST, size(get-paramlistTList-func(FuncStore[Addr]))) | 
                 init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
-              > # GlobalInventory # FuncStore 
-              if valid-stack(ST, get-paramlistTList-func(FuncStore[Addr])) .
+              > # GlobalInventory # FuncStore .
   
   rl [call-by-name] : {funcIndCtx IndFuncCtxSTR } < (call Str) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
