@@ -1106,14 +1106,14 @@ fmod WASM-FUNCDEF-MOD is
 
   op _ _ : TypeRef ParamResultType -> FuncTypeDef [ctor] .
 
-  op (func _ _ _ _ end) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d d n++i n--i ni)] .
-  op (func _ _ _ _ end) : String FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d d n++i n--i ni)] .
-  op (func _ _ _ end) : Id LocalsRef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
-  op (func _ _ _ end) : String LocalsRef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
-  op (func _ _ _ end) : Id FuncTypeDef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
-  op (func _ _ _ end) : String FuncTypeDef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
-  op (func _ _ end) : Id List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
-  op (func _ _ end) : String List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
+  op (func _ _ _ _ ) : Id FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
+  op (func _ _ _ _ ) : String FuncTypeDef LocalsRef List{Inst} -> FuncDef [ctor format (ni d d n++i n--i ni)] .
+  op (func _ _ _ ) : Id LocalsRef List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
+  op (func _ _ _ ) : String LocalsRef List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
+  op (func _ _ _ ) : Id FuncTypeDef List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
+  op (func _ _ _ ) : String FuncTypeDef List{Inst} -> FuncDef [ctor format (ni d n++i n--i ni)] .
+  op (func _ _ ) : Id List{Inst} -> FuncDef [ctor format (ni n++i n--i ni)] .
+  op (func _ _ ) : String List{Inst} -> FuncDef [ctor format (ni n++i n--i ni)] .
 
   var Id : Id .
   var Str : String .
@@ -1121,12 +1121,12 @@ fmod WASM-FUNCDEF-MOD is
   var FuncTypeDef : FuncTypeDef .
   var IL : List{Inst} .
 
-  eq (func Id LocalsRef IL end) = (func Id ((param nil) (result nil)) LocalsRef IL end) .
-  eq (func Str LocalsRef IL end) = (func Str ((param nil) (result nil)) LocalsRef IL end) .
-  eq (func Id FuncTypeDef IL end) = (func Id FuncTypeDef (local nil) IL end) .
-  eq (func Str FuncTypeDef IL end) = (func Str FuncTypeDef (local nil) IL end) .
-  eq (func Id IL end) = (func Id ((param nil) (result nil)) (local nil) IL end) .
-  eq (func Str IL end) = (func Str ((param nil) (result nil)) (local nil) IL end) .
+  eq (func Id LocalsRef IL ) = (func Id ((param nil) (result nil)) LocalsRef IL ) .
+  eq (func Str LocalsRef IL ) = (func Str ((param nil) (result nil)) LocalsRef IL ) .
+  eq (func Id FuncTypeDef IL ) = (func Id FuncTypeDef (local nil) IL ) .
+  eq (func Str FuncTypeDef IL ) = (func Str FuncTypeDef (local nil) IL ) .
+  eq (func Id IL ) = (func Id ((param nil) (result nil)) (local nil) IL ) .
+  eq (func Str IL ) = (func Str ((param nil) (result nil)) (local nil) IL ) .
 
 endfm
 
@@ -1398,11 +1398,11 @@ mod WASMMOD is
                  = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Id FuncType), TypeStore) #) .
   eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((type Str FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr]} # (module ModuleContent) # insert(Str, TCtr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Str FuncType), TypeStore) #) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Id FuncTypeDef LocalsRef IL end) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL end), FuncStore) # TypeStore #)
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Id FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Str FuncTypeDef LocalsRef IL end) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL end), FuncStore) # TypeStore #)
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Str FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
@@ -1667,37 +1667,37 @@ mod WASMMOD is
   eq if-else(val(0), IL1, IL2, BlockType) = ((block BlockType) IL2 end) [owise] .
   
   op get-IL-func : FuncDef -> List{Inst} .
-  eq get-IL-func(func N FuncTypeDef LocalsRef IL end) = IL .
-  eq get-IL-func(func Str FuncTypeDef LocalsRef IL end) = IL .
+  eq get-IL-func(func N FuncTypeDef LocalsRef IL ) = IL .
+  eq get-IL-func(func Str FuncTypeDef LocalsRef IL ) = IL .
 
   op exit-func : List{TypeToken} -> Inst [ctor] .
 
   op get-localsref-func : FuncDef -> LocalsRef .
-  eq get-localsref-func(func N FuncTypeDef LocalsRef IL end) = LocalsRef .
-  eq get-localsref-func(func Str FuncTypeDef LocalsRef IL end) = LocalsRef .
+  eq get-localsref-func(func N FuncTypeDef LocalsRef IL ) = LocalsRef .
+  eq get-localsref-func(func Str FuncTypeDef LocalsRef IL ) = LocalsRef .
 
   op get-localsTList-func : FuncDef -> List{TypeToken} .
-  eq get-localsTList-func(func N FuncTypeDef (local TList) IL end) = TList .
-  eq get-localsTList-func(func Str FuncTypeDef (local TList) IL end) = TList .
+  eq get-localsTList-func(func N FuncTypeDef (local TList) IL ) = TList .
+  eq get-localsTList-func(func Str FuncTypeDef (local TList) IL ) = TList .
 
   op get-localsTList : LocalsRef -> List{TypeToken} .
   eq get-localsTList(local TList) = TList .
 
   op get-paramlist-func : FuncDef -> ParamType .
-  eq get-paramlist-func(func N (ParamType ResultType) LocalsRef IL end) = ParamType .
-  eq get-paramlist-func(func Str (ParamType ResultType) LocalsRef IL end) = ParamType .
-  eq get-paramlist-func(func N (ParamType) LocalsRef IL end) = ParamType .
-  eq get-paramlist-func(func Str (ParamType) LocalsRef IL end) = ParamType .
-  eq get-paramlist-func(func N (ResultType) LocalsRef IL end) = (param nil) .
-  eq get-paramlist-func(func Str (ResultType) LocalsRef IL end) = (param nil) .
+  eq get-paramlist-func(func N (ParamType ResultType) LocalsRef IL ) = ParamType .
+  eq get-paramlist-func(func Str (ParamType ResultType) LocalsRef IL ) = ParamType .
+  eq get-paramlist-func(func N (ParamType) LocalsRef IL ) = ParamType .
+  eq get-paramlist-func(func Str (ParamType) LocalsRef IL ) = ParamType .
+  eq get-paramlist-func(func N (ResultType) LocalsRef IL ) = (param nil) .
+  eq get-paramlist-func(func Str (ResultType) LocalsRef IL ) = (param nil) .
   
   op get-resultlist-func : FuncDef -> ResultType .
-  eq get-resultlist-func(func N (ParamType ResultType) LocalsRef IL end) = ResultType .
-  eq get-resultlist-func(func Str (ParamType ResultType) LocalsRef IL end) = ResultType .
-  eq get-resultlist-func(func N (ParamType) LocalsRef IL end) = (result nil) .
-  eq get-resultlist-func(func Str (ParamType) LocalsRef IL end) = (result nil) .
-  eq get-resultlist-func(func N (ResultType) LocalsRef IL end) = ResultType .
-  eq get-resultlist-func(func Str (ResultType) LocalsRef IL end) = ResultType .
+  eq get-resultlist-func(func N (ParamType ResultType) LocalsRef IL ) = ResultType .
+  eq get-resultlist-func(func Str (ParamType ResultType) LocalsRef IL ) = ResultType .
+  eq get-resultlist-func(func N (ParamType) LocalsRef IL ) = (result nil) .
+  eq get-resultlist-func(func Str (ParamType) LocalsRef IL ) = (result nil) .
+  eq get-resultlist-func(func N (ResultType) LocalsRef IL ) = ResultType .
+  eq get-resultlist-func(func Str (ResultType) LocalsRef IL ) = ResultType .
 
   op aux-get-paramlistTList : ParamType -> List{TypeToken} .
   eq aux-get-paramlistTList((param TList)) = TList .
@@ -1776,8 +1776,8 @@ mod WASMMOD is
   *** Auxiliary function to validate all functions in a list
   op verify-funcList : FuncDefList Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} -> Bool .
   eq verify-funcList(EmptyFuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = true .
-  eq verify-funcList((func Id FuncTypeDef LocalsRef IL end, FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL end) get-localsTList(LocalsRef), get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL end), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Id FuncTypeDef LocalsRef IL end)) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
-  eq verify-funcList((func Str FuncTypeDef LocalsRef IL end, FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL end)) get-localsTList(LocalsRef), get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL end), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Str FuncTypeDef LocalsRef IL end)) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
+  eq verify-funcList(((func Id FuncTypeDef LocalsRef IL ), FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL ) get-localsTList(LocalsRef), get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL ), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Id FuncTypeDef LocalsRef IL )) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
+  eq verify-funcList(((func Str FuncTypeDef LocalsRef IL ), FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL )) get-localsTList(LocalsRef), get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL ), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Str FuncTypeDef LocalsRef IL )) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
   eq verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = false [owise] .
 
   *** Verify func body (expr) with Context C' containing a temp TypeToken stack, the original TList, the params-local TList, the result TList (last TList is labels), etc.

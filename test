@@ -455,6 +455,8 @@ erew search-with-func-from-file("examples/factorial_adapt.wat", "$start", 'w:WAS
 [NOTE] Get partial result from search over test with custom syntax:
 search [,45] run-factorial =>* w:[WASMSimTrigger] .
 
+search run-factorial =>! w:WASMSimTrigger .
+
 search run-br-test =>! w:WASMSimTrigger .
 
 [Individual parses]

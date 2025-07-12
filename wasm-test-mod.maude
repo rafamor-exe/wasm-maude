@@ -13,17 +13,17 @@ mod WASM-TEST-MOD is
                                       (type "type1" (func (param i32) (result i32)))
                                       (func "start"
                                       (local i32)
-                                        (
+                                        
                                             i32 .const 5
                                             global.set "gb1"
                                             global.get "gb1"
                                             call "factorial"
                                             global.set "result"
+                                        
                                         )
-                                        end)
                                       (func "factorial" (type "type1")
                                       (local i32)
-                                        (
+                                        
                                             i32 .const 0
                                             local.get 0
                                             i32 . eq
@@ -37,8 +37,8 @@ mod WASM-TEST-MOD is
                                                 call "factorial"
                                                 i32 . mul
                                             end)
+                                        
                                         )
-                                        end)
                                       (global "gb1" (mut i32) (i32 .const 1))
                                       (global "result" (mut i32) (i32 .const 1))
                                     )
@@ -51,7 +51,7 @@ mod WASM-TEST-MOD is
                                       (type "$type2" (func (param i32) (result i32)))
                                       (func "start"
                                       (local i32)
-                                        (
+                                        
                                             i32 .const 5
                                             global.set "gb1"
                                             global.get "gb1"
@@ -61,14 +61,14 @@ mod WASM-TEST-MOD is
                                             call "test"
                                             end)
                                             global.set "result"
+                                        
                                         )
-                                        end)
                                       (func "test" (type "type1")
                                       (local i32)
-                                        (
+                                        
                                             local.get 0
+                                        
                                         )
-                                        end)
                                       (global "gb1" (mut i32) (i32 .const 1))
                                       (global "result" (mut i32) (i32 .const 1))
                                     )
@@ -80,7 +80,7 @@ mod WASM-TEST-MOD is
                                             (type "type1" (func ((param (i32 i32)) (result i32))))
                                             (func "start"
                                             (local i32 i32)
-                                              (
+                                              
                                                   (i32 .const 10)
                                                   (global.set "dividend")
                                                   (i32 .const 0)
@@ -89,16 +89,16 @@ mod WASM-TEST-MOD is
                                                   (global.get "divisor")
                                                   (call "floatdiv")
                                                   (global.set "result")
+                                              
                                               )
-                                              end)
                                             (func "floatdiv" ((type "type1"))
                                             (local nil)
-                                              (
+                                              
                                                   (local.get 1)
                                                   (local.get 0)
                                                   (i32 . div~s)
+                                              
                                               )
-                                              end)
                                             (global "dividend" (mut i32) (i32 .const 1))
                                             (global "divisor" (mut i32) (i32 .const 1))
                                             (global "result" (mut i32) (i32 .const 1)))
@@ -110,21 +110,21 @@ mod WASM-TEST-MOD is
                                             (type "type1" (func ((param f32) (result f32))))
                                             (func "start"
                                             (local i32)
-                                              (
+                                              
                                                   (f32 .const 10)
                                                   (global.set "operand")
                                                   (global.get "operand")
                                                   (call "floatsqrt")
                                                   (global.set "result")
+                                              
                                               )
-                                              end)
                                             (func "floatsqrt" ((type "type1"))
                                             (local (f32))
-                                              (
+                                              
                                                   (local.get 0)
                                                   (f32 . sqrt)
+                                              
                                               )
-                                              end)
                                             (global "operand" (mut f32) (f32 .const 1))
                                             (global "result" (mut f32) (f32 .const 1)))
                                           , "start") .
@@ -135,7 +135,7 @@ mod WASM-TEST-MOD is
                                   (type "type1" (func ((param i32 i32) (result i32))))
                                   (func "start"
                                   (local i32)
-                                    (
+                                    
                                         (i32 .const 8)
                                         (global.set "operand1")
                                         (i32 .const 1)
@@ -155,32 +155,32 @@ mod WASM-TEST-MOD is
                                         (global.get "operand1")
                                         (call "shr_s")
                                         (global.set "result3")
+                                    
                                     )
-                                    end)
                                   (func "shl" ((type "type1"))
                                   (local (i32 i32))
-                                    (
+                                    
                                         (local.get 0)
                                         (local.get 1)
                                         (i32 . shl)
+                                    
                                     )
-                                    end)
                                   (func "shr_u" ((type "type1"))
                                   (local (i32 i32))
-                                    (
+                                    
                                         (local.get 0)
                                         (local.get 1)
                                         (i32 . shr~u)
+                                    
                                     )
-                                    end)
                                   (func "shr_s" ((type "type1"))
                                   (local (i32 i32))
-                                    (
+                                    
                                         (local.get 0)
                                         (local.get 1)
                                         (i32 . shr~s)
+                                    
                                     )
-                                    end)
                                   (global "operand1" (mut i32) (i32 .const 1))
                                   (global "operand2" (mut i32) (i32 .const 1))
                                   (global "result1" (mut i32) (i32 .const 1))
