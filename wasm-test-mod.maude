@@ -27,7 +27,7 @@ mod WASM-TEST-MOD is
                                             i32 .const 0
                                             local.get 0
                                             i32 . eq
-                                            (if (i32)
+                                            if (i32)
                                                 i32 .const 1
                                             else
                                                 local.get 0
@@ -36,7 +36,7 @@ mod WASM-TEST-MOD is
                                                 i32 . sub
                                                 call "factorial"
                                                 i32 . mul
-                                            end)
+                                            end
                                         
                                         )
                                       (global "gb1" (mut i32) (i32 .const 1))

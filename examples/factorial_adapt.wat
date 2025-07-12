@@ -17,7 +17,7 @@
             i64.const 0
             local.get 0
             i64.eq
-            (if (i64)
+            if (i64)
                 i64.const 1
             else
                 local.get 0
@@ -26,7 +26,7 @@
                 i64.sub
                 call $factorial
                 i64.mul
-            end)
+            end
         
         )
       (global $gb1 (mut i64) (i64.const 1))

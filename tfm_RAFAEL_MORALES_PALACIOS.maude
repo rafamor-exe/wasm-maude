@@ -1073,6 +1073,9 @@ fmod WASM-INST-MOD is
   op block _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
   op loop _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
   op loop _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op if _  : BlockType -> Inst [ctor prec 24 format (d d ni)] .
+  op if _  : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op else : -> Inst [ctor format (d ni)] .
   op br _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
   op br~if _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
   op end : -> Inst [ctor] .
@@ -1233,9 +1236,6 @@ mod WASMMOD is
   
   op label : String List{Inst} Nat -> Label [ctor] .
 
-  op if _ _ else _ : BlockType List{Inst} List{Inst} -> Inst [ctor format (d d ni d ni ni)] .
-  op if _ _ else _ : List{TypeToken} List{Inst} List{Inst} -> Inst [ctor format (d d ni d ni ni)] .
-
   *** Indices stores
   *** TODO: Some are left
   op {localIndCtx _} : Map{String, Addr} -> LocalIndCtx [ctor] .
@@ -1369,7 +1369,7 @@ mod WASMMOD is
   var cvtopT : CvtopToken .
 
   *** Equivalent instruction definitions
-  eq if TList IL1 else IL2 = if (result TList) IL1 else IL2 .
+  eq if TList = if (result TList) .
   eq block TList = block (result TList) .
   eq loop TList = loop (result TList) .
 
