@@ -1,6 +1,7 @@
 (module
       (type $type0 (func (result i64)))
       (type $type1 (func (param i64) (result i64)))
+      (export "start" (func 0))
       (func $start
         (local i32)
         

@@ -1157,14 +1157,20 @@ fmod WASM-MODULECONTENT-MOD is
   protecting WASM-FUNCDEF-MOD .
   protecting WASM-GLOBALDEF-MOD .
 
-  sort ModuleContent EmptyMod FuncDefList EmptyFuncDefL .
-  subsort TypeDef FuncDef GlobalDef EmptyMod < ModuleContent .
+  sort ModuleContent EmptyMod FuncDefList EmptyFuncDefL ExportDef .
+  sort FuncRef GlobalRef ModRef .
+  subsort TypeDef FuncDef GlobalDef ExportDef EmptyMod < ModuleContent .
   subsort EmptyFuncDefL FuncDef < FuncDefList .
+  subsort FuncRef GlobalRef < ModRef .
 
   op EmptyMod : -> EmptyMod [ctor] .  
   op _ _ : ModuleContent ModuleContent -> ModuleContent [ctor assoc comm prec 19 id: EmptyMod] .
   op EmptyFuncDefL : -> EmptyFuncDefL [ctor] .
   op _,_ : FuncDefList FuncDefList -> FuncDefList [ctor assoc prec 19 id: EmptyFuncDefL] .
+
+  op (func _) : Nat -> FuncRef .
+  op (global _) : Nat -> GlobalRef .
+  op (export _ _ ) : String ModRef -> ExportDef .
 
 endfm
 
@@ -1219,7 +1225,7 @@ mod WASMMOD is
   protecting MAP{Addr, GlobalInstance} .
   
   *** Declare sorts to be used and hierarchy between them.
-  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule FuncExport ExportVec NeExportVec ExportDef Stack EmptyStack NeStack StackElem Label StackAndLabel FuncStore .
+  sorts WASMSim WasmTrigger WASMSimTrigger WASMTypeFuncGlobalSim WASMTypeFuncGlobalIndSim WASMFuncGlobalSim WASMFuncGlobalIndSim GlobalInventory WASMGlobalSim WASMGlobalIndSim WASMLocalSim WASMLocalIndSim WASMModule Stack EmptyStack NeStack StackElem Label StackAndLabel FuncStore .
   sorts IndCtx LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx .
   sorts Starter .
   sorts ComponentCtr .
@@ -1367,6 +1373,7 @@ mod WASMMOD is
   var unopT : UnopToken .
   var relopT : RelopToken .
   var cvtopT : CvtopToken .
+  var ExportDef : ExportDef .
 
   *** Equivalent instruction definitions
   eq if TList = if (result TList) .
@@ -1416,6 +1423,8 @@ mod WASMMOD is
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (v128 .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(v128, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
                  if 0 <= IntN and IntN < (2 ^ (bit-width(v128))) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ExportDef ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
 
 
   op simulate-wasm : WASMTypeFuncGlobalIndSim -> WASMTypeFuncGlobalIndSim .

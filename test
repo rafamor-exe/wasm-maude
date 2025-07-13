@@ -588,3 +588,8 @@ func "$mult" (type "$type1") (local i32)
    i32 . mul
   )
 end .
+
+*** TEST SUITE
+erew search-with-func-from-file("test-suite/t.const.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/t.unop_0param.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/t.unop_1param.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
