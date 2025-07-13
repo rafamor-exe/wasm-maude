@@ -1586,10 +1586,11 @@ mod WASMMOD is
               =>   
               {funcIndCtx IndFuncCtxSTR } < (call (IndFuncCtxSTR[Str])) IL | ST | LocalSTRList > # GlobalInventory # FuncStore .
 
+  *** When exiting a function, stack is checked against the reverse of the result list (because of spec order)
   crl [exit-func] : < exit-func(TypeTokenList) IL | ST | LocalSTR NeLocalSTRList > # GlobalInventory # FuncStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalInventory # FuncStore 
-                  if valid-stack(ST, TypeTokenList) .
+                  if valid-stack(ST, reverse(TypeTokenList)) .
     
 
   eq lookup(LocalSTR, ValR) = LocalSTR[ValR] .
@@ -1784,8 +1785,8 @@ mod WASMMOD is
   *** Auxiliary function to validate all functions in a list
   op verify-funcList : FuncDefList Map{String, Addr} Map{Addr, ModuleContent} Map{String, Addr} Map{Addr, ModuleContent} Map{Addr, GlobalInstance} Map{String, Addr} -> Bool .
   eq verify-funcList(EmptyFuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = true .
-  eq verify-funcList(((func Id FuncTypeDef LocalsRef IL ), FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL ) get-localsTList(LocalsRef), get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL ), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Id FuncTypeDef LocalsRef IL )) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
-  eq verify-funcList(((func Str FuncTypeDef LocalsRef IL ), FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL )) get-localsTList(LocalsRef), get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL ), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Str FuncTypeDef LocalsRef IL )) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
+  eq verify-funcList(((func Id FuncTypeDef LocalsRef IL ), FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func(func Id FuncTypeDef LocalsRef IL ) get-localsTList(LocalsRef), reverse(get-resultlistTList-func(func Id FuncTypeDef LocalsRef IL )), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Id FuncTypeDef LocalsRef IL )) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
+  eq verify-funcList(((func Str FuncTypeDef LocalsRef IL ), FuncDefL), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = verify-IL(IL, nil, get-paramlistTList-func((func Str FuncTypeDef LocalsRef IL )) get-localsTList(LocalsRef), reverse(get-resultlistTList-func(func Str FuncTypeDef LocalsRef IL )), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, get-resultlist-func(func Str FuncTypeDef LocalsRef IL )) and verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) .
   eq verify-funcList(FuncDefL, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) = false [owise] .
 
   *** Verify func body (expr) with Context C' containing a temp TypeToken stack, the original TList, the params-local TList, the result TList (last TList is labels), etc.

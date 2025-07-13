@@ -1,6 +1,6 @@
 (module
       (export "$func0" (func 0))
-      (func $func0 (result f32)
-            f32.abs
+      (func $func0 
+            nop       
       )
 )
