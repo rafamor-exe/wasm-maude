@@ -1292,7 +1292,7 @@ mod WASMMOD is
 
   *** Stack definition
   op EmptyStack : -> EmptyStack [ctor] .
-  op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack] .
+  op _$_ : StackElem Stack -> NeStack [ctor id: EmptyStack format (d ni d d)] .
 
 
   *** lookup: auxiliar op to lookup values from store
