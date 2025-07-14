@@ -845,6 +845,8 @@ fmod WASM-FOPS-MOD is
   op flt : ValWrapper ValWrapper -> ValWrapper .
   eq flt(val(inf(neg)), val(F2)) = val(1) .
   eq flt(val(F1), val(inf(pos))) = val(1) .
+  ceq flt(val(F1), val(ZeroF2)) = val(1) if F1 < 0.0 .
+  ceq flt(val(ZeroF1), val(F2)) = val(1) if F2 > 0.0 .
   ceq flt(val(F1), val(F2)) = val(1) if F1 < F2 .
   eq flt(ValW1, ValW2) = val(0) [owise] .
 
@@ -852,6 +854,8 @@ fmod WASM-FOPS-MOD is
   op fgt : ValWrapper ValWrapper -> ValWrapper .
   eq fgt(val(inf(pos)), val(F2)) = val(1) .
   eq fgt(val(F1), val(inf(neg))) = val(1) .
+  ceq fgt(val(F1), val(ZeroF2)) = val(1) if F1 > 0.0 .
+  ceq fgt(val(ZeroF1), val(F2)) = val(1) if F2 < 0.0 .
   ceq fgt(val(F1), val(F2)) = val(1) if F1 > F2 .
   eq fgt(ValW1, ValW2) = val(0) [owise] .
 
@@ -861,6 +865,8 @@ fmod WASM-FOPS-MOD is
   eq fle(val(F1), val(inf(pos))) = val(1) .
   eq fle(val(ZeroF1), val(ZeroF2)) = val(1) .
   eq fle(ValW1, ValW1) = val(1) .
+  ceq fle(val(F1), val(ZeroF2)) = val(1) if F1 < 0.0 .
+  ceq fle(val(ZeroF1), val(F2)) = val(1) if F2 > 0.0 .
   ceq fle(val(F1), val(F2)) = val(1) if F1 < F2 .
   eq fle(ValW1, ValW2) = val(0) [owise] .
 
@@ -870,6 +876,8 @@ fmod WASM-FOPS-MOD is
   eq fge(val(F1), val(inf(neg))) = val(1) .
   eq fge(val(ZeroF1), val(ZeroF2)) = val(1) .
   eq fge(ValW1, ValW1) = val(1) .
+  ceq fge(val(F1), val(ZeroF2)) = val(1) if F1 > 0.0 .
+  ceq fge(val(ZeroF1), val(F2)) = val(1) if F2 < 0.0 .
   ceq fge(val(F1), val(F2)) = val(1) if F1 > F2 .
   eq fge(ValW1, ValW2) = val(0) [owise] .
 
