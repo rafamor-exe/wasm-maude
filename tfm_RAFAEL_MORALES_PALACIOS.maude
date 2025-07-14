@@ -1414,6 +1414,9 @@ mod WASMMOD is
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
                  if 0 <= IntN and IntN < (2 ^ (bit-width(IntT))) .
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, ValW1)}, GlobalsStore) # FuncStore # TypeStore #)
+                 if ValW1 := unsigned(val(IntN), bit-width(IntT)) .
   eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const float(IntN))) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
   eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const 0.0)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
@@ -1479,6 +1482,10 @@ mod WASMMOD is
                     =>   
                     < IL | st-push(ST, const(IntT, val(IntN))) | LocalSTRList > 
                     if 0 <= IntN and IntN < (2 ^ (bit-width(IntT))) .
+  crl [int-const-signed] : < (IntT .const IntN) IL | ST | LocalSTRList >   
+                    =>   
+                    < IL | st-push(ST, const(IntT, ValW1)) | LocalSTRList > 
+                    if ValW1 := unsigned(val(IntN), bit-width(IntT)) .
   rl [int-as-float-const] : < (FloatT .const IntN) IL | ST | LocalSTRList >   =>   < (FloatT .const float(IntN)) IL | ST | LocalSTRList > .
   rl [float-const] : < (FloatT .const FloatN) IL | ST | LocalSTRList >
                            =>
