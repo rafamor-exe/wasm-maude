@@ -569,12 +569,12 @@ fmod WASM-BITVAL-MOD is
   op ishru : List{Bit} Int -> List{Bit} .
   eq ishru(nil, Int) = nil .
   eq ishru(BS B, 0) = BS B .
-  eq ishru(BS B, Int) = ishl(0 BS, Int - 1) .
+  eq ishru(BS B, Int) = ishru(0 BS, Int - 1) .
 
   op ishrs : List{Bit} Int -> List{Bit} .
   eq ishrs(nil, Int) = nil .
   eq ishrs(B1 BS B, 0) = B1 BS B .
-  eq ishrs(B1 BS B, Int) = ishl(B1 0 BS, Int - 1) .
+  eq ishrs(B1 BS B, Int) = ishrs(B1 0 BS, Int - 1) .
 
   *** string() conversion allows to modify the base of the representation
   ***eq int-to-bitstring(I, BitStringSize) = string(I , 2) .
