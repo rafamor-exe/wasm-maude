@@ -1353,7 +1353,7 @@ mod WASMMOD is
   var ParamType : ParamType .
   var ResultType : ResultType .
   var LocalsRef : LocalsRef .
-  var TypeTokenList TList TList' TList1 TListRes TListLabel : List{TypeToken} .
+  var TypeTokenList TList TList' TList1 TListRes TListParam TListLabel : List{TypeToken} .
   var LabelsResultTypeList : ResultTypeList .
   var NeTList : NeList{TypeToken} .
   var NzIntN : NzInt .
@@ -1548,18 +1548,18 @@ mod WASMMOD is
             =>   
             < IL | ST | NeLocalSTRList > .
 
-  rl [block-resultT] : < ((block ResultType) IL2 end) IL end | ST | NeLocalSTRList >
+  rl [block-resultT] : < ((block ResultType) IL2 end) IL | ST | NeLocalSTRList >
                =>
-               < IL2 end | st-push(ST, label("block", IL end, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
+               < IL2 exit-block(IL) | st-push(ST, label("block", nil, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
 
-  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL end | ST1 | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+  crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL | ST1 | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
-               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("block", IL end, size(TListRes)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 exit-block(IL) | ST' $ label("block", nil, size(TListRes)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
                   /\ ST' $ ST := ST1
                   /\ TListRes := aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
 
-  rl [end] : < end | NeST | NeLocalSTRList >   =>   < get-inst-list-label(reset-st(NeST)) | get-st(reset-st(NeST)) | NeLocalSTRList > .
+  rl [end] : < exit-block(IL) | NeST | NeLocalSTRList >   =>   < IL | get-st(reset-st(NeST)) | NeLocalSTRList > .
 
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
@@ -1568,14 +1568,14 @@ mod WASMMOD is
   *** loop is an infinite loop
   rl [loop-resultT] : < ((loop ResultType) IL2 end) IL | ST | NeLocalSTRList >
               =>
-              < IL2 end | st-push(ST, label("loop", (loop ResultType) IL2 end, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
+              < IL2 exit-block(IL) | st-push(ST, label("loop", (loop ResultType) IL2 end, 0)) | NeLocalSTRList > .
 
   crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST1 | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
               =>
-              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 end | ST' $ label("loop", (loop TypeRef) IL2 end, size(TListRes)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
+              {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 exit-block(IL) | ST' $ label("loop", (loop TypeRef) IL2 end, size(TListParam)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
               if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
                   /\ ST' $ ST := ST1
-                  /\ TListRes := aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
+                  /\ TListParam := aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
                   
   crl [br] : < (br N) IL | ST | NeLocalSTRList >   
             =>   
@@ -1593,8 +1593,8 @@ mod WASMMOD is
   *** According to Specification: param init precedes local vars init
   rl [call] : < (call Addr) IL | ST | LocalSTRList > # GlobalInventory # FuncStore
               =>   
-              < get-IL-func(FuncStore[Addr]) exit-func(get-resultlistTList-func(FuncStore[Addr])) end | 
-                label("func", IL, size(get-resultlistTList-func(FuncStore[Addr]))) $ st-popN(ST, size(get-paramlistTList-func(FuncStore[Addr]))) | 
+              < get-IL-func(FuncStore[Addr]) exit-func(get-resultlistTList-func(FuncStore[Addr])) exit-block(IL) | 
+                label("func", nil, size(get-resultlistTList-func(FuncStore[Addr]))) $ st-popN(ST, size(get-paramlistTList-func(FuncStore[Addr]))) | 
                 init-store(get-paramlistTList-func(FuncStore[Addr]) get-localsTList-func(FuncStore[Addr]), st-getTopVals(ST, get-paramlistTList-func(FuncStore[Addr])), (empty).Map{ValRef,Value}) LocalSTRList 
               > # GlobalInventory # FuncStore .
   
@@ -1695,6 +1695,7 @@ mod WASMMOD is
   eq get-IL-func(func N FuncTypeDef LocalsRef IL ) = IL .
   eq get-IL-func(func Str FuncTypeDef LocalsRef IL ) = IL .
 
+  op exit-block : List{Inst} -> Inst [ctor] .
   op exit-func : List{TypeToken} -> Inst [ctor] .
 
   op get-localsref-func : FuncDef -> LocalsRef .
