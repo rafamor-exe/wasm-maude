@@ -916,7 +916,7 @@ fmod WASM-GBINSTANCE-MOD is
   protecting WASM-VALUE-MOD .
 
   sorts GlobalInstance GlobalType MutGlobalType MutGlobalTypeIndicator .
-  subsorts MutGlobalType < GlobalType .
+  subsorts TypeToken MutGlobalType < GlobalType .
 
   *** Included mut because of emscripten-compiled example. Not included in the standard...
   op const_ : TypeToken -> GlobalType [ctor] .
@@ -929,6 +929,7 @@ fmod WASM-GBINSTANCE-MOD is
   var MutGlobalTypeIndicator : MutGlobalTypeIndicator .
 
   op get-GlobalTypeToken : GlobalType -> TypeToken .
+  eq get-GlobalTypeToken(T) = T .
   eq get-GlobalTypeToken(const T) = T .
   eq get-GlobalTypeToken(MutGlobalTypeIndicator T) = T .
 endfm
@@ -1152,7 +1153,7 @@ fmod WASM-GLOBALDEF-MOD is
 
   sorts GlobalDef .
 
-  op (global _ (_) (_)) : String GlobalType ConstInst -> GlobalDef [ctor] .
+  op (global _ _ (_)) : String GlobalType ConstInst -> GlobalDef [ctor] .
 
 endfm
 
