@@ -2,7 +2,7 @@
 
 test_all=""
 
-for testF in test-suite/*
+for testF in test-suite/*.wat
 do
     test_all+="erew search-with-func-from-file(\"$testF\", \"\$func0\", 'w:WASMSimTrigger, nil, '!, unbounded, 0) . \n"
     
