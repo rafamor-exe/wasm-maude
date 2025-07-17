@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-file="test-suite/br_withCall.wat"
+file="test-suite/t.const.wat"
 
 test="erew search-with-func-from-file(\"$file\", \"\$func0\", 'w:WASMSimTrigger, nil, '!, unbounded, 0) . \n"
 

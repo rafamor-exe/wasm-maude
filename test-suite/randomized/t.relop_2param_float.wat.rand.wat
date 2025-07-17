@@ -1,8 +1,6 @@
 (module
       (export "$func0" (func 0))
-      (func $func0 (result i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32
-                           i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32
-                           i32 i32)
+      (func $func0 (result i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
             f32.const %randf32_1%
             f32.const %randf32_2%
             f32.eq

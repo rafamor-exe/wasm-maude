@@ -1,5 +1,3 @@
-
-
 import argparse
 import re
 
@@ -8,7 +6,7 @@ def transform_file(file, output):
         with open(file, "r", encoding="utf-8", newline="") as f:
             with open(output, "w", encoding="utf-8", newline="") as o:
                 o.write(
-                    """\n mod WASM-TEST-MOD is \n protecting WASMMOD . \n op test : -> WASMSimTrigger .
+                    """\nmod WASM-TEST-MOD is \n protecting WASMMOD . \n op test : -> WASMSimTrigger .
                         \n""")
                 o.write(" eq test = run-module-func( \n ")
                 for line in f.read().splitlines():
@@ -36,6 +34,8 @@ def transform_file(file, output):
     except FileNotFoundError as excep:
         raise Exception("Wrong file or file path"+str(file)+"\n") from excep
 
+####
+# python3 wasm2wasmMaude_transformer.py -f examples/factorial_pytesting.wat.og -o examples/factorial_pytesting.wat.transform 
 
 parser = argparse.ArgumentParser(description="Transform WAT to WASMMAUDE syntax",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
