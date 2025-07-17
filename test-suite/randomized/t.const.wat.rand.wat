@@ -1,0 +1,9 @@
+(module
+      (export "$func0" (func 0))
+      (func $func0 (result i32 f32 i64 f64)
+            i32.const %randi32_1% 
+            f32.const %randf32_1% 
+            i64.const %randi64_1% 
+            f64.const %randf64_1%        
+      )
+)
