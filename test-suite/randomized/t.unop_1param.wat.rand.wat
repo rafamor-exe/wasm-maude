@@ -1,7 +1,7 @@
 (module
-      (export "$func0" (func %randf64_1%))
-      (func $func0 (result f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64
-                           f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32)
+      (export "$func0" (func 0))
+      (func $func0 (result f64 f64 f64 f64 f64
+                           f32 f32 f32 f32 f32)
             f64.const %randf64_1%
             f64.abs
             f64.const %randf64_1%

@@ -604,7 +604,10 @@ fmod WASM-IOPS-MOD is
   *** inverted function from signed
   op unsigned : ValWrapper Nat -> ValWrapper .
   ceq unsigned(val(Int1), N) = val(Int1) if 0 <= Int1 and Int1 < (2 ^ (N - 1)) .
-  ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 and Int1 < 0 .
+  ceq unsigned(val(Int1), N) = val(Int1 + (2 ^ (N))) if ((2 ^ (N - 1)) - (2 ^ (N))) <= Int1 or Int1 < 0 .
+
+  eq signed(unsigned(val(Int1), N), N) = val(Int1) .
+  eq unsigned(signed(val(Int1), N), N) = val(Int1) .
 
   *** Auxiliary op for ibinop
   op iadd : Nat ValWrapper ValWrapper -> ValWrapper .
