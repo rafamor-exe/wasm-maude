@@ -23,7 +23,7 @@ def transform_file(file, output, func):
                     references_re = re.compile('\$(\w+)')
                     references = references_re.findall(transformed_line)
                     for ref in references:
-                        transformed_line = re.sub(rf"^\"\${ref}", rf'"${ref}"', transformed_line)
+                        transformed_line = re.sub(rf"(?<!\")\${ref}", rf'"${ref}"', transformed_line)
                         
                     o.write("\t" + transformed_line + "\n")
                 o.write('\t , "'+func+'") . \n')
