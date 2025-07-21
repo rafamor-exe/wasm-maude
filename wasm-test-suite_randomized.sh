@@ -21,6 +21,15 @@ f32_rand2=$(dd if=/dev/urandom bs=4 count=1 2>/dev/null | od -An -tfF)
 f64_rand1=$(dd if=/dev/urandom bs=8 count=1 2>/dev/null | od -An -tfD)
 f64_rand2=$(dd if=/dev/urandom bs=8 count=1 2>/dev/null | od -An -tfD)
 
+echo $i32_rand1
+echo $i32_rand2
+echo $i64_rand1
+echo $i64_rand2
+echo $f32_rand1
+echo $f32_rand2
+echo $f64_rand1
+echo $f64_rand2
+
 
 test_all=""
 

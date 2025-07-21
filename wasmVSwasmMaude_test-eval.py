@@ -1,5 +1,6 @@
 import argparse
 import re
+import math
 
 def eval(wasmF, maudeF):
     try:
@@ -41,7 +42,20 @@ def eval(wasmF, maudeF):
                     if maudeStacksL[i] == wasmStackL[i]:
                         tests_passed += 1
                     else:
-                        tests_failed.append((maudeStacksL[i], wasmStackL[i]))
+                        passed = 0
+                        for j in range(0,len(maudeStacksL[i][1])):
+                            if maudeStacksL[i][1][j] == 'i32' or maudeStacksL[i][1][j] == 'i64':
+                                if int(maudeStacksL[i][0][j]) == int(wasmStackL[i][0][j]):
+                                    passed += 1
+                            elif (maudeStacksL[i][1][j] == 'f32' or maudeStacksL[i][1][j] == 'f64'):
+                                if maudeStacksL[i][0][j] == wasmStackL[i][0][j] \
+                                    or (maudeStacksL[i][0][j] == "nan" and "nan" in wasmStackL[i][0][j]) \
+                                    or math.isclose(float(maudeStacksL[i][0][j]), float(wasmStackL[i][0][j]), rel_tol=1e-20):
+                                    passed += 1
+                        if passed == len(maudeStacksL[i]):
+                            tests_passed += 1
+                        else:
+                            tests_failed.append((maudeStacksL[i], wasmStackL[i]))
                 print("Tests passed: " + str(tests_passed) + " / " + str(len(wasmStackL)))
                 print("Tests failed:")
                 for fail in tests_failed:

@@ -1478,7 +1478,7 @@ mod WASMMOD is
   crl [global.set] : < (global.set Str) IL | const(T, ValW1) $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
                   < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert(GlobalAddrs[Str], {type (mut T), value const(T, ValW1)}, GlobalsStore) 
-                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)).
+                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)) .
 
   *** Parametric Instructions
   rl [drop] : < (drop) IL | Val $ ST | NeLocalSTRList > 
@@ -1904,7 +1904,7 @@ mod WASMMOD is
   
   ceq verify-IL(((loop TypeRef) IL2 end) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if verify-IL(IL2, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))),
-                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)), LabelsResultTypeList)) .
+                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ((result aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore)))), LabelsResultTypeList)) .
   
   ceq verify-IL((br N) IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if TListLabel := nthResultT(LabelsResultTypeList, N) .
@@ -2012,8 +2012,12 @@ mod WASM-FILE-MOD is
 
   sorts CustomOid NullOid FormatedSearchResult .
   sorts CustomSubstitution CustomAssignment .
+  sort WASMFinalState .
   subsorts CustomAssignment < CustomSubstitution .
   subsorts NullOid Oid < CustomOid .
+
+  subsort WASMFinalState < WASMSimTrigger .
+
   op nullOid : -> NullOid [ctor] .
 
   op myClass : -> Cid . 
@@ -2021,11 +2025,13 @@ mod WASM-FILE-MOD is
   ops in:_ : CustomOid -> Attribute . 
   ops inFile:_ outText:_ : String -> Attribute . 
 
-  op _<==_ : Variable WASMSimTrigger -> CustomAssignment [ctor] .
+  op _<==_ : Variable [WASMSimTrigger] -> CustomAssignment [ctor] .
   op noCustomSubstitution : -> CustomSubstitution [ctor] .
   op _&&_ : CustomSubstitution CustomSubstitution -> CustomSubstitution [ctor assoc comm id: noCustomSubstitution prec 65 ] .
-  op [_/_/_] : WASMSimTrigger Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
+  op [_/_/_] : [WASMSimTrigger] Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
   op NoResult : -> FormatedSearchResult [ctor] .
+
+  op asis : WASMSimTrigger -> WASMSimTrigger [frozen] .
   
   vars Text Acc WASMModFile Reason Func : String . 
   vars FHIn : Oid . 
@@ -2061,23 +2067,22 @@ mod WASM-FILE-MOD is
                                 Condition, SearchType, maxDepth, solNumber)) .
   
   *** Auxiliary function to trigger meta-search only when the file is read entirely
-  op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple? .
+  op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple .
   eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
     metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func)), ResTerm, Condition, SearchType, maxDepth, solNumber) .
 
   *** Format ResultTriple from meta-search
   op getFormattedRes : ResultTriple? -> FormatedSearchResult .
   eq getFormattedRes(failure) = NoResult .
-  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [downTerm(OgTerm, errorWASMSimTrigger) / Type / formatSubs(ResSubstitution)] .
+  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [asis(downTerm(OgTerm, errorWASMSimTrigger)) / Type / formatSubs(ResSubstitution)] .
 
   *** Format substitutions
   op formatSubs : Substitution -> CustomSubstitution .
   eq formatSubs(none) = noCustomSubstitution .
-  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== downTerm(ResTerm, errorWASMSimTrigger)) && formatSubs(ResSubstitution) .
+  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== asis(downTerm(ResTerm, errorWASMSimTrigger))) && formatSubs(ResSubstitution) .
 
   op get-config-sim : Configuration String -> WASMSimTrigger .
   eq get-config-sim(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func) . ***Acc .
-
 
   *** Maude API for external objects
   *** Read file line-by-line to a String until the end of the file 
