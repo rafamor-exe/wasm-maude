@@ -71,7 +71,6 @@ fmod WASM-FUNCTYPE-MOD is
 
   sorts ParamType ResultType .
 
-  *** NOTE: List{TypeToken} needs to be wrapped on parenthesis for Maude to parse it correctly
   op (param _) : List{TypeToken} -> ParamType [ctor prec 50] .
   op (result _) : List{TypeToken} -> ResultType [ctor prec 50] .
 
@@ -114,9 +113,6 @@ fmod WASM-PARRESTYPE-MOD is
   eq getResultType((param TList1) (result TList2)) = (result TList2) .
   eq getResultType((result TList2)) = (result TList2) .
   eq getResultType((param TList1)) = (result nil) .
-
-  mb (param (TList1 TList2)) : ParamType .
-  mb (result (TList1 TList2)) : ResultType .
 
   op EmptyResultTypeList : -> EmptyResultTypeList [ctor] .
   op _,_ : ResultTypeList ResultTypeList -> ResultTypeList [ctor assoc id: EmptyResultTypeList] .
@@ -1349,8 +1345,6 @@ mod WASMMOD is
   var MutGlobalTypeIndicator : MutGlobalTypeIndicator .
   var GlobalInstance : GlobalInstance .
   var Addr : Addr .
-  ***var FuncStore : Map{Addr, FuncDef} .
-  ***var TypeStore : Map{Addr, TypeDef} .
   var FuncStore TypeStore : Map{Addr, ModuleContent} .
   var TypeRef : TypeRef .
   var ParamType : ParamType .
@@ -2100,20 +2094,5 @@ mod WASM-FILE-MOD is
       then closeFile(FHIn, myObj)
       else getLine(FHIn, myObj)
       fi .
-
-  ***op parse : Configuration -> Configuration .
-  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
-  ***          openedFile(myObj, fileManager, FHIn))
-  ***      = parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs >)
-  ***    getLine(FHIn, myObj) .
-  ***eq parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs > 
-  ***          fileError(myObj, fileManager, Reason))
-  ***      = parse(< myObj : myClass | in: nullOid, outText: Acc, Attrs >) .
-  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
-  ***          gotLine(myObj, FHIn, ""))
-  ***      = < myObj : myClass | in: FHIn, outText: (Acc + ""), Attrs > closeFile(FHIn, myObj) .
-  ***eq parse(< myObj : myClass | in: FHIn, outText: Acc, Attrs > 
-  ***          gotLine(myObj, FHIn, Text))
-  ***      = parse(< myObj : myClass | in: FHIn, outText: (Acc + Text), Attrs > getLine(FHIn, myObj)) .
 
 endm
