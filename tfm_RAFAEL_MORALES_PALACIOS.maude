@@ -1846,10 +1846,10 @@ mod WASMMOD is
     verify-IL(((block BlockType) IL1 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(BlockType), LabelsResultTypeList))
       and verify-IL(((block BlockType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(BlockType), LabelsResultTypeList)) .
   ceq verify-IL(((loop ResultType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(ResultType) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if verify-IL(IL2, nil, TList1, aux-get-resultlistTList(ResultType), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (ResultType, LabelsResultTypeList)) .
+    if verify-IL(IL2, nil, TList1, aux-get-resultlistTList(ResultType), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ((result nil), LabelsResultTypeList)) .
   ceq verify-IL(((loop TypeRef) IL2 end) IL, TList' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if verify-IL(IL2, TList',
-                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)), LabelsResultTypeList))
+                  TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, ((result TList'), LabelsResultTypeList))
        and TList' == aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
   ceq verify-IL((br N) IL, TListLabel TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, Unknown, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if TListLabel == nthResultT(LabelsResultTypeList, N) .
@@ -2031,7 +2031,7 @@ mod WASM-FILE-MOD is
   op [_/_/_] : [WASMSimTrigger] Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
   op NoResult : -> FormatedSearchResult [ctor] .
 
-  op asis : WASMSimTrigger -> WASMSimTrigger [frozen] .
+  op asis : [WASMSimTrigger] -> [WASMSimTrigger] [frozen] .
   
   vars Text Acc WASMModFile Reason Func : String . 
   vars FHIn : Oid . 
