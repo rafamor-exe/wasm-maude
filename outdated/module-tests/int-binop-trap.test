@@ -1,5 +1,5 @@
-*** Divides 10 / -2 signed
-load ../tfm_RAFAEL_MORALES_PALACIOS.maude .
+*** Divides 10 / 0
+load ../wasm-maude-semantics.maude .
 rew run-module-func(
     (module
       (type "type0" (func ((result i32))))
@@ -9,7 +9,7 @@ rew run-module-func(
         (
             (i32 .const 10)
             (global.set "dividend")
-            (i32 .const 4294967294)
+            (i32 .const 0)
             (global.set "divisor")
             (global.get "dividend")
             (global.get "divisor")

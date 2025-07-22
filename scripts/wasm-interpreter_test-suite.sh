@@ -1,6 +1,9 @@
 #!/usr/bin/bash
 
-for testF in test-suite/*.wat
+MAUDE_LIBRARY="/bin"
+PROJECT_PATH="."
+
+for testF in $PROJECT_PATH/test-suite/*.wat
 do
     echo "Test: $testF"
     wasm $testF -e '(invoke "$func0")'

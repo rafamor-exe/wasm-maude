@@ -1,4 +1,4 @@
-load ../tfm_RAFAEL_MORALES_PALACIOS.maude .
+load ../wasm-maude-semantics.maude .
 rew run-module-func(
     (module
       (type "type0" (func (result i32)))

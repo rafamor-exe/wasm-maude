@@ -1,6 +1,9 @@
 #!/usr/bin/bash
 
-TEMPLATE_TEST_DIR="test-suite/randomized"
+MAUDE_LIBRARY="/bin"
+PROJECT_PATH="."
+
+TEMPLATE_TEST_DIR="${PROJECT_PATH}/test-suite/randomized"
 TMP_TEST_DIR="${TEMPLATE_TEST_DIR}/tmp-test"
 
 rm -rf ${TMP_TEST_DIR}
@@ -53,8 +56,8 @@ do
     
 done
 
-echo -e "load /bin/file.maude \n load tfm_RAFAEL_MORALES_PALACIOS.maude \n $test_all " | maude -trust -no-banner > ${TMP_TEST_DIR}/wasmmaude.dump
+echo -e "load $MAUDE_LIBRARY/file.maude \n load $PROJECT_PATH/wasm-maude-semantics.maude \n $test_all " | $MAUDE_LIBRARY/maude -trust -no-banner > ${TMP_TEST_DIR}/wasmmaude.dump
 
-python3 wasmVSwasmMaude_test-eval.py -w ${TMP_TEST_DIR}/wasm.dump -m ${TMP_TEST_DIR}/wasmmaude.dump
+python3 ${PROJECT_PATH}/scripts/wasmVSwasmMaude_test-eval.py -w ${TMP_TEST_DIR}/wasm.dump -m ${TMP_TEST_DIR}/wasmmaude.dump
 
 rm -rf ${TMP_TEST_DIR}
