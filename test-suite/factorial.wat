@@ -1,8 +1,8 @@
 (module
     (type $type0 (func (result i32)))
     (type $type1 (func (param i32) (result i32)))
-    (export "$start" (func 0))
-    (func $start (type $type0)
+    (export "$func0" (func 0))
+    (func $func0 (type $type0)
         i32.const 5
         call $factorial
     )
