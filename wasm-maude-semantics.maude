@@ -1289,7 +1289,7 @@ mod WASMMOD is
 
   op [_, _, _] : Nat Nat Nat -> ComponentCtr [ctor] .
 
-  op {_, indctr _} : Starter ComponentCtr -> WasmTrigger [ctor] .
+  op {_, indctr _, initIL _} : Starter ComponentCtr List{Inst} -> WasmTrigger [ctor] .
 
   op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor format (ni ni ni)] .
   op Fail : String -> WASMSimTrigger [ctor] .
@@ -1394,46 +1394,50 @@ mod WASMMOD is
   op uninitialized : -> Inst [ctor] .
 
   op run-module-func : WASMModule Nat -> WASMSimTrigger .
-  eq run-module-func(WASMModule, N) = read-module({start N, indctr [0, 0, 0]} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
+  op run-module-func : WASMModule Nat List{Inst} -> WASMSimTrigger .
+  eq run-module-func(WASMModule, N) = run-module-func(WASMModule, N, nil) .
+  eq run-module-func(WASMModule, N, IL) = read-module({start N, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
 
   op run-module-func : WASMModule String -> WASMSimTrigger .
-  eq run-module-func(WASMModule, Str) = read-module({start Str, indctr [0, 0, 0]} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
+  op run-module-func : WASMModule String List{Inst} -> WASMSimTrigger .
+  eq run-module-func(WASMModule, Str) = run-module-func(WASMModule, Str, nil) .
+  eq run-module-func(WASMModule, Str, IL) = read-module({start Str, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
 
   *** Module decoding -> Module validation -> Module instantiation
   *** Read module component definitions
   *** Done as eq logic to avoid non-determinism on component parsing (due to multiset reading possibilities)
   op read-module : WASMSimTrigger -> WASMSimTrigger .
-  eq read-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
-  eq read-module({start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = validate-funcs-module({start Str, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((type Id FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Id FuncType), TypeStore) #) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((type Str FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr]} # (module ModuleContent) # insert(Str, TCtr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Str FuncType), TypeStore) #) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Id FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
+  eq read-module({start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = validate-funcs-module({start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+  eq read-module({start Str, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = validate-funcs-module({start Str, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((type Id FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Id FuncType), TypeStore) #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((type Str FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr], initIL IL1} # (module ModuleContent) # insert(Str, TCtr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Str FuncType), TypeStore) #) .
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((func Id FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((func Str FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr]} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((func Str FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
                  if 0 <= IntN and IntN < (2 ^ (bit-width(IntT))) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, ValW1)}, GlobalsStore) # FuncStore # TypeStore #)
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, ValW1)}, GlobalsStore) # FuncStore # TypeStore #)
                  if ValW1 := unsigned(val(IntN), bit-width(IntT)) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const float(IntN))) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const 0.0)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value correctFloat(const(FloatT, val(zero(pos))))}, GlobalsStore) # FuncStore # TypeStore #) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (FloatT .const FloatN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value correctFloat(const(FloatT, val(FloatN)))}, GlobalsStore) # FuncStore # TypeStore #) .
-  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ((global Str (GlobalType) (v128 .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(v128, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (FloatT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (FloatT .const float(IntN))) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (FloatT .const 0.0)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value correctFloat(const(FloatT, val(zero(pos))))}, GlobalsStore) # FuncStore # TypeStore #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (FloatT .const FloatN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value correctFloat(const(FloatT, val(FloatN)))}, GlobalsStore) # FuncStore # TypeStore #) .
+  ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (v128 .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(v128, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
                  if 0 <= IntN and IntN < (2 ^ (bit-width(v128))) .
-  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ExportDef ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr]} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+  eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ExportDef ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+                 = read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
 
 
   op simulate-wasm : WASMTypeFuncGlobalIndSim -> WASMTypeFuncGlobalIndSim .
@@ -1778,15 +1782,15 @@ mod WASMMOD is
   *** Validate all functions in module context. If any function is not valid, the module is not valid and instantiation fails.
   *** Module validation -> Module instantiation
   op validate-funcs-module : WASMSimTrigger -> WASMSimTrigger .
-  eq validate-funcs-module({start N, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+  eq validate-funcs-module({start N, indctr ComponentCtr, initIL IL} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
       = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) then
-           {start N, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR}  < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
+           {start N, indctr ComponentCtr, initIL IL} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR}  < IL (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
         else 
           Fail("Invalid module")
         fi .
-  eq validate-funcs-module({start Str, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
+  eq validate-funcs-module({start Str, indctr ComponentCtr, initIL IL} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
       = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore,  GlobalsStore, GlobalAddrs) then
-           {start Str, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
+           {start Str, indctr ComponentCtr, initIL IL} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < IL (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
         else 
           Fail("Invalid module")
         fi .
@@ -2042,6 +2046,7 @@ mod WASM-FILE-MOD is
   var ResSubstitution : Substitution .
   var ResAssignment : Assignment .
   var ResVar : Variable .
+  var InitIL : String .
 
   *** Get Maude External API config from parsed module 
   op gen-config : String -> Configuration [ctor] .
@@ -2053,17 +2058,19 @@ mod WASM-FILE-MOD is
   eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
 
   *** Function to meta-search using erew
+  op search-with-func-from-file : String String String Term Condition Qid Bound Nat -> FormatedSearchResult .
   op search-with-func-from-file : String String Term Condition Qid Bound Nat -> FormatedSearchResult .
-  eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
+  eq search-with-func-from-file(WASMModFile, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) = search-with-func-from-file(WASMModFile, Func, "", ResTerm, Condition, SearchType, maxDepth, solNumber) .
+  eq search-with-func-from-file(WASMModFile, Func, InitIL, ResTerm, Condition, SearchType, maxDepth, solNumber) =
       getFormattedRes(aux-metaSearch(upModule('WASMMOD, false),
-                                gen-config(WASMModFile), Func,
+                                gen-config(WASMModFile), Func, InitIL,
                                 ResTerm,
                                 Condition, SearchType, maxDepth, solNumber)) .
   
   *** Auxiliary function to trigger meta-search only when the file is read entirely
-  op aux-metaSearch : Module Configuration String Term Condition Qid Bound Nat -> ResultTriple .
-  eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, ResTerm, Condition, SearchType, maxDepth, solNumber) =
-    metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func)), ResTerm, Condition, SearchType, maxDepth, solNumber) .
+  op aux-metaSearch : Module Configuration String String Term Condition Qid Bound Nat -> ResultTriple .
+  eq aux-metaSearch(Module, <> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func, InitIL, ResTerm, Condition, SearchType, maxDepth, solNumber) =
+    metaSearch(Module, upTerm(run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func, downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(InitIL), 'List`{Inst`})), nil))), ResTerm, Condition, SearchType, maxDepth, solNumber) .
 
   *** Format ResultTriple from meta-search
   op getFormattedRes : ResultTriple? -> FormatedSearchResult .
