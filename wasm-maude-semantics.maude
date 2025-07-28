@@ -1560,7 +1560,7 @@ mod WASMMOD is
                   /\ ST' $ ST := ST1
                   /\ TListRes := aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
 
-  rl [end] : < exit-block(IL) | NeST | NeLocalSTRList >   =>   < IL | get-st(reset-st(NeST)) | NeLocalSTRList > .
+  rl [end] : < exit-block(IL) | NeST | LocalSTRList >   =>   < IL | get-st(reset-st(NeST)) | LocalSTRList > .
 
   rl [if-else] : < (if BlockType IL1 else IL2 end) IL | const(i32, ValW1) $ ST | NeLocalSTRList >   
                  =>
@@ -1840,6 +1840,9 @@ mod WASMMOD is
     if verify-IL(IL2, TList',
                   TList1, aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore)), LabelsResultTypeList))
        and TList' == aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
+  eq verify-IL((if BlockType IL1 else IL2 end) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = 
+    verify-IL(((block BlockType) IL1 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
+      and verify-IL(((block BlockType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) .
   eq verify-IL((if BlockType IL1 else IL2 end) IL, i32 TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = 
     verify-IL(((block BlockType) IL1 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(BlockType), LabelsResultTypeList))
       and verify-IL(((block BlockType) IL2 end) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, (getResultType(BlockType), LabelsResultTypeList)) .
