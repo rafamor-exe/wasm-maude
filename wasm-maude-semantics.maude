@@ -1812,7 +1812,7 @@ mod WASMMOD is
   eq verify-IL(nil, TListRes, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = true .
   ***eq verify-IL(return, TList1, TList1) = true .
   ceq verify-IL((local.get ValR) IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
-    if T := nthT(TList1, ValR) .
+    if T := nthT(TList1, ValR) /\ ValR < size(TList1) .
   ceq verify-IL((local.set ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
     if T' == nthT(TList1, ValR) .
   ceq verify-IL((local.tee ValR) IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = verify-IL(IL, T' TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList)
