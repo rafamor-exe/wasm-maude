@@ -1293,7 +1293,7 @@ mod WASMMOD is
 
   op _ _ : WasmTrigger WASMSim -> WASMSimTrigger [ctor format (ni ni ni)] .
   op Fail : String -> WASMSimTrigger [ctor] .
-  
+
   *** Module sections
 
   op (module _) : ModuleContent -> WASMModule [ctor prec 20] .
@@ -1315,7 +1315,9 @@ mod WASMMOD is
   var WASMModule : WASMModule .
   var WASMTypeFuncGlobalSim : WASMTypeFuncGlobalSim .
   var WASMTypeFuncGlobalIndSim : WASMTypeFuncGlobalIndSim .
+  var WASMFuncGlobalIndSim : WASMFuncGlobalIndSim .
   var WASMSimTrigger : WASMSimTrigger .
+  var WASMSim : WASMSim .
   vars I1 S1 : Inst .
   var ConstInst : ConstInst .
   vars ValR ValR2 : ValRef .
@@ -1380,6 +1382,7 @@ mod WASMMOD is
   var relopT : RelopToken .
   var cvtopT : CvtopToken .
   var ExportDef : ExportDef .
+  var WasmTrigger : WasmTrigger .
 
   *** Equivalent instruction definitions
   eq if TList = if (result TList) .
@@ -1611,6 +1614,37 @@ mod WASMMOD is
     
 
   eq lookup(LocalSTR, ValR) = LocalSTR[ValR] .
+
+  *** Get state stack
+  op stack : WASMSimTrigger -> Stack .
+  op stack : WASMSim -> Stack .
+  op stack : WASMTypeFuncGlobalIndSim -> Stack .
+  op stack : WASMTypeFuncGlobalSim -> Stack .
+  op stack : WASMFuncGlobalIndSim -> Stack .
+  op stack : WASMGlobalSim -> Stack .
+  op stack : WASMLocalSim -> Stack .
+  eq stack(WasmTrigger
+    WASMSim) = stack(WASMSim) .
+  eq stack(
+    # WASMModule
+    #
+    IndTypeCtx
+    WASMTypeFuncGlobalSim
+    #) = stack(WASMTypeFuncGlobalSim) .
+  eq stack(
+    WASMFuncGlobalIndSim
+    #
+    TypeStore) = stack(WASMFuncGlobalIndSim) .
+  eq stack(
+    IndFuncCtx < IL | ST | LocalSTRList >
+    #
+    GlobalInventory
+    #
+    FuncStore) = ST .
+
+  op st-size : Stack -> Nat .
+  eq st-size(EmptyStack) = 0 .
+  eq st-size(STElem $ ST) = 1 + st-size(ST) .
 
   *** List{Inst} operations 
   op head : NeList{Inst} -> Inst .
