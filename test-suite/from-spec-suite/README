@@ -1,0 +1,1 @@
+These tests are based on the official WASM test suite, available at: https://github.com/WebAssembly/spec/tree/main/test/core . The tests in this directory are only transformations from those in that repository.
