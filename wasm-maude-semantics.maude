@@ -1077,12 +1077,15 @@ fmod WASM-INST-MOD is
   op nop : -> Inst [ctor format (d ni)] .
   op unreachable : -> Inst [ctor format (d ni)] .
 
+  op block : -> Inst [ctor format (d ni)] .
   op block _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
   op block _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op loop : -> Inst [ctor format (d ni)] .
   op loop _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
   op loop _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
-  op if _  : BlockType -> Inst [ctor prec 24 format (d d ni)] .
-  op if _  : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op if : -> Inst [ctor format (d ni)] .
+  op if _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
+  op if _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
   op else : -> Inst [ctor format (d ni)] .
   op br _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
   op br~if _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
@@ -1387,8 +1390,11 @@ mod WASMMOD is
 
   *** Equivalent instruction definitions
   eq if TList = if (result TList) .
+  eq if = if (result nil) .
   eq block TList = block (result TList) .
+  eq block = block (result nil) .
   eq loop TList = loop (result TList) .
+  eq loop = loop (result nil) .
 
 
   *** Run trigger
@@ -1617,7 +1623,7 @@ mod WASMMOD is
   eq lookup(LocalSTR, ValR) = LocalSTR[ValR] .
 
   *** Get state stack
-  op stack : WASMSimTrigger -> Stack .
+  op stack : [WASMSimTrigger] -> Stack .
   op stack : WASMSim -> Stack .
   op stack : WASMTypeFuncGlobalIndSim -> Stack .
   op stack : WASMTypeFuncGlobalSim -> Stack .
@@ -1647,6 +1653,17 @@ mod WASMMOD is
   op st-size : Stack -> Nat .
   eq st-size(EmptyStack) = 0 .
   eq st-size(STElem $ ST) = 1 + st-size(ST) .
+
+  op st-topVal : Stack -> Value .
+  eq st-topVal(Val $ ST) = Val .
+
+  op get-trigger : WASMSimTrigger -> WasmTrigger .
+  eq get-trigger(WasmTrigger WASMSim) = WasmTrigger .
+
+  op get-initIL : WasmTrigger ->  List{Inst} .
+  eq get-initIL({StartFunc, indctr ComponentCtr, initIL IL}) = IL .
+
+  ***
 
   *** List{Inst} operations 
   op head : NeList{Inst} -> Inst .
