@@ -1316,6 +1316,7 @@ mod WASMMOD is
   var WASMTypeFuncGlobalSim : WASMTypeFuncGlobalSim .
   var WASMTypeFuncGlobalIndSim : WASMTypeFuncGlobalIndSim .
   var WASMFuncGlobalIndSim : WASMFuncGlobalIndSim .
+  var WASMFuncGlobalSim : WASMFuncGlobalSim .
   var WASMSimTrigger : WASMSimTrigger .
   var WASMSim : WASMSim .
   vars I1 S1 : Inst .
@@ -1621,10 +1622,10 @@ mod WASMMOD is
   op stack : WASMTypeFuncGlobalIndSim -> Stack .
   op stack : WASMTypeFuncGlobalSim -> Stack .
   op stack : WASMFuncGlobalIndSim -> Stack .
+  op stack : WASMFuncGlobalSim -> Stack .
   op stack : WASMGlobalSim -> Stack .
   op stack : WASMLocalSim -> Stack .
-  eq stack(WasmTrigger
-    WASMSim) = stack(WASMSim) .
+  eq stack(WasmTrigger WASMSim) = stack(WASMSim) .
   eq stack(
     # WASMModule
     #
@@ -1635,8 +1636,9 @@ mod WASMMOD is
     WASMFuncGlobalIndSim
     #
     TypeStore) = stack(WASMFuncGlobalIndSim) .
+  eq stack(IndFuncCtx WASMFuncGlobalSim) = stack(WASMFuncGlobalSim) .
   eq stack(
-    IndFuncCtx < IL | ST | LocalSTRList >
+    < IL | ST | LocalSTRList >
     #
     GlobalInventory
     #
