@@ -603,3 +603,5 @@ wasm script2.wat -e '(invoke "add" (i32.const 1) (i32.const 1))'
 for (( N=0; N<2147483648; N++ )); do   echo -e "load /bin/file.maude \n load wasm-maude-semantics.maude \n load test2.tmp \n search [1] test($N) =>* w:WASMSimTrigger such that get-val(st-topVal(stack(w:WASMSimTrigger))) < val(0) ." | maude -trust -no-banner ; done > factorial-search.tmp
 
 erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat", "$18", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+
+./scripts/wasm-maude_test-individual.sh test-suite/from-spec-suite/transformed_br.wat \$38 > test3.tmp
