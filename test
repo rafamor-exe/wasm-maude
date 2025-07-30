@@ -605,3 +605,6 @@ for (( N=0; N<2147483648; N++ )); do   echo -e "load /bin/file.maude \n load was
 erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat", "$18", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
 
 ./scripts/wasm-maude_test-individual.sh test-suite/from-spec-suite/transformed_br.wat \$38 > test3.tmp
+
+*** WHILE LOOP in WASM
+erew search-with-func-from-file("test-suite/from-spec-suite/transformed_loop.wat", "$52", "i64.const 2", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
