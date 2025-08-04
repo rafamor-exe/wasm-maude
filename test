@@ -618,3 +618,5 @@ erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat",
 erew search-with-func-from-file("test-suite/from-spec-suite/transformed_loop.wat", "$52", "i64.const 2", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
 
 search run-int-binop-trap =>* w:WASMSimTrigger such that localSim(w:WASMSimTrigger) == trap("Binop result undefined") .
+
+search run-int-binop-trap =>* w:[WASMSimTrigger] such that st-topVal(stack(w:[WASMSimTrigger])) == const(i32, val(10)) .
