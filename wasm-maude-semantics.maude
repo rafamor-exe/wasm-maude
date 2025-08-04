@@ -1661,6 +1661,20 @@ mod WASMMOD is
     #
     TypeStore
     #) = WASMLocalSim .
+  
+  op getGlobal : String [WASMSimTrigger] -> Value .
+  eq getGlobal(Str,
+    WasmTrigger # WASMModule
+    #
+    IndTypeCtx
+    IndFuncCtx < IL | ST | LocalSTRList >
+    #
+    GlobalAddrs <-> GlobalsStore
+    #
+    FuncStore
+    #
+    TypeStore
+    #) = global-val(GlobalsStore[GlobalAddrs[Str]]) .
 
   op st-size : Stack -> Nat .
   eq st-size(EmptyStack) = 0 .
