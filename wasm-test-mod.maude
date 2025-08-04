@@ -1,3 +1,4 @@
+load wasm-maude-semantics.maude .
 mod WASM-TEST-MOD is
 
   protecting WASMMOD .

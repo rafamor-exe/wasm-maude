@@ -1322,6 +1322,7 @@ mod WASMMOD is
   var WASMFuncGlobalSim : WASMFuncGlobalSim .
   var WASMSimTrigger : WASMSimTrigger .
   var WASMSim : WASMSim .
+  var WASMLocalSim : WASMLocalSim .
   vars I1 S1 : Inst .
   var ConstInst : ConstInst .
   vars ValR ValR2 : ValRef .
@@ -1624,31 +1625,42 @@ mod WASMMOD is
 
   *** Get state stack
   op stack : [WASMSimTrigger] -> Stack .
-  op stack : WASMSim -> Stack .
-  op stack : WASMTypeFuncGlobalIndSim -> Stack .
-  op stack : WASMTypeFuncGlobalSim -> Stack .
-  op stack : WASMFuncGlobalIndSim -> Stack .
-  op stack : WASMFuncGlobalSim -> Stack .
-  op stack : WASMGlobalSim -> Stack .
-  op stack : WASMLocalSim -> Stack .
-  eq stack(WasmTrigger WASMSim) = stack(WASMSim) .
-  eq stack(
-    # WASMModule
+  op stack : [WASMSim] -> Stack .
+  op stack : [WASMTypeFuncGlobalIndSim] -> Stack .
+  op stack : [WASMTypeFuncGlobalSim] -> Stack .
+  op stack : [WASMFuncGlobalIndSim] -> Stack .
+  op stack : [WASMFuncGlobalSim] -> Stack .
+  op stack : [WASMGlobalSim] -> Stack .
+  op stack : [WASMLocalSim] -> Stack .
+  eq stack(WasmTrigger # WASMModule
     #
     IndTypeCtx
-    WASMTypeFuncGlobalSim
-    #) = stack(WASMTypeFuncGlobalSim) .
-  eq stack(
-    WASMFuncGlobalIndSim
-    #
-    TypeStore) = stack(WASMFuncGlobalIndSim) .
-  eq stack(IndFuncCtx WASMFuncGlobalSim) = stack(WASMFuncGlobalSim) .
-  eq stack(
-    < IL | ST | LocalSTRList >
+    IndFuncCtx < IL | ST | LocalSTRList >
     #
     GlobalInventory
     #
-    FuncStore) = ST .
+    FuncStore
+    #
+    TypeStore
+    #) = ST .
+  eq stack(WasmTrigger WASMSim) = stack(WASMSim) .
+  eq stack(< IL | ST | LocalSTRList >) = ST .
+  
+  op localSim : [WASMSimTrigger] -> [WASMLocalSim] .
+  eq localSim(
+    WasmTrigger
+    # WASMModule
+    #
+    IndTypeCtx
+    IndFuncCtx
+    WASMLocalSim
+    #
+    GlobalInventory
+    #
+    FuncStore
+    #
+    TypeStore
+    #) = WASMLocalSim .
 
   op st-size : Stack -> Nat .
   eq st-size(EmptyStack) = 0 .
