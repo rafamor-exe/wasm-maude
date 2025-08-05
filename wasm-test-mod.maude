@@ -4,10 +4,14 @@ mod WASM-TEST-MOD is
   protecting WASMMOD .
 
   ops run-factorial run-factorial2 run-factorial3 : -> WASMSimTrigger .
+  op run-factorial-param : Nat -> WASMSimTrigger .
   op run-int-binop-trap : -> WASMSimTrigger .
   op run-float-unop-sqrt : -> WASMSimTrigger .
   op run-shOp : -> WASMSimTrigger .
   op run-br-test : -> WASMSimTrigger .
+
+  var N : Nat .
+
   eq run-factorial = run-module-func(
                                     (module 
                                       (type "type0" (func (result i32)))
@@ -71,6 +75,33 @@ mod WASM-TEST-MOD is
                                       (global "result" (mut i32) (i32 .const 1))
                                     )
                                     ,"factorial", i32 .const 5) .
+
+    eq run-factorial-param(N) = run-module-func(
+                                    (module 
+                                      (type "type0" (func (result i32)))
+                                      (type "type1" (func (param i32) (result i32)))
+                                      (func "factorial" (type "type1")
+                                      (local i32)
+                                        
+                                            i32 .const 0
+                                            local.get 0
+                                            i32 . eq
+                                            if (i32)
+                                                i32 .const 1
+                                            else
+                                                local.get 0
+                                                local.get 0
+                                                i32 .const 1
+                                                i32 . sub
+                                                call "factorial"
+                                                i32 . mul
+                                            end
+                                        
+                                        )
+                                      (global "gb1" (mut i32) (i32 .const 1))
+                                      (global "result" (mut i32) (i32 .const 1))
+                                    )
+                                    ,"factorial", i32 .const N) .
     
     eq run-factorial3 = run-module-func(
                                     (module 

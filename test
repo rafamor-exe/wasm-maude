@@ -610,7 +610,7 @@ wasm script2.wat -e '(invoke "add" (i32.const 1) (i32.const 1))'
 
 for (( N=0; N<2147483648; N++ )); do   echo -e "load /bin/file.maude \n load wasm-maude-semantics.maude \n load test2.tmp \n search [1] test($N) =>* w:WASMSimTrigger such that get-val(st-topVal(stack(w:WASMSimTrigger))) < val(0) ." | maude -trust -no-banner ; done > factorial-search.tmp
 
-erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat", "$18", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat", "$18", 'w:WASMSimTrigger, '_or_['true, 'true], '!, unbounded, 0) .
 
 ./scripts/wasm-maude_test-individual.sh test-suite/from-spec-suite/transformed_br.wat \$38 > test3.tmp
 
@@ -626,3 +626,34 @@ search run-factorial3 =>* w:[WASMSimTrigger] such that i:Int := 6 /\ get-val(get
 
 *** TEST stack max items
 search run-factorial3 =>* w:[WASMSimTrigger] such that st-size(stack(w:[WASMSimTrigger])) > 25 .
+
+*** Using upTerm on st-size(stack(w:[WASMSimTrigger])) > 25 we get '_>_['st-size['stack['w:`[WASMSimTrigger`]]], 's_^25['0.Zero]] , which we can use to perform:
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], '_>_['st-size['stack['w:`[WASMSimTrigger`]]], 's_^25['0.Zero]] = 'true.Bool, '*, unbounded, 0) .
+
+and
+
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], '_>_['st-size['stack['w:`[WASMSimTrigger`]]], 's_^1['0.Zero]] = 'true.Bool, '*, unbounded, 0) .
+
+(the last one gets solutions obv, the first one does the same as the previous test)
+
+IN OTHER WORDS (easier):
+
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(st-size(stack(w:[WASMSimTrigger])) > 25) = 'true.Bool, '*, unbounded, 0) .
+
+and
+
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(st-size(stack(w:[WASMSimTrigger])) > 1) = 'true.Bool, '*, unbounded, 0) .
+
+
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(curr-inst(w:[WASMSimTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMSimTrigger]))) = upTerm(const(i32, val(2))), '*, unbounded, 0) .
+
+Therefore, to test that a function does not return -1 at any point (which might used to indicate error):
+
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(curr-inst(w:[WASMSimTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMSimTrigger]))) = upTerm(const(i32, val(-1))), '*, unbounded, 0) .
+
+With the -1 error:
+
+erew search-with-func-from-file("test-suite/factorial_withLt.wat", "$func1", "i32.const -1", 'w:`[WASMSimTrigger`], upTerm(curr-inst(w:[WASMSimTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMSimTrigger]))) = upTerm(const(i32, unsigned(val(-1), 32))), '*, unbounded, 0) .
+
+
+erew search-with-func-from-file("test-suite/factorial.wat", "$func0", "", 'w:WASMSimTrigger, 'w:WASMSimTrigger = 'Fail("Invalid module").WASMSimTrigger, '!, unbounded, 0) .
