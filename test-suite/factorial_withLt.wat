@@ -2,7 +2,7 @@
     (type $type0 (func (result i32)))
     (type $type1 (func (param i32) (result i32)))
     (export "$func0" (func 0))
-    (func $func0 (type $type1)
+    (func $func0 (type $type0)
         i32.const 5
         call $func1
     )

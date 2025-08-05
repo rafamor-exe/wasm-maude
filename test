@@ -638,7 +638,7 @@ erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.c
 
 IN OTHER WORDS (easier):
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(st-size(stack(w:[WASMSimTrigger])) > 25) = 'true.Bool, '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 100", 'w:`[WASMSimTrigger`], upTerm(st-size(stack(w:[WASMSimTrigger])) > 250) = 'true.Bool, '*, unbounded, 0) .
 
 and
 
