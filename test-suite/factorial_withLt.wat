@@ -6,7 +6,7 @@
         i32.const 5
         call $func1
     )
-    (func $func1 (type $type1)
+    (func $func1 (param i32) (result i32)
         local.get 0
         i32.const 0
         i32.lt_s
