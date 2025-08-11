@@ -1,0 +1,3 @@
+This directory includes a simple calculator example used in Section 2 of the Master's Thesis.
+
+While it is unrelated to WebAssembly's semantics, it serves as a simple introduction to program semantics in Maude.

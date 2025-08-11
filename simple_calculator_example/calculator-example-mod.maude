@@ -1,0 +1,42 @@
+fmod CALCULATOR-OPS is
+    protecting INT .
+    sorts Calculator Op Value Error .
+    sorts EmptyOpList NeOpList OpList .
+    subsort EmptyOpList NeOpList < OpList .
+    subsort Op < NeOpList .
+    subsort Error < Value . 
+
+    op null : -> EmptyOpList [ctor] .
+    op __ : Op OpList -> NeOpList [ctor id: null] .
+    ops add_; sub_; : Int -> Op [ctor] .
+    op val : Int -> Value [ctor] .
+    op err : -> Error [ctor] .
+    op < _ | _ > : OpList Value -> Calculator [ctor] .
+    op init : OpList -> Calculator [ctor] .
+
+    ops add sub : Value Value -> Value .
+
+    vars I1 I2 : Int .
+    var NzI : NzInt .
+    var OpL : OpList .
+    eq add(val(I1), val(I2)) = val(I1 + I2) .
+    eq sub(val(I1), val(I2)) = val(I1 - I2) .
+
+    eq init(OpL) = < OpL | val(0) > .
+endfm
+
+mod CALCULATOR is
+    protecting CALCULATOR-OPS .
+    protecting META-LEVEL .
+    var OpL : OpList .
+    var I : Int .
+    var V : Value .
+    rl [add] : < add I ; OpL | V > => < OpL | add(V, val(I)) > .
+    rl [sub] : < sub I ; OpL | V > => < OpL | sub(V, val(I)) > .
+
+    op curr-val : Calculator -> Value .
+    eq curr-val(< OpL | V >) = V .
+    op toInt : Value -> Int .
+    eq toInt(val(I)) = I . 
+
+endm
