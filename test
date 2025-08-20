@@ -79,7 +79,7 @@ rew (module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32
 rew < (global.set "gb1") | 20 | empty > # ("gb1" |-> 0) <-> (0 |-> {type mut i32 , value 10}) .
 ***rewrite in WASMMOD : < global.set "gb1" | 20 | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value 10} .
 ***rewrites: 5 in 0ms cpu (0ms real) (~ rewrites/second)
-***result WASMGlobalSim: < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value 20}
+***result WASMGlobalEnv: < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value 20}
 
 *** The following test should not insert the value (global variable is const, not mutable):
 rew < (global.set "gb1") | 20 | empty > # ("gb1" |-> 0) <-> (0 |-> {type const i32 , value 10}) .
@@ -96,7 +96,7 @@ rewrite in WASM-TEST-MOD :
  i32 . add
  | EmptyStack | empty > .
 rewrites: 31 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMLocalSim:
+result WASMLocalEnv:
 < nil | const(i32, val(9)) | empty >
 
 *** Test i32 and i64 bitstring
@@ -137,23 +137,23 @@ red unsigned(signed(4294967295, 32), 32) .
 Maude> rew < (i32 .const 20) (i32 .const 10) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrite in WASMMOD : < (i32 .const 20) (i32 .const 10) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrites: 51 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMLocalSim: < nil | const(i32, val(30)) | empty >
+result WASMLocalEnv: < nil | const(i32, val(30)) | empty >
 Maude> rew < (i32 .const 20) (i32 .const 10) (i32 . mul) | EmptyStack | EmptyLocalStore > .
 rewrite in WASMMOD : < (i32 .const 20) (i32 .const 10) (i32 . mul) | EmptyStack | EmptyLocalStore > .
 rewrites: 51 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMLocalSim: < nil | const(i32, val(200)) | empty >
+result WASMLocalEnv: < nil | const(i32, val(200)) | empty >
 Maude> rew < (i32 .const 20) (i32 .const 10.0) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrite in WASMMOD : < (i32 .const 20) (i32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrites: 1 in 0ms cpu (0ms real) (~ rewrites/second)
-result [Rat,WASMLocalSim,FindResult,ValRef,Addr,Id,Arity]: < (i32 .const 20) (i32 .const 1.0e+1) (i32 . add) | EmptyStack | empty >
+result [Rat,WASMLocalEnv,FindResult,ValRef,Addr,Id,Arity]: < (i32 .const 20) (i32 .const 1.0e+1) (i32 . add) | EmptyStack | empty >
 Maude> rew < (i32 .const 20) (f32 .const 10.0) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrite in WASMMOD : < (i32 .const 20) (f32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrites: 25 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMLocalSim: < i32 . add | const(f32, val(1.0e+1)) $ const(i32, val(20)) | empty >
+result WASMLocalEnv: < i32 . add | const(f32, val(1.0e+1)) $ const(i32, val(20)) | empty >
 Maude> rew < (f32 .const 20) (f32 .const 10.0) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrite in WASMMOD : < (f32 .const 20) (f32 .const 1.0e+1) (i32 . add) | EmptyStack | EmptyLocalStore > .
 rewrites: 20 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMLocalSim: < i32 . add | const(f32, val(1.0e+1)) $ const(f32, val(2.0e+1)) | empty >
+result WASMLocalEnv: < i32 . add | const(f32, val(1.0e+1)) $ const(f32, val(2.0e+1)) | empty >
 
 rew run-nomodule((f32 .const 0) (f32 .const 30.0) (f32 . sub)) .
 rew run-nomodule((f32 .const 10) (f32 .const 30.0) (f32 . mul)) .
@@ -161,45 +161,45 @@ rew run-nomodule((f32 .const 10) (f32 .const 30.0) (f32 . mul)) .
 Maude> rew run-nomodule((i32 .const 10) (i32 .const 30) (i32 . eq)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 10) (i32 .const 30) (i32 . eq)) .
 rewrites: 47 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val((0).Zero)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val((0).Zero)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((i32 .const 30) (i32 .const 30) (i32 . eq)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 30) (i32 .const 30) (i32 . eq)) .
 rewrites: 47 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
 
 *** More tests on comparisons with FLOATS
 Maude> rew run-nomodule((f32 .const 30) (f32 .const 30) (i32 . ne)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 30) (i32 . ne)) .
 rewrites: 53 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < i32 . ne | const(f32, val(3.0e+1)) $ const(f32, val(3.0e+1)) | empty > # empty <->   
+result WASMFuncGlobalEnv: < i32 . ne | const(f32, val(3.0e+1)) $ const(f32, val(3.0e+1)) | empty > # empty <->   
     empty # empty
 Maude> rew run-nomodule((f32 .const 30) (f32 .const 30) (f32 . ne)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 30) (f32 . ne)) .
 rewrites: 63 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(f32, val((0).Zero)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(f32, val((0).Zero)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((f32 .const 30) (f32 .const 30.0) (f32 . ne)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 3.0e+1) (f32 . ne)) .
 rewrites: 62 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(f32, val((0).Zero)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(f32, val((0).Zero)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((f32 .const 30) (f32 .const 30.1) (f32 . ne)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 3.0100000000000001e+1) (f32 . ne)) .
 rewrites: 62 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(f32, val((1).NzNat)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(f32, val((1).NzNat)) | empty > # empty <-> empty # empty
 
 
 *** TEST BR IF NEW SYNTAX
 Maude> rew run-nomodule((i32 .const 20) (block "l1" (i32 .const 15) (i32 .const 0) ("br_if" 0) (local.set 1) (i32 .const 1)  end)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (i32 .const (0).Zero) "br_if" 0 local.set 1 (i32 .const (1).NzNat) end) .
 rewrites: 77 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) $ const(i32, val(20)) | 1 |-> const(i32, val(15)) > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val((1).NzNat)) $ const(i32, val(20)) | 1 |-> const(i32, val(15)) > # empty <-> empty # empty
 Maude> rew run-nomodule((i32 .const 20) (block "l1" (i32 .const 15) (i32 .const 1) ("br_if" 0) (local.set 1) (i32 .const 1)  end)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (i32 .const (1).NzNat) "br_if" 0 local.set 1 (i32 .const (1).NzNat) end) .
 rewrites: 56 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(15)) $ const(i32, val(20)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val(15)) $ const(i32, val(20)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((i32 .const 20) (block "l1" (i32 .const 15) (f32 .const 0) ("br_if" 0) (local.set 1) (i32 .const 1)  end)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 20) block "l1" (i32 .const 15) (f32 .const (0).Zero) "br_if" 0 local.set 1 (i32 .const (1).NzNat) end) .
 rewrites: 47 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < "br_if" 0 local.set 1 (i32 .const (1).NzNat) end | const(f32, val(zero(pos))) $ const(i32, val(15)) $ label("l1", nil) $ const(i32, val(20)) |
+result WASMFuncGlobalEnv: < "br_if" 0 local.set 1 (i32 .const (1).NzNat) end | const(f32, val(zero(pos))) $ const(i32, val(15)) $ label("l1", nil) $ const(i32, val(20)) |
     empty > # empty <-> empty # empty
 
 
@@ -213,50 +213,50 @@ rew run-nomodule((f32 .const -1) (f32 . sqrt)) .
 Maude> rew run-nomodule((f32 .const 8) (f32 .const 7) (f32 . gt)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 8) (f32 .const 7) (f32 . gt)) .
 rewrites: 69 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((f32 .const 8) (f32 .const 7) (f32 . lt)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 8) (f32 .const 7) (f32 . lt)) .
 rewrites: 69 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val((0).Zero)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val((0).Zero)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((f32 .const 8) (f32 .const 8.0) (f32 . ge)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 8) (f32 .const 8.0) (f32 . ge)) .
 rewrites: 68 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val((1).NzNat)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((f32 .const 8) (f32 .const 8.0) (f32 . ge)) . 
 
 *** TEST PARAMETRIC FUNCTIONS
 rewrite in WASMMOD : run-nomodule((f32 .const 30) (f32 .const 20) (f32 .const 10) drop (i32 .const 5) select) .
 rewrites: 98 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(f32, val(3.0e+1)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(f32, val(3.0e+1)) | empty > # empty <-> empty # empty
 
 *** TEST BITWISE OPERATORS
 rewrite in WASMMOD : run-nomodule((i32 .const 8) (i32 .const 7) (i32 . xor)) .
 rewrites: 797 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(15)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val(15)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((i32 .const 8) (i32 .const 1) (i32 . or)) .
 rewrite in WASMMOD : run-nomodule((i32 .const 8) (i32 .const (1).NzNat) (i32 . or)) .
 rewrites: 779 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(9)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val(9)) | empty > # empty <-> empty # empty
 
 *** TEST TYPE CONVERSIONS
 Maude> rew run-nomodule((i64 .const 10) (i32 . "wrap_" i64)) .
 rewrite in WASMMOD : run-nomodule((i64 .const 10) (i32 . "wrap_" i64)) .
 rewrites: 34 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(10)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val(10)) | empty > # empty <-> empty # empty
 Maude> rew run-nomodule((f64 .const 10) (f32 . "demote_" f64)) .
 rewrite in WASMMOD : run-nomodule((f64 .const 10) (f32 . "demote_" f64)) .
 rewrites: 50 in 0ms cpu (0ms real) (~ rewrites/second)
-result [WASMFuncGlobalSim]: < nil | const(i32, val(const(f32, val(1.0e+1)))) | empty > # empty <-> empty # empty 
+result [WASMFuncGlobalEnv]: < nil | const(i32, val(const(f32, val(1.0e+1)))) | empty > # empty <-> empty # empty 
 Maude> rew run-nomodule((f32 .const 10) (f64 . "promote_" f32)) .
 rewrite in WASMMOD : run-nomodule((f32 .const 10) (f64 . "promote_" f32)) .
 rewrites: 42 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(1.0e+1)) | empty > # empty <-> empty # empty
+result WASMFuncGlobalEnv: < nil | const(i32, val(1.0e+1)) | empty > # empty <-> empty # empty
 
 *** TEST TYPED FUNCTION CALL
 Maude> rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 i32))  ((i32 .const 10) (local.set 0)) end) .
 rewrite in WASMMOD : < (i32 .const 20) local.set 0 call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 i32)) ((i32 .const 10) local.set 0) end .
 rewrites: 143 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 i32)) ((i32 .const 10) local.set 0) end
+result WASMFuncGlobalEnv: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 i32)) ((i32 .const 10) local.set 0) end
 
 ***
 rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
@@ -266,22 +266,22 @@ rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLoc
 Maude> rew < (i32 .const 20) (local.set 0) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
 rewrite in WASMMOD : < (i32 .const 20) local.set 0 call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end .
 rewrites: 28 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < call 0 local.get 0 | EmptyStack | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+result WASMFuncGlobalEnv: < call 0 local.get 0 | EmptyStack | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
 Maude> rew < (i32 .const 20) (local.set 0) (i32 .const 15) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
 rewrite in WASMMOD : < (i32 .const 20) local.set 0 (i32 .const 15) call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end .
 rewrites: 151 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(20)) $ st-popN(EmptyStack, 0) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+result WASMFuncGlobalEnv: < nil | const(i32, val(20)) $ st-popN(EmptyStack, 0) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
 
 *** TEST WITH CONSUMABLE TYPED PARAMS
 Maude> rew < (i32 .const 20) (local.set 0) (i32 .const 15) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param i32) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
 rewrite in WASMMOD : < (i32 .const 20) local.set 0 (i32 .const 15) call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end .
 rewrites: 140 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+result WASMFuncGlobalEnv: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param i32) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
 Maude> rew < (i32 .const 20) (local.set 0) (i32 .const 15) (f32 .const 25.5) call 0 (local.get 0) | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> (func (0) (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32))  ((i32 .const 10) (local.set 0)) end) .
 rewrite in WASMMOD : < (i32 .const 20) local.set 0 (i32 .const 15) (f32 .const 2.55e+1) call 0 local.get 0 | EmptyStack | EmptyLocalStore > # empty <-> empty # 0 |-> func 0 (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32)) ((i32 .const 10)
     local.set 0) end .
 rewrites: 174 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMFuncGlobalSim: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
+result WASMFuncGlobalEnv: < nil | const(i32, val(20)) | 0 |-> const(i32, val(20)) > # empty <-> empty # 0 |-> func 0 (type 0) (param (f32 i32)) (result i32) (local (i32 i32 f32)) ((i32 .const 10) local.set 0) end
 
 *** TEST EXECUTE MODULES
 rew run-module-func((module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 0 (type 4) (param (i32 i32)) (result i32) (local i32) nop end)), 0) .
@@ -295,7 +295,7 @@ rew {start 4, indctr 0} # (module  (type 3 (func (param i32) (result i32)))  (ty
 *** TEST MODULE WITH GLOBALS
 Maude> rew run-module-func((module  (type 3 (func (param i32) (result i32)))  (type 4 (func (param (i32 i32)) (result i32)))  (type 5 (func (param (i32 i32 i32)) (result i32)))  (type (6) (func (param (i32 i64 i32)) (result i64)))  (func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) (global.set "gb1")) end) (global "gb1" (mut i32) (i32 .const 1))), 0) .
 rewrites: 85 in 10ms cpu (7ms real) (8500 rewrites/second)
-result WASMSimTrigger: {start 0, indctr 0} # module nil nil nil # < nil | EmptyStack | empty > # "gb1" |-> 1 <-> 1 |-> {type mut i32, value const(i32, val(10))} # 0 |-> func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end 
+result WASMEnvTrigger: {start 0, indctr 0} # module nil nil nil # < nil | EmptyStack | empty > # "gb1" |-> 1 <-> 1 |-> {type mut i32, value const(i32, val(10))} # 0 |-> func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end 
     # (0 |-> type 3 func param i32 result i32, 1 |-> type 4 func param (i32 i32) result i32, 2 |-> type 5 func param (i32 i32 i32) result i32, 3 |-> type 6 func param (i32 i64 i32) result i64) #
 
 *** Now functions are stored by their id
@@ -304,7 +304,7 @@ rewrite in WASMMOD : run-module-func(module (type 3 func param i32 result i32) (
     type 6 func param (i32 i64 i32) result i64) func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end global "gb1"(mut i32)(i32
     .const (1).NzNat), 4) .
 rewrites: 94 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMSimTrigger: {start 4, indctr 0} # module nil nil nil # < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value const(i32, val(10))} # 4
+result WASMEnvTrigger: {start 4, indctr 0} # module nil nil nil # < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32, value const(i32, val(10))} # 4
     |-> func 4 (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end # (0 |-> type 3 func param i32 result i32, 1 |-> type 4 func param
     (i32 i32) result i32, 2 |-> type 5 func param (i32 i32 i32) result i32, 3 |-> type 6 func param (i32 i64 i32) result i64) #
 
@@ -314,7 +314,7 @@ rewrite in WASMMOD : run-module-func(module (type 3 func param i32 result i32) (
     type 6 func param (i32 i64 i32) result i64) func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end global "gb1"(mut
     i32)(i32 .const (1).NzNat), "start") .
 rewrites: 99 in 1ms cpu (0ms real) (99000 rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "start" |-> 0} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32,
+result WASMEnvTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "start" |-> 0} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0 |-> {type mut i32,
     value const(i32, val(10))} # 0 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1") end # (0 |-> type 3 func param
     i32 result i32, 1 |-> type 4 func param (i32 i32) result i32, 2 |-> type 5 func param (i32 i32 i32) result i32, 3 |-> type 6 func param (i32 i64 i32) result i64)
     #
@@ -328,7 +328,7 @@ rewrite in WASMMOD : run-module-func(module type 3 func param i32 result i32 fun
     "gb1" global.get "gb1" call "isEven") end func "isEven" (type 0) (param i32) (result i32) (local i32) (local.get 0 (i32 .const 2) (i32 . ("rem_u").IBinopToken) (
     i32 . eqz) global.set "gb1") end global "gb1"(mut i32)(i32 .const (1).NzNat), "start") .
 rewrites: 184 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "isEven" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0
+result WASMEnvTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "isEven" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0
     |-> {type mut i32, value const(i32, val((1).NzNat))} # (1 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 10) global.set "gb1"
     global.get "gb1" call "isEven") end, 2 |-> func "isEven" (type 0) (param i32) (result i32) (local i32) (local.get 0 (i32 .const 2) (i32 . ("rem_u").IBinopToken) (
     i32 . eqz) global.set "gb1") end) # 0 |-> type 3 func param i32 result i32 #
@@ -339,7 +339,7 @@ rewrite in WASMMOD : run-module-func(module type 3 func param i32 result i32 fun
     "gb1" global.get "gb1" call "isEven") end func "isEven" (type 0) (param i32) (result i32) (local i32) (local.get 0 (i32 .const 2) (i32 . ("rem_u").IBinopToken) (
     i32 . eqz) global.set "gb1") end global "gb1"(mut i32)(i32 .const (1).NzNat), "start") .
 rewrites: 184 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "isEven" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0
+result WASMEnvTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "isEven" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0 <-> 0
     |-> {type mut i32, value const(i32, val((0).Zero))} # (1 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 11) global.set "gb1"
     global.get "gb1" call "isEven") end, 2 |-> func "isEven" (type 0) (param i32) (result i32) (local i32) (local.get 0 (i32 .const 2) (i32 . ("rem_u").IBinopToken) (
     i32 . eqz) global.set "gb1") end) # 0 |-> type 3 func param i32 result i32 #
@@ -368,7 +368,7 @@ rew run-module-func(
 ***Previous test:
 *** TEST PASSED!!! (computes factorial of number introduced by start function (could be retrieved directly from global var) and stores it in global var "result")
 rewrites: 758 in 340ms cpu (1591ms real) (2229 rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "factorial" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(i32, val(5))}, 1 |-> {type    
+result WASMEnvTrigger: {start "start", indctr 0} # module nil nil nil # {funcIndCtx "factorial" |-> 2, "start" |-> 1} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(i32, val(5))}, 1 |-> {type    
     mut i32, value const(i32, val(120))}) # (1 |-> func "start" (type 0) (param nil) (result i32) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end, 2 |-> func "factorial" (type 0) (param    
     i32) (result i32) (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end) # 0 |-> type 3 func param i32       
     result i32 #      
@@ -418,7 +418,7 @@ rewrite in WASMMOD : run-module-func(module (type "type0" func result i32) (type
     "type1") (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if type (0).Zero i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end global "gb1"(mut i32)(i32 .const (1).NzNat)     
     global "result"(mut i32)(i32 .const (1).NzNat), "start") .
 rewrites: 851 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {typeIndCtx "type0" |-> 0, "type1" |-> 1} {funcIndCtx "factorial" |-> 1, "start" |-> 0} < nil | EmptyStack | empty > # ("gb1" |-> 0, "result" |-> 1) <-> (0 |-> {type mut i32, value const(  
+result WASMEnvTrigger: {start "start", indctr 0} # module nil nil nil # {typeIndCtx "type0" |-> 0, "type1" |-> 1} {funcIndCtx "factorial" |-> 1, "start" |-> 0} < nil | EmptyStack | empty > # ("gb1" |-> 0, "result" |-> 1) <-> (0 |-> {type mut i32, value const(  
     i32, val(5))}, 1 |-> {type mut i32, value const(i32, val(120))}) # (0 |-> func "start" (param nil result nil) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end, 1 |-> func "factorial" (param i32 result  
     i32) (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if type (0).Zero i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end) # (0 |-> type "type0" func result i32, 1 |-> type  
     "type1" func (param i32 result i32)) #
@@ -433,7 +433,7 @@ rewrite in WASMMOD : run-module-func(module (type "type0" func result i32) (type
     "factorial" (type "type1") (local i32) ((i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end global "gb1"(mut i32)(i32 .const (1).NzNat) 
     global "result"(mut i32)(i32 .const (1).NzNat), "start") .
 rewrites: 788 in 0ms cpu (0ms real) (~ rewrites/second)
-result WASMSimTrigger: {start "start", indctr 0} # module nil nil nil # {typeIndCtx "type0" |-> 0, "type1" |-> 1} {funcIndCtx "factorial" |-> 1, "start" |-> 0} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(    
+result WASMEnvTrigger: {start "start", indctr 0} # module nil nil nil # {typeIndCtx "type0" |-> 0, "type1" |-> 1} {funcIndCtx "factorial" |-> 1, "start" |-> 0} < nil | EmptyStack | empty > # "gb1" |-> 0, "result" |-> 1 <-> (0 |-> {type mut i32, value const(    
     i32, val(5))}, 1 |-> {type mut i32, value const(i32, val(120))}) # (0 |-> func "start" (result i32) (local i32) ((i32 .const 5) global.set "gb1" global.get "gb1" call "factorial" global.set "result") end, 1 |-> func "factorial" (param i32) (local i32) ((   
     i32 .const (0).Zero) local.get 0 (i32 . eq) (if i32 .const (1).NzNat else local.get 0 local.get 0 (i32 .const (1).NzNat) (i32 . sub) call "factorial" (i32 . mul) end)) end) # (0 |-> type "type0" func result i32, 1 |-> type "type1" func param i32) #
 
@@ -446,26 +446,26 @@ Due to file parser using rew rules, it messes up with the downTerm eq logic. In 
 erew getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)) .
 
 search run-module-func(downTerm('module_['__['type__['"type0".String, 'func_['result_['i32.IntTypeToken]]], '__['type__['"type1".String, 'func_['__['param_['i32.IntTypeToken], 'result_['i32.IntTypeToken]]]], '__['func___end['"start".String, 'local_['i32.IntTypeToken], '__[     '_.const_['i32.IntTypeToken, 's_^5['0.Zero]], '__['global.set_['"gb1".String], '__['global.get_['"gb1".String], '__['call_['"factorial".String], 'global.set_['"result".String]]]]]], '__['func____end['"factorial".String, 'type_['"type1".String], 'local_[     'i32.IntTypeToken], '__['_.const_['i32.IntTypeToken, '0.Zero], '__['local.get_['0.Zero], '__['_._['i32.IntTypeToken, 'eq.RelopToken], 'if__else_['i32.IntTypeToken, '_.const_['i32.IntTypeToken, 's_['0.Zero]], '__['local.get_['0.Zero], '__['local.get_[ '0.Zero], '__['_.const_['i32.IntTypeToken, 's_['0.Zero]], '__['_._['i32.IntTypeToken, 'sub.BinopToken], '__['call_['"factorial".String], '__['_._['i32.IntTypeToken, 'mul.BinopToken], 'end.Inst]]]]]]]]]]], '__['global_`(_`)`(_`)['"gb1".String, '__[   
- 'mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], '_.const_['i32.IntTypeToken, 's_['0.Zero]]], 'global_`(_`)`(_`)['"result".String, '__['mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], '_.const_['i32.IntTypeToken, 's_['0.Zero]]]]]]]]], error), "start") =>! w:[WASMSimTrigger] .
+ 'mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], '_.const_['i32.IntTypeToken, 's_['0.Zero]]], 'global_`(_`)`(_`)['"result".String, '__['mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], '_.const_['i32.IntTypeToken, 's_['0.Zero]]]]]]]]], error), "start") =>! w:[WASMEnvTrigger] .
 
-search run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)), error), "start") =>! w:[WASMSimTrigger] .
+search run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(run-func-from-file("examples/factorial_adapt.wat")), 'WASMModule)), error), "start") =>! w:[WASMEnvTrigger] .
 
-erew search-with-func-from-file("examples/factorial_adapt.wat", "start", '_['w:WASMSimTrigger], nil, '!, unbounded, 0) .
+erew search-with-func-from-file("examples/factorial_adapt.wat", "start", '_['w:WASMEnvTrigger], nil, '!, unbounded, 0) .
 
 red downTerm('__['`{_`,indctr_`}['start_['"start".String], '`[_`,_`,_`]['s_^2['0.Zero], 's_^2['0.Zero], 's_^2['0.Zero]]], '#_#_#['module_['EmptyMod.EmptyMod], '__['`{typeIndCtx_`}['_`,_['_|->_['"type0".String, '0.Zero], '_|->_['"type1".String, 's_[      
  '0.Zero]]]], '_#_['__['`{funcIndCtx_`}['_`,_['_|->_['"factorial".String, '0.Zero], '_|->_['"start".String, 's_['0.Zero]]]], '_#_['_#_['<_|_|_>['nil.List`{Inst`}, 'EmptyStack.EmptyStack, 'empty.Map`{ValRef`,Value`}], '_<->_['_`,_['_|->_['"gb1".String,
- '0.Zero], '_|->_['"result".String, 's_['0.Zero]]], '_`,_['_|->_['0.Zero, '`{type_`,value_`}['__['mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], 'const['i32.IntTypeToken, 'val['s_^5['0.Zero]]]]], '_|->_['s_['0.Zero], '`{type_`,value_`}['__[    'mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], 'const['i32.IntTypeToken, 'val['s_^120['0.Zero]]]]]]]], '_`,_['_|->_['0.Zero, 'func____end['"factorial".String, '__['param_['i32.IntTypeToken], 'result_['i32.IntTypeToken]], 'local_['i32.IntTypeToken], '__[      '_.const_['i32.IntTypeToken, '0.Zero], 'local.get_['0.Zero], '_._['i32.IntTypeToken, 'eq.RelopToken], 'if__else_['result_['i32.IntTypeToken], '_.const_['i32.IntTypeToken, 's_['0.Zero]], '__['local.get_['0.Zero], 'local.get_['0.Zero], '_.const_[    'i32.IntTypeToken, 's_['0.Zero]], '_._['i32.IntTypeToken, 'sub.BinopToken], 'call_['"factorial".String], '_._['i32.IntTypeToken, 'mul.BinopToken], 'end.Inst]]]]], '_|->_['s_['0.Zero], 'func____end['"start".String, '__['param_['nil.List`{TypeToken`}],           'result_['nil.List`{TypeToken`}]], 'local_['i32.IntTypeToken], '__['_.const_['i32.IntTypeToken, 's_^5['0.Zero]], 'global.set_['"gb1".String], 'global.get_['"gb1".String], 'call_['"factorial".String], 'global.set_['"result".String]]]]]]], '_`,_['_|->_[          '0.Zero, 'type__['"type0".String, 'func_['result_['i32.IntTypeToken]]]], '_|->_['s_['0.Zero], 'type__['"type1".String, 'func_['__['param_['i32.IntTypeToken], 'result_['i32.IntTypeToken]]]]]]]]]], errorWASMSimTrigger) .
+ '0.Zero], '_|->_['"result".String, 's_['0.Zero]]], '_`,_['_|->_['0.Zero, '`{type_`,value_`}['__['mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], 'const['i32.IntTypeToken, 'val['s_^5['0.Zero]]]]], '_|->_['s_['0.Zero], '`{type_`,value_`}['__[    'mut.MutGlobalTypeIndicator, 'i32.IntTypeToken], 'const['i32.IntTypeToken, 'val['s_^120['0.Zero]]]]]]]], '_`,_['_|->_['0.Zero, 'func____end['"factorial".String, '__['param_['i32.IntTypeToken], 'result_['i32.IntTypeToken]], 'local_['i32.IntTypeToken], '__[      '_.const_['i32.IntTypeToken, '0.Zero], 'local.get_['0.Zero], '_._['i32.IntTypeToken, 'eq.RelopToken], 'if__else_['result_['i32.IntTypeToken], '_.const_['i32.IntTypeToken, 's_['0.Zero]], '__['local.get_['0.Zero], 'local.get_['0.Zero], '_.const_[    'i32.IntTypeToken, 's_['0.Zero]], '_._['i32.IntTypeToken, 'sub.BinopToken], 'call_['"factorial".String], '_._['i32.IntTypeToken, 'mul.BinopToken], 'end.Inst]]]]], '_|->_['s_['0.Zero], 'func____end['"start".String, '__['param_['nil.List`{TypeToken`}],           'result_['nil.List`{TypeToken`}]], 'local_['i32.IntTypeToken], '__['_.const_['i32.IntTypeToken, 's_^5['0.Zero]], 'global.set_['"gb1".String], 'global.get_['"gb1".String], 'call_['"factorial".String], 'global.set_['"result".String]]]]]]], '_`,_['_|->_[          '0.Zero, 'type__['"type0".String, 'func_['result_['i32.IntTypeToken]]]], '_|->_['s_['0.Zero], 'type__['"type1".String, 'func_['__['param_['i32.IntTypeToken], 'result_['i32.IntTypeToken]]]]]]]]]], errorWASMEnvTrigger) .
 
 *** Loads from file and searches with =>!
-erew search-with-func-from-file("examples/factorial_adapt.wat", "$start", 'w:WASMSimTrigger, nil, '!, unbounded, 0) . 
+erew search-with-func-from-file("examples/factorial_adapt.wat", "$start", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) . 
 
 
 [NOTE] Get partial result from search over test with custom syntax:
-search [,45] run-factorial =>* w:[WASMSimTrigger] .
+search [,45] run-factorial =>* w:[WASMEnvTrigger] .
 
-search run-factorial =>! w:WASMSimTrigger .
+search run-factorial =>! w:WASMEnvTrigger .
 
-search run-br-test =>! w:WASMSimTrigger .
+search run-br-test =>! w:WASMEnvTrigger .
 
 [Individual parses]
 Maude> red downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm("(global $gb1 (mut i64) (i64.const 1))"), 'GlobalDef)), err:GlobalDef) .
@@ -598,62 +598,65 @@ func "$mult" (type "$type1") (local i32)
 end .
 
 *** TEST SUITE
-erew search-with-func-from-file("test-suite/t.const.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
-erew search-with-func-from-file("test-suite/t.unop_0param.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
-erew search-with-func-from-file("test-suite/t.unop_1param.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/t.const.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/t.unop_0param.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/t.unop_1param.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
 
-erew search-with-func-from-file("test-suite/br_withBlock_multipleBlocks.wat", "$func0", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/loop_1param.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
+
+
+erew search-with-func-from-file("test-suite/br_withBlock_multipleBlocks.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
 
 wasm script2.wat -e '(invoke "add" (i32.const 1) (i32.const 1))'
 
 ./wasm-maude_test-suite.sh > tmp.test
 
-for (( N=0; N<2147483648; N++ )); do   echo -e "load /bin/file.maude \n load wasm-maude-semantics.maude \n load test2.tmp \n search [1] test($N) =>* w:WASMSimTrigger such that get-val(st-topVal(stack(w:WASMSimTrigger))) < val(0) ." | maude -trust -no-banner ; done > factorial-search.tmp
+for (( N=0; N<2147483648; N++ )); do   echo -e "load /bin/file.maude \n load wasm-maude-semantics.maude \n load test2.tmp \n search [1] test($N) =>* w:WASMEnvTrigger such that get-val(st-topVal(stack(w:WASMEnvTrigger))) < val(0) ." | maude -trust -no-banner ; done > factorial-search.tmp
 
-erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat", "$18", 'w:WASMSimTrigger, '_or_['true, 'true], '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/from-spec-suite/transformed_br.wat", "$18", 'w:WASMEnvTrigger, '_or_['true, 'true], '!, unbounded, 0) .
 
 ./scripts/wasm-maude_test-individual.sh test-suite/from-spec-suite/transformed_br.wat \$38 > test3.tmp
 
 *** WHILE LOOP in WASM
-erew search-with-func-from-file("test-suite/from-spec-suite/transformed_loop.wat", "$52", "i64.const 2", 'w:WASMSimTrigger, nil, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/from-spec-suite/transformed_loop.wat", "$52", "i64.const 2", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
 
-search run-int-binop-trap =>* w:WASMSimTrigger such that localSim(w:WASMSimTrigger) == trap("Binop result undefined") .
+search run-int-binop-trap =>* w:WASMEnvTrigger such that localEnv(w:WASMEnvTrigger) == trap("Binop result undefined") .
 
-search run-int-binop-trap =>* w:[WASMSimTrigger] such that st-topVal(stack(w:[WASMSimTrigger])) == const(i32, val(10)) .
+search run-int-binop-trap =>* w:[WASMEnvTrigger] such that st-topVal(stack(w:[WASMEnvTrigger])) == const(i32, val(10)) .
 
 *** TEST restrict values in global variables
-search run-factorial3 =>* w:[WASMSimTrigger] such that i:Int := 6 /\ get-val(getGlobal("result", w:[WASMSimTrigger])) < val(i:Int) .
+search run-factorial3 =>* w:[WASMEnvTrigger] such that i:Int := 6 /\ get-val(getGlobal("result", w:[WASMEnvTrigger])) < val(i:Int) .
 
 *** TEST stack max items
-search run-factorial3 =>* w:[WASMSimTrigger] such that st-size(stack(w:[WASMSimTrigger])) > 25 .
+search run-factorial3 =>* w:[WASMEnvTrigger] such that st-size(stack(w:[WASMEnvTrigger])) > 25 .
 
-*** Using upTerm on st-size(stack(w:[WASMSimTrigger])) > 25 we get '_>_['st-size['stack['w:`[WASMSimTrigger`]]], 's_^25['0.Zero]] , which we can use to perform:
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], '_>_['st-size['stack['w:`[WASMSimTrigger`]]], 's_^25['0.Zero]] = 'true.Bool, '*, unbounded, 0) .
+*** Using upTerm on st-size(stack(w:[WASMEnvTrigger])) > 25 we get '_>_['st-size['stack['w:`[WASMEnvTrigger`]]], 's_^25['0.Zero]] , which we can use to perform:
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMEnvTrigger`], '_>_['st-size['stack['w:`[WASMEnvTrigger`]]], 's_^25['0.Zero]] = 'true.Bool, '*, unbounded, 0) .
 
 and
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], '_>_['st-size['stack['w:`[WASMSimTrigger`]]], 's_^1['0.Zero]] = 'true.Bool, '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMEnvTrigger`], '_>_['st-size['stack['w:`[WASMEnvTrigger`]]], 's_^1['0.Zero]] = 'true.Bool, '*, unbounded, 0) .
 
 (the last one gets solutions obv, the first one does the same as the previous test)
 
 IN OTHER WORDS (easier):
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 100", 'w:`[WASMSimTrigger`], upTerm(st-size(stack(w:[WASMSimTrigger])) > 250) = 'true.Bool, '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 100", 'w:`[WASMEnvTrigger`], upTerm(st-size(stack(w:[WASMEnvTrigger])) > 250) = 'true.Bool, '*, unbounded, 0) .
 
 and
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(st-size(stack(w:[WASMSimTrigger])) > 1) = 'true.Bool, '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMEnvTrigger`], upTerm(st-size(stack(w:[WASMEnvTrigger])) > 1) = 'true.Bool, '*, unbounded, 0) .
 
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(curr-inst(w:[WASMSimTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMSimTrigger]))) = upTerm(const(i32, val(2))), '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMEnvTrigger`], upTerm(curr-inst(w:[WASMEnvTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMEnvTrigger]))) = upTerm(const(i32, val(2))), '*, unbounded, 0) .
 
 Therefore, to test that a function does not return -1 at any point (which might used to indicate error):
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMSimTrigger`], upTerm(curr-inst(w:[WASMSimTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMSimTrigger]))) = upTerm(const(i32, val(-1))), '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$factorial", "i32.const 3", 'w:`[WASMEnvTrigger`], upTerm(curr-inst(w:[WASMEnvTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMEnvTrigger]))) = upTerm(const(i32, val(-1))), '*, unbounded, 0) .
 
 With the -1 error:
 
-erew search-with-func-from-file("test-suite/factorial_withLt.wat", "$func1", "i32.const -1", 'w:`[WASMSimTrigger`], upTerm(curr-inst(w:[WASMSimTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMSimTrigger]))) = upTerm(const(i32, unsigned(val(-1), 32))), '*, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial_withLt.wat", "$func1", "i32.const -1", 'w:`[WASMEnvTrigger`], upTerm(curr-inst(w:[WASMEnvTrigger])) = upTerm((exit-func(i32)).Inst) /\ upTerm(st-topVal(stack(w:[WASMEnvTrigger]))) = upTerm(const(i32, unsigned(val(-1), 32))), '*, unbounded, 0) .
 
 
-erew search-with-func-from-file("test-suite/factorial.wat", "$func0", "", 'w:WASMSimTrigger, 'w:WASMSimTrigger = 'Fail("Invalid module").WASMSimTrigger, '!, unbounded, 0) .
+erew search-with-func-from-file("test-suite/factorial.wat", "$func0", "", 'w:WASMEnvTrigger, 'w:WASMEnvTrigger = 'Fail("Invalid module").WASMEnvTrigger, '!, unbounded, 0) .
