@@ -602,6 +602,9 @@ erew search-with-func-from-file("test-suite/t.const.wat", "$func0", 'w:WASMEnvTr
 erew search-with-func-from-file("test-suite/t.unop_0param.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
 erew search-with-func-from-file("test-suite/t.unop_1param.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
 
+erew search-with-func-from-file("test-suite/block_1param_typeRef.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
+
+
 erew search-with-func-from-file("test-suite/loop_1param.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .
 
 
@@ -660,3 +663,5 @@ erew search-with-func-from-file("test-suite/factorial_withLt.wat", "$func1", "i3
 
 
 erew search-with-func-from-file("test-suite/factorial.wat", "$func0", "", 'w:WASMEnvTrigger, 'w:WASMEnvTrigger = 'Fail("Invalid module").WASMEnvTrigger, '!, unbounded, 0) .
+
+erew search-with-func-from-file("test-suite/block_1param_explicit.wat", "$func0", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) .

@@ -1080,12 +1080,15 @@ fmod WASM-INST-MOD is
   op block : -> Inst [ctor format (d ni)] .
   op block _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
   op block _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op block _ _ : ParamType ResultType -> Inst [ctor prec 24 format (d d d ni)] .
   op loop : -> Inst [ctor format (d ni)] .
   op loop _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
   op loop _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op loop _ _ : ParamType ResultType -> Inst [ctor prec 24 format (d d d ni)] .
   op if : -> Inst [ctor format (d ni)] .
   op if _ : BlockType -> Inst [ctor prec 24 format (d d ni)] .
   op if _ : List{TypeToken} -> Inst [ctor prec 24 format (d d ni)] .
+  op if _ _ : ParamType ResultType -> Inst [ctor prec 24 format (d d d ni)] .
   op else : -> Inst [ctor format (d ni)] .
   op br _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
   op br~if _ : Nat -> Inst [ctor prec 24 format (d d ni)] .
@@ -1237,6 +1240,7 @@ mod WASMMOD is
   
   *** Declare sorts to be used and hierarchy between them.
   sorts WASMEnv WasmTrigger WASMEnvTrigger WASMTypeFuncGlobalEnv WASMTypeFuncGlobalIndEnv WASMFuncGlobalEnv WASMFuncGlobalIndEnv GlobalInventory WASMGlobalEnv WASMGlobalIndEnv WASMLocalEnv WASMLocalIndEnv WASMModule Stack EmptyStack NeStack StackElem Label StackAndLabel FuncStore .
+  sort DecodedBlocktypes .
   sorts IndCtx LocalIndCtx GlobalIndCtx FuncIndCtx TypeIndCtx .
   sorts Starter .
   sorts ComponentCtr .
@@ -1388,6 +1392,7 @@ mod WASMMOD is
   var cvtopT : CvtopToken .
   var ExportDef : ExportDef .
   var WasmTrigger : WasmTrigger .
+  var ParamResultType : ParamResultType .
 
   *** Equivalent instruction definitions
   eq if TList = if (result TList) .
@@ -1414,13 +1419,9 @@ mod WASMMOD is
   eq run-module-func(WASMModule, Str) = run-module-func(WASMModule, Str, nil) .
   eq run-module-func(WASMModule, Str, IL) = read-module({start Str, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | empty > # empty <-> empty # empty # empty #) .
 
-  ***sort DecodedBlocktypes .
-  ***op (_,_) : List{Inst} Map{Addr, ModuleContent} -> DecodedBlocktypes .
-  ***op decode-blocktypes : List{Inst} Map{Addr, ModuleContent} -> DecodedBlocktypes .
-  
   *** Module decoding -> Module validation -> Module instantiation
   *** Read module component definitions
-  *** Done as eq logic to avoid non-determinism on component parsing (due to multiset reading possibilities)
+  *** Done as eq logic to avoid non-determinism on component parsing
   op read-module : WASMEnvTrigger -> WASMEnvTrigger .
   eq read-module({start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = validate-funcs-module({start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
@@ -1433,12 +1434,13 @@ mod WASMMOD is
                  = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr], initIL IL1} # (module ModuleContent) # insert(Str, TCtr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Str FuncType), TypeStore) #) .
   
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((func Id FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
-                 if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
-                 ***   /\ (IL2, TypeStore') := decode-blocktypes(IL, TypeStore) .
+                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL2 ), FuncStore) # TypeStore' #)
+                 if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR)
+                    /\ (IL2, TypeStore') := expand-blocktypes(IL, TCtr, TypeStore) .
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((func Str FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL ), FuncStore) # TypeStore #)
-                 if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) .
+                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL2 ), FuncStore) # TypeStore' #)
+                 if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR)
+                    /\ (IL2, TypeStore') := expand-blocktypes(IL, TCtr, TypeStore) .
  
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
@@ -1468,14 +1470,6 @@ mod WASMMOD is
   eq insert(Str, Ctr, {typeIndCtx IndTypeCtxSTR}) = {typeIndCtx insert(Str, Ctr, IndTypeCtxSTR)} .
 
   *** Rules
-  
-  *** Start module function invocation
-  ***rl [start-sim] : {start N, indctr ComponentCtr} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
-  ***                 =>
-  ***                 {start N, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm(IndTypeCtx IndFuncCtx < (call N) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
-  ***rl [start-sim-str] : {start Str, indctr ComponentCtr} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR } < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #
-  ***                      =>
-  ***                      {start Str, indctr ComponentCtr} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < (call (IndFuncCtxSTR[Str])) | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) # .
 
   *** local.get rule: push to stack the value from ValR from the local store
   rl [local.get] : < (local.get ValR) IL | ST | LocalSTR LocalSTRList >   =>   < IL | st-push(ST, LocalSTR[ValR]) | LocalSTR LocalSTRList > .
@@ -1493,10 +1487,9 @@ mod WASMMOD is
                   < IL | st-push(ST, global-val(GlobalsStore[GlobalAddrs[Str]])) | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore .
 
   *** TODO: generlize for all types of values (refs, labels, etc.)
-  crl [global.set] : < (global.set Str) IL | const(T, ValW1) $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
+  rl [global.set] : < (global.set Str) IL | const(T, ValW1) $ ST | NeLocalSTRList > # GlobalAddrs <-> GlobalsStore
                   =>   
-                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert(GlobalAddrs[Str], {type (mut T), value const(T, ValW1)}, GlobalsStore) 
-                  if (global-type(GlobalsStore[GlobalAddrs[Str]]) == (mut T)) .
+                  < IL | ST | NeLocalSTRList > # GlobalAddrs <-> insert(GlobalAddrs[Str], {type (mut T), value const(T, ValW1)}, GlobalsStore) .
 
   *** Parametric Instructions
   rl [drop] : < (drop) IL | Val $ ST | NeLocalSTRList > 
@@ -1577,7 +1570,7 @@ mod WASMMOD is
                =>
                {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 exit-block(IL) | ST' $ label("block", nil, size(TListRes)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
-                  /\ ST' $ ST := ST1
+                  /\ ST := st-popN(ST1, st-size(ST'))
                   /\ TListRes := aux-get-resultlistTList(getResultType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
 
   rl [end] : < exit-block(IL) | NeST | LocalSTRList >   =>   < IL | get-st(reset-st(NeST)) | LocalSTRList > .
@@ -1595,7 +1588,7 @@ mod WASMMOD is
               =>
               {typeIndCtx IndTypeCtxSTR} IndFuncCtx < IL2 exit-block(IL) | ST' $ label("loop", (loop TypeRef) IL2 end, size(TListParam)) $ ST | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
               if ST' := st-getTopVals(ST1, aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))))
-                  /\ ST' $ ST := ST1
+                  /\ ST := st-popN(ST1, st-size(ST'))
                   /\ TListParam := aux-get-paramlistTList(getParamType(expand(TypeRef, IndTypeCtxSTR, TypeStore))) .
                   
   crl [br] : < (br N) IL2 exit-block(IL) IL' | ST | NeLocalSTRList >   
@@ -1869,9 +1862,51 @@ mod WASMMOD is
   ceq selectVal(val(Int1), Val1, Val2) = Val1 if Int1 =/= 0 .
   eq selectVal(val(Int1), Val1, Val2) = Val2 [owise] .
 
+  op (_,_) : List{Inst} Map{Addr, ModuleContent} -> DecodedBlocktypes [ctor] .
+
+  *** Expand explicit BlockType abreviation as a typeRef (as in specification) 
+  op expand-blocktypes : List{Inst} Nat Map{Addr, ModuleContent} -> DecodedBlocktypes .
+  ceq expand-blocktypes(IL block ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Id (func ParamType)), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Str (func ParamType)), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType ResultType IL', N, TypeStore) = (IL block (type N) IL2, TypeStore')
+    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL block ParamType IL', N, TypeStore) = (IL block (type N) IL2, TypeStore')
+    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Id (func ParamType)), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Str (func ParamType)), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, TypeStore) = (IL loop (type N) IL2, TypeStore')
+    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL loop ParamType IL', N, TypeStore) = (IL loop (type N) IL2, TypeStore')
+    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL if ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Id (func ParamType)), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Str (func ParamType)), TypeStore)) 
+    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType ResultType IL', N, TypeStore) = (IL if (type N) IL2, TypeStore')
+    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL if ParamType IL', N, TypeStore) = (IL if (type N) IL2, TypeStore')
+    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
+  eq expand-blocktypes(IL, N, TypeStore) = (IL, TypeStore) [owise] .
+
 
   ****************
-  *** Verification
+  *** Validation
   ****************
   
   *** Assert there are n values on top of stack with specific types
