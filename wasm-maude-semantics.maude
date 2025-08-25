@@ -1395,11 +1395,11 @@ mod WASMMOD is
   var ParamResultType : ParamResultType .
 
   *** Equivalent instruction definitions
-  eq if TList = if (result TList) .
+  ***eq if TList = if (result TList) .
   eq if = if (result nil) .
-  eq block TList = block (result TList) .
+  ***eq block TList = block (result TList) .
   eq block = block (result nil) .
-  eq loop TList = loop (result TList) .
+  ***eq loop TList = loop (result TList) .
   eq loop = loop (result nil) .
 
 
