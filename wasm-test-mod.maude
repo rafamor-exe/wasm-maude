@@ -3,12 +3,12 @@ mod WASM-TEST-MOD is
 
   protecting WASMMOD .
 
-  ops run-factorial run-factorial2 run-factorial3 : -> WASMSimTrigger .
-  op run-factorial-param : Nat -> WASMSimTrigger .
-  op run-int-binop-trap : -> WASMSimTrigger .
-  op run-float-unop-sqrt : -> WASMSimTrigger .
-  op run-shOp : -> WASMSimTrigger .
-  op run-br-test : -> WASMSimTrigger .
+  ops run-factorial run-factorial2 run-factorial3 : -> WASMEnvTrigger .
+  op run-factorial-param : Nat -> WASMEnvTrigger .
+  op run-int-binop-trap : -> WASMEnvTrigger .
+  op run-float-unop-sqrt : -> WASMEnvTrigger .
+  op run-shOp : -> WASMEnvTrigger .
+  op run-br-test : -> WASMEnvTrigger .
 
   var N : Nat .
 

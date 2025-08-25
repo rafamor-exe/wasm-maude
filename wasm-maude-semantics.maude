@@ -1347,7 +1347,7 @@ mod WASMMOD is
   var STElem : StackElem .
   var Str : String .
   var Label : Label .
-  var N N1 N2 Ctr : Nat .
+  var N N1 N2 Ctr N' : Nat .
   var NzN : NzNat .
   var GlobalAddrs : Map{String, Addr} .
   var GlobalsStore : Map{Addr, GlobalInstance} .
@@ -1376,7 +1376,7 @@ mod WASMMOD is
   var FuncDefL : FuncDefList .
   var ModuleContent : ModuleContent .
   var ComponentCtr : ComponentCtr .
-  vars TCtr FCtr GCtr : Nat .
+  vars TCtr TCtr' FCtr GCtr : Nat .
   var Id : Id .
   var IndFuncCtx : FuncIndCtx .
   var IndTypeCtx : TypeIndCtx .
@@ -1434,13 +1434,13 @@ mod WASMMOD is
                  = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr], initIL IL1} # (module ModuleContent) # insert(Str, TCtr, IndTypeCtx) IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Str FuncType), TypeStore) #) .
   
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((func Id FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL2 ), FuncStore) # TypeStore' #)
+                 = read-module({StartFunc, indctr [TCtr', FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(Id, (func Id get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL2 ), FuncStore) # TypeStore' #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR)
-                    /\ (IL2, TypeStore') := expand-blocktypes(IL, TCtr, TypeStore) .
+                    /\ (IL2, TCtr', TypeStore') := expand-blocktypes(IL, TCtr, TypeStore) .
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((func Str FuncTypeDef LocalsRef IL ) ModuleContent)) # {typeIndCtx IndTypeCtxSTR} IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = read-module({StartFunc, indctr [TCtr, FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL2 ), FuncStore) # TypeStore' #)
+                 = read-module({StartFunc, indctr [TCtr', FCtr + 1, GCtr], initIL IL1} # (module ModuleContent) # {typeIndCtx IndTypeCtxSTR} insert(Str, FCtr, IndFuncCtx) < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # insert(FCtr, (func Str get-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR) LocalsRef IL2 ), FuncStore) # TypeStore' #)
                  if valid-functype(FuncTypeDef, TypeStore, IndTypeCtxSTR)
-                    /\ (IL2, TypeStore') := expand-blocktypes(IL, TCtr, TypeStore) .
+                    /\ (IL2, TCtr', TypeStore') := expand-blocktypes(IL, TCtr, TypeStore) .
  
   ceq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((global Str (GlobalType) (IntT .const IntN)) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr, FCtr, GCtr + 1], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | empty > # insert(Str, GCtr, GlobalAddrs) <-> insert(GCtr, {type GlobalType, value const(IntT, val(IntN))}, GlobalsStore) # FuncStore # TypeStore #)
@@ -1562,9 +1562,9 @@ mod WASMMOD is
             =>   
             < IL | ST | NeLocalSTRList > .
 
-  rl [block-resultT] : < ((block ResultType) IL2 end) IL | ST | NeLocalSTRList >
-               =>
-               < IL2 exit-block(IL) | st-push(ST, label("block", nil, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
+  ***rl [block-resultT] : < ((block ResultType) IL2 end) IL | ST | NeLocalSTRList >
+  ***             =>
+  ***             < IL2 exit-block(IL) | st-push(ST, label("block", nil, size(aux-get-resultlistTList(ResultType)))) | NeLocalSTRList > .
 
   crl [block-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((block TypeRef) IL2 end) IL | ST1 | NeLocalSTRList > # GlobalInventory # FuncStore # TypeStore
                =>
@@ -1580,9 +1580,9 @@ mod WASMMOD is
                  < if-else(ValW1, IL1, IL2, BlockType) IL | ST | NeLocalSTRList > .
 
   *** loop is an infinite loop
-  rl [loop-resultT] : < ((loop ResultType) IL2 end) IL | ST | NeLocalSTRList >
-              =>
-              < IL2 exit-block(IL) | st-push(ST, label("loop", (loop ResultType) IL2 end, 0)) | NeLocalSTRList > .
+  ***rl [loop-resultT] : < ((loop ResultType) IL2 end) IL | ST | NeLocalSTRList >
+  ***            =>
+  ***            < IL2 exit-block(IL) | st-push(ST, label("loop", (loop ResultType) IL2 end, 0)) | NeLocalSTRList > .
 
   crl [loop-tref] : {typeIndCtx IndTypeCtxSTR} IndFuncCtx < ((loop TypeRef) IL2 end) IL | ST1 | NeLocalSTRList >  # GlobalInventory # FuncStore # TypeStore  
               =>
@@ -1862,47 +1862,67 @@ mod WASMMOD is
   ceq selectVal(val(Int1), Val1, Val2) = Val1 if Int1 =/= 0 .
   eq selectVal(val(Int1), Val1, Val2) = Val2 [owise] .
 
-  op (_,_) : List{Inst} Map{Addr, ModuleContent} -> DecodedBlocktypes [ctor] .
+  op (_,_,_) : List{Inst} Nat Map{Addr, ModuleContent} -> DecodedBlocktypes [ctor] .
 
   *** Expand explicit BlockType abreviation as a typeRef (as in specification) 
   op expand-blocktypes : List{Inst} Nat Map{Addr, ModuleContent} -> DecodedBlocktypes .
-  ceq expand-blocktypes(IL block ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
-  ceq expand-blocktypes(IL block ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
-  ceq expand-blocktypes(IL block ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Id (func ParamType)), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
-  ceq expand-blocktypes(IL block ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL block (type Addr) IL2, (Addr |-> (type Str (func ParamType)), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
-  ceq expand-blocktypes(IL block ParamType ResultType IL', N, TypeStore) = (IL block (type N) IL2, TypeStore')
-    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
-  ceq expand-blocktypes(IL block ParamType IL', N, TypeStore) = (IL block (type N) IL2, TypeStore')
-    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
-  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
-  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
-  ceq expand-blocktypes(IL loop ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Id (func ParamType)), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
-  ceq expand-blocktypes(IL loop ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL loop (type Addr) IL2, (Addr |-> (type Str (func ParamType)), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
-  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, TypeStore) = (IL loop (type N) IL2, TypeStore')
-    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
-  ceq expand-blocktypes(IL loop ParamType IL', N, TypeStore) = (IL loop (type N) IL2, TypeStore')
-    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
-  ceq expand-blocktypes(IL if ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
-  ceq expand-blocktypes(IL if ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
-  ceq expand-blocktypes(IL if ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Id (func ParamType)), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
-  ceq expand-blocktypes(IL if ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL if (type Addr) IL2, (Addr |-> (type Str (func ParamType)), TypeStore)) 
-    if (IL2, TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
-  ceq expand-blocktypes(IL if ParamType ResultType IL', N, TypeStore) = (IL if (type N) IL2, TypeStore')
-    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
-  ceq expand-blocktypes(IL if ParamType IL', N, TypeStore) = (IL if (type N) IL2, TypeStore')
-    if (IL2, TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
-  eq expand-blocktypes(IL, N, TypeStore) = (IL, TypeStore) [owise] .
+  ceq expand-blocktypes(IL block ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL block (type Addr) IL2, N', (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL block (type Addr) IL2, N', (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL block (type Addr) IL2, N', (Addr |-> (type Id (func ParamType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL block (type Addr) IL2, N', (Addr |-> (type Str (func ParamType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL block ResultType IL', N, (Addr |-> (type Id (func ResultType)), TypeStore)) = (IL block (type Addr) IL2, N', (Addr |-> (type Id (func ResultType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ResultType)), TypeStore)) .
+  ceq expand-blocktypes(IL block ResultType IL', N, (Addr |-> (type Str (func ResultType)), TypeStore)) = (IL block (type Addr) IL2, N', (Addr |-> (type Str (func ResultType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ResultType)), TypeStore)) .
+  ceq expand-blocktypes(IL block ParamType ResultType IL', N, TypeStore) = (IL block (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL block ParamType IL', N, TypeStore) = (IL block (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL block ResultType IL', N, TypeStore) = (IL block (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ResultType)), TypeStore)) [owise] .
+  
+  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL loop (type Addr) IL2, N', (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL loop (type Addr) IL2, N', (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL loop (type Addr) IL2, N', (Addr |-> (type Id (func ParamType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL loop (type Addr) IL2, N', (Addr |-> (type Str (func ParamType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL loop ResultType IL', N, (Addr |-> (type Id (func ResultType)), TypeStore)) = (IL loop (type Addr) IL2, N', (Addr |-> (type Id (func ResultType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ResultType)), TypeStore)) .
+  ceq expand-blocktypes(IL loop ResultType IL', N, (Addr |-> (type Str (func ResultType)), TypeStore)) = (IL loop (type Addr) IL2, N', (Addr |-> (type Str (func ResultType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ResultType)), TypeStore)) .
+  ceq expand-blocktypes(IL loop ParamType ResultType IL', N, TypeStore) = (IL loop (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL loop ParamType IL', N, TypeStore) = (IL loop (type N) IL2,N',  TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL loop ResultType IL', N, TypeStore) = (IL loop (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ResultType)), TypeStore)) [owise] .
+  
+  ceq expand-blocktypes(IL if ParamType ResultType IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) = (IL if (type Addr) IL2, N', (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType ResultType IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) = (IL if (type Addr) IL2, N', (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func (ParamType ResultType))), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) = (IL if (type Addr) IL2, N', (Addr |-> (type Id (func ParamType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) = (IL if (type Addr) IL2, N', (Addr |-> (type Str (func ParamType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ParamType)), TypeStore)) .
+  ceq expand-blocktypes(IL if ResultType IL', N, (Addr |-> (type Id (func ResultType)), TypeStore)) = (IL if (type Addr) IL2, N', (Addr |-> (type Id (func ResultType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Id (func ResultType)), TypeStore)) .
+  ceq expand-blocktypes(IL if ResultType IL', N, (Addr |-> (type Str (func ResultType)), TypeStore)) = (IL if (type Addr) IL2, N', (Addr |-> (type Str (func ResultType)), TypeStore)) 
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N, (Addr |-> (type Str (func ResultType)), TypeStore)) .
+  ceq expand-blocktypes(IL if ParamType ResultType IL', N, TypeStore) = (IL if (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func (ParamType ResultType))), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL if ParamType IL', N, TypeStore) = (IL if (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ParamType)), TypeStore)) [owise] .
+  ceq expand-blocktypes(IL if ResultType IL', N, TypeStore) = (IL if (type N) IL2, N', TypeStore')
+    if (IL2, N', TypeStore') := expand-blocktypes(IL', N + 1, insert(N, (type N (func ResultType)), TypeStore)) [owise] .
+  eq expand-blocktypes(IL, N, TypeStore) = (IL, N, TypeStore) [owise] .
 
 
   ****************

@@ -7,6 +7,6 @@ file=$1
 func=$2
 initIL=$3
 
-test="erew search-with-func-from-file(\"$file\", \"$func\", \"$initIL\", 'w:WASMSimTrigger, nil, '!, unbounded, 0) . \n"
+test="erew search-with-func-from-file(\"$file\", \"$func\", \"$initIL\", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) . \n"
 
 echo -e "load $MAUDE_LIBRARY/file.maude \n load $PROJECT_PATH/wasm-maude-semantics.maude \n set trace on . \n $test " | $MAUDE_LIBRARY/maude -trust -no-banner

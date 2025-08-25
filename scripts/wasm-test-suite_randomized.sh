@@ -52,7 +52,7 @@ do
 
     wasm $testF -e '(invoke "$func0")' >> ${TMP_TEST_DIR}/wasm.dump
 
-    test_all+="erew search-with-func-from-file(\"$testF\", \"\$func0\", 'w:WASMSimTrigger, nil, '!, unbounded, 0) . \n"
+    test_all+="erew search-with-func-from-file(\"$testF\", \"\$func0\", 'w:WASMEnvTrigger, nil, '!, unbounded, 0) . \n"
     
 done
 
