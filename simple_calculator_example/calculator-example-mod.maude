@@ -12,7 +12,7 @@ fmod CALCULATOR-OPS is
     op val : Int -> Value [ctor] .
     op err : -> Error [ctor] .
     op < _ | _ > : OpList Value -> Calculator [ctor] .
-    op init : OpList -> Calculator [ctor] .
+    op init : OpList -> Calculator .
 
     ops add sub : Value Value -> Value .
 
