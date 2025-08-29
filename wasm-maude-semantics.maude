@@ -1411,6 +1411,9 @@ mod WASMMOD is
   eq block IL end = block (result nil) IL end .
   eq loop IL end = loop (result nil) IL end .
 
+  eq if BlockType IL end = if BlockType IL else nil end .
+  eq if ParamType ResultType IL end = if ParamType ResultType IL else nil end .
+
 
   *** Run trigger
   op run-nomodule : List{Inst} -> WASMTypeFuncGlobalEnv .
@@ -1793,7 +1796,7 @@ mod WASMMOD is
   
   op if-else : ValWrapper List{Inst} List{Inst} BlockType -> List{Inst} .
   eq if-else(val(NzIntN), IL1, IL2, BlockType) = (block BlockType IL1 end) .
-  eq if-else(val(0), IL1, IL2, BlockType) = (block BlockType IL2 end) [owise] .
+  eq if-else(val(0), IL1, IL2, BlockType) = (block BlockType IL2 end) .
   
   op get-IL-func : FuncDef -> List{Inst} .
   eq get-IL-func(func N FuncTypeDef LocalsRef IL ) = IL .
@@ -1868,8 +1871,8 @@ mod WASMMOD is
 
   *** Auxiliary parametric instructions
   op selectVal : ValWrapper Value Value -> Value .
-  ceq selectVal(val(Int1), Val1, Val2) = Val1 if Int1 =/= 0 .
-  eq selectVal(val(Int1), Val1, Val2) = Val2 [owise] .
+  eq selectVal(val(NzIntN), Val1, Val2) = Val1 .
+  eq selectVal(val(0), Val1, Val2) = Val2 .
 
   op (_,_,_) : List{Inst} Nat Map{Addr, ModuleContent} -> DecodedBlocktypes [ctor] .
 
