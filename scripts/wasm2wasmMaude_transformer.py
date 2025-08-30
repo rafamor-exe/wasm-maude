@@ -6,7 +6,7 @@ def transform_file(file, output, func):
         with open(file, "r", encoding="utf-8", newline="") as f:
             with open(output, "w", encoding="utf-8", newline="") as o:
                 o.write(
-                    """\nmod WASM-TEST-MOD is \n protecting WASMMOD . \n op test : -> WASMEnvTrigger .
+                    """\nmod WASM-TEST-MOD is \n protecting WASMMOD . \n op test : -> WASMEnv .
                         \n""")
                 o.write(" eq test = run-module-func( \n ")
                 for line in f.read().splitlines():

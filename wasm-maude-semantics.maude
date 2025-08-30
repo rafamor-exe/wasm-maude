@@ -1284,8 +1284,8 @@ mod WASMMOD is
 
   op {_, indctr _, initIL _} : Starter ComponentCtr List{Inst} -> WasmTrigger [ctor] .
 
-  op _ _ : WasmTrigger WASMEnv -> WASMEnvTrigger [ctor format (ni ni ni)] .
-  op Fail : String -> WASMEnvTrigger [ctor] .
+  op _ _ : WasmTrigger WASMEnv -> WASMEnvTrigger [format (ni ni ni)] .
+  op Fail : String -> WASMEnv [ctor] .
 
   *** Module sections
 
@@ -1301,7 +1301,7 @@ mod WASMMOD is
   op jump-to-L : StackAndLabel -> Inst [ctor] .
 
   op errorMod : -> [WASMModule] . 
-  op errorWASMEnvTrigger : -> [WASMEnvTrigger] .
+  op errorWASMEnv : -> [WASMEnv] .
 
 
   *** Block Instructions (they depend on the definition of List{Inst})
@@ -1421,24 +1421,24 @@ mod WASMMOD is
 
   op uninitialized : -> Inst [ctor] .
 
-  op run-module-func : WASMModule Nat -> WASMEnvTrigger .
-  op run-module-func : WASMModule Nat List{Inst} -> WASMEnvTrigger .
+  op run-module-func : WASMModule Nat -> WASMEnv .
+  op run-module-func : WASMModule Nat List{Inst} -> WASMEnv .
   eq run-module-func(WASMModule, N) = run-module-func(WASMModule, N, nil) .
-  eq run-module-func(WASMModule, N, IL) = read-module({start N, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | nil > # empty <-> empty # empty # empty #) .
+  eq run-module-func(WASMModule, N, IL) = validate-funcs-module(read-module({start N, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | nil > # empty <-> empty # empty # empty #)) .
 
-  op run-module-func : WASMModule String -> WASMEnvTrigger .
-  op run-module-func : WASMModule String List{Inst} -> WASMEnvTrigger .
+  op run-module-func : WASMModule String -> WASMEnv .
+  op run-module-func : WASMModule String List{Inst} -> WASMEnv .
   eq run-module-func(WASMModule, Str) = run-module-func(WASMModule, Str, nil) .
-  eq run-module-func(WASMModule, Str, IL) = read-module({start Str, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | nil > # empty <-> empty # empty # empty #) .
+  eq run-module-func(WASMModule, Str, IL) = validate-funcs-module(read-module({start Str, indctr [0, 0, 0], initIL IL} # WASMModule # {typeIndCtx empty} {funcIndCtx empty} < uninitialized | EmptyStack | nil > # empty <-> empty # empty # empty #)) .
 
   *** Module decoding -> Module validation -> Module instantiation
   *** Read module component definitions
   *** Done as eq logic to avoid non-determinism on component parsing
   op read-module : WASMEnvTrigger -> WASMEnvTrigger .
   eq read-module({start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = validate-funcs-module({start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+                 = {start N, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore # .
   eq read-module({start Str, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
-                 = validate-funcs-module({start Str, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #) .
+                 = {start Str, indctr ComponentCtr, initIL IL1} # (module EmptyMod) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore # .
   
   eq read-module({StartFunc, indctr [TCtr, FCtr, GCtr], initIL IL1} # (module ((type Id FuncType) ModuleContent)) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
                  = read-module({StartFunc, indctr [TCtr + 1, FCtr, GCtr], initIL IL1} # (module ModuleContent) # IndTypeCtx IndFuncCtx < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # insert(TCtr, (type Id FuncType), TypeStore) #) .
@@ -1638,7 +1638,6 @@ mod WASMMOD is
   eq lookup(LocalSTR, ValR) = LocalSTR[ValR] .
 
   *** Get state stack
-  op stack : [WASMEnvTrigger] -> Stack .
   op stack : [WASMEnv] -> Stack .
   op stack : [WASMTypeFuncGlobalIndEnv] -> Stack .
   op stack : [WASMTypeFuncGlobalEnv] -> Stack .
@@ -1646,7 +1645,7 @@ mod WASMMOD is
   op stack : [WASMFuncGlobalEnv] -> Stack .
   op stack : [WASMGlobalEnv] -> Stack .
   op stack : [WASMLocalEnv] -> Stack .
-  eq stack(WasmTrigger # WASMModule
+  eq stack(# WASMModule
     #
     IndTypeCtx
     IndFuncCtx < IL | ST | LocalSTRList >
@@ -1657,12 +1656,10 @@ mod WASMMOD is
     #
     TypeStore
     #) = ST .
-  eq stack(WasmTrigger WASMEnv) = stack(WASMEnv) .
   eq stack(< IL | ST | LocalSTRList >) = ST .
   
-  op localEnv : [WASMEnvTrigger] -> [WASMLocalEnv] .
+  op localEnv : [WASMEnv] -> [WASMLocalEnv] .
   eq localEnv(
-    WasmTrigger
     # WASMModule
     #
     IndTypeCtx
@@ -1676,9 +1673,9 @@ mod WASMMOD is
     TypeStore
     #) = WASMLocalEnv .
   
-  op getGlobal : String [WASMEnvTrigger] -> Value .
+  op getGlobal : String [WASMEnv] -> Value .
   eq getGlobal(Str,
-    WasmTrigger # WASMModule
+    # WASMModule
     #
     IndTypeCtx
     IndFuncCtx < IL | ST | LocalSTRList >
@@ -1690,8 +1687,8 @@ mod WASMMOD is
     TypeStore
     #) = global-val(GlobalsStore[GlobalAddrs[Str]]) .
   
-  op curr-inst : [WASMEnvTrigger] -> Inst .
-  eq curr-inst(WasmTrigger # WASMModule
+  op curr-inst : [WASMEnv] -> Inst .
+  eq curr-inst(# WASMModule
     #
     IndTypeCtx
     IndFuncCtx < I1 IL | ST | LocalSTRList >
@@ -1976,16 +1973,16 @@ mod WASMMOD is
 
   *** Validate all functions in module context. If any function is not valid, the module is not valid and instantiation fails.
   *** Module validation -> Module instantiation
-  op validate-funcs-module : WASMEnvTrigger -> WASMEnvTrigger .
+  op validate-funcs-module : WASMEnvTrigger -> WASMEnv .
   eq validate-funcs-module({start N, indctr ComponentCtr, initIL IL} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
       = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs) then
-           {start N, indctr ComponentCtr, initIL IL} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR}  < IL (call N) | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
+           # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR}  < IL (call N) | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
         else 
           Fail("Invalid module")
         fi .
   eq validate-funcs-module({start Str, indctr ComponentCtr, initIL IL} # (module EmptyMod) # {typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < uninitialized | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore #)
       = if verify-funcList(get-funcList(FuncStore), IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore,  GlobalsStore, GlobalAddrs) then
-           {start Str, indctr ComponentCtr, initIL IL} # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < IL (call (IndFuncCtxSTR[Str])) | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
+           # (module EmptyMod) # simulate-wasm({typeIndCtx IndTypeCtxSTR} {funcIndCtx IndFuncCtxSTR} < IL (call (IndFuncCtxSTR[Str])) | ST | nil > # GlobalAddrs <-> GlobalsStore # FuncStore # TypeStore) #
         else 
           Fail("Invalid module")
         fi .
@@ -2116,7 +2113,7 @@ mod WASMMOD is
     if startsWith(get-paramlistTList-func(FuncStore[Addr]), TList) .
   ***
 
-  eq verify-IL(NeIL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = false [owise] .
+  eq verify-IL(IL, TList, TList1, TListRes, IndTypeCtxSTR, TypeStore, IndFuncCtxSTR, FuncStore, GlobalsStore, GlobalAddrs, LabelsResultTypeList) = false [owise] .
 
   *** First list starts with second
   op startsWith : List{TypeToken} List{TypeToken} -> Bool .
@@ -2216,11 +2213,8 @@ mod WASM-FILE-MOD is
 
   sorts CustomOid NullOid FormatedSearchResult .
   sorts CustomSubstitution CustomAssignment .
-  sort WASMFinalState .
   subsorts CustomAssignment < CustomSubstitution .
   subsorts NullOid Oid < CustomOid .
-
-  subsort WASMFinalState < WASMEnvTrigger .
 
   op nullOid : -> NullOid [ctor] .
 
@@ -2229,13 +2223,13 @@ mod WASM-FILE-MOD is
   ops in:_ : CustomOid -> Attribute . 
   ops inFile:_ outText:_ : String -> Attribute . 
 
-  op _<==_ : Variable [WASMEnvTrigger] -> CustomAssignment [ctor] .
+  op _<==_ : Variable [WASMEnv] -> CustomAssignment [ctor] .
   op noCustomSubstitution : -> CustomSubstitution [ctor] .
   op _&&_ : CustomSubstitution CustomSubstitution -> CustomSubstitution [ctor assoc comm id: noCustomSubstitution prec 65 ] .
-  op [_/_/_] : [WASMEnvTrigger] Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
+  op [_/_/_] : [WASMEnv] Type CustomSubstitution  -> FormatedSearchResult [ctor format (ni ni ni ni ni ni ni ni)] .
   op NoResult : -> FormatedSearchResult [ctor] .
 
-  op asis : [WASMEnvTrigger] -> [WASMEnvTrigger] [frozen] .
+  op asis : [WASMEnv] -> [WASMEnv] [frozen] .
   
   vars Text Acc WASMModFile Reason Func : String . 
   vars FHIn : Oid . 
@@ -2260,7 +2254,7 @@ mod WASM-FILE-MOD is
                                < myObj : myClass | in: nullOid, inFile: WASMModFile, outText: "" > 
                                openFile(fileManager, myObj, WASMModFile, "r") .
 
-  op run-func-from-file : String String -> WASMEnvTrigger .
+  op run-func-from-file : String String -> WASMEnv .
   eq run-func-from-file(WASMModFile, Func) = get-config-sim(gen-config(WASMModFile), Func) .
 
   *** Function to meta-search using erew
@@ -2281,14 +2275,14 @@ mod WASM-FILE-MOD is
   *** Format ResultTriple from meta-search
   op getFormattedRes : ResultTriple? -> FormatedSearchResult .
   eq getFormattedRes(failure) = NoResult .
-  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [asis(downTerm(OgTerm, errorWASMEnvTrigger)) / Type / formatSubs(ResSubstitution)] .
+  eq getFormattedRes({OgTerm, Type, ResSubstitution}) = [asis(downTerm(OgTerm, errorWASMEnv)) / Type / formatSubs(ResSubstitution)] .
 
   *** Format substitutions
   op formatSubs : Substitution -> CustomSubstitution .
   eq formatSubs(none) = noCustomSubstitution .
-  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== asis(downTerm(ResTerm, errorWASMEnvTrigger))) && formatSubs(ResSubstitution) .
+  eq formatSubs((ResVar <- ResTerm) ; ResSubstitution) = (ResVar <== asis(downTerm(ResTerm, errorWASMEnv))) && formatSubs(ResSubstitution) .
 
-  op get-config-sim : Configuration String -> WASMEnvTrigger .
+  op get-config-sim : Configuration String -> WASMEnv .
   eq get-config-sim(<> closedFile(myObj, FHIn) < myObj : myClass | outText: Acc, Attrs >, Func) = run-module-func(downTerm(getTerm(metaParse(['WASMMOD], tokenize-wasm(Acc), 'WASMModule)), errorMod), Func) . ***Acc .
 
   *** Maude API for external objects
