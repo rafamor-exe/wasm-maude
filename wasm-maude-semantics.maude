@@ -1284,7 +1284,7 @@ mod WASMMOD is
 
   op {_, indctr _, initIL _} : Starter ComponentCtr List{Inst} -> WasmTrigger [ctor] .
 
-  op _ _ : WasmTrigger WASMEnv -> WASMEnvTrigger [format (ni ni ni)] .
+  op _ _ : WasmTrigger WASMEnv -> WASMEnvTrigger [ctor format (ni ni ni)] .
   op Fail : String -> WASMEnv [ctor] .
 
   *** Module sections
